@@ -1,0 +1,847 @@
+// ==UserScript==
+// @name         Yaqeen Tool - حجوزات المطار القادمة + السيارات المتاحة
+// @namespace    https://yaqeen.lumirental.com/
+// @version      1.0
+// @description  تجيب حجوزات فرع المطار خلال عدد ساعات تحدده + عدد السيارات المتاحة لكل قروب في نفس الفرع - بدون مغادرة الصفحة الحالية
+// @author       Firas
+// @match        https://yaqeen.lumirental.com/*
+// @grant        unsafeWindow
+// @grant        GM_xmlhttpRequest
+// @connect      api.yaqeen-vip.space
+// @run-at       document-end
+// @updateURL    https://api.yaqeen-vip.space/tools/yaqeen-airport-hours-report.user.js
+// @downloadURL  https://api.yaqeen-vip.space/tools/yaqeen-airport-hours-report.user.js
+// ==/UserScript==
+
+(function () {
+
+    'use strict';
+
+    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
+    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
+    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+
+    // إعدادات بوت واتساب (نفس بوت أداة "تقرير الحجوزات القادمة")
+    var WHATSAPP_CONFIG = {
+        apiUrl: 'https://api.yaqeen-vip.space/send',
+        apiKey: 'Firas_2026_SuperSecret_Key',
+        target: '120363021290047142@g.us',
+    };
+
+    var AIRPORT_LOCATION_ID = 29;
+    var YARD_LOCATION_ID = 53; // موقع "الحوش" - عمود إضافي فقط، لا يدخل في حساب الإشغال
+    var PAGE_SIZE = 500;
+
+    var BOOKINGS_URL =
+        'https://yaqeen.lumirental.com/rental/branches/' + AIRPORT_LOCATION_ID +
+        '/bookings/upcoming?pageSize=' + PAGE_SIZE;
+
+    var VEHICLES_URL =
+        'https://yaqeen.lumirental.com/rental/vehicles/ready?currentLocationIds=' + AIRPORT_LOCATION_ID +
+        '&pageSize=' + PAGE_SIZE;
+
+    var YARD_VEHICLES_URL =
+        'https://yaqeen.lumirental.com/rental/vehicles/ready?currentLocationIds=' + YARD_LOCATION_ID +
+        '&pageSize=' + PAGE_SIZE;
+
+    var BOOKING_COLUMNS_MAP = {
+        pickup: ['وقت الاستلام'],
+        group: ['المجموعة'],
+    };
+    var GROUP_COLUMN_HINT = ['المجموعة'];
+
+    var WEEKDAY_MAP = {
+        'الاحد': 0,
+        'الاثنين': 1,
+        'الثلاثاء': 2,
+        'الاربعاء': 3,
+        'الخميس': 4,
+        'الجمعه': 5,
+        'السبت': 6,
+    };
+
+    // ==========================================================
+    // تسجيل الأداة في نظام Yaqeen
+    // ==========================================================
+
+    function waitCore() {
+        if (!HOST_WINDOW.YAQEEN_TOOLS) {
+            setTimeout(waitCore, 300);
+            return;
+        }
+        HOST_WINDOW.YAQEEN_TOOLS.add({
+            id: "airport-hours-report",
+            name: "🛫 حجوزات المطار القادمة",
+            run() {
+                showHoursPrompt();
+            }
+        });
+    }
+
+    // ==========================================================
+    // أدوات نصية
+    // ==========================================================
+
+    function normalizeArabic(text) {
+        return (text || '')
+            .replace(/[ً-ْ]/g, '')
+            .replace(/[إأآا]/g, 'ا')
+            .replace(/ى/g, 'ي')
+            .replace(/ة/g, 'ه')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    /** يحوّل نص "وقت الاستلام" (مثال: "اليوم - 08:30" أو "الأحد - 14:00") إلى تاريخ/وقت فعلي */
+    function resolveBookingDateTime(pickupText, now) {
+        if (!pickupText) return null;
+        var timeMatch = pickupText.match(/(\d{1,2}):(\d{2})/);
+        if (!timeMatch) return null;
+
+        var dayPart = normalizeArabic(pickupText.split('-')[0] || '');
+        var target = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (dayPart === normalizeArabic('اليوم')) {
+            // نفس اليوم - لا شي إضافي
+        } else if (dayPart === normalizeArabic('غداً') || dayPart === normalizeArabic('غدا')) {
+            target.setDate(target.getDate() + 1);
+        } else if (Object.prototype.hasOwnProperty.call(WEEKDAY_MAP, dayPart)) {
+            var todayIndex = now.getDay();
+            var weekdayIndex = WEEKDAY_MAP[dayPart];
+            var daysAhead = (weekdayIndex - todayIndex + 7) % 7;
+            if (daysAhead === 0) daysAhead = 7; // "اليوم"/"غداً" يغطون أقرب حالتين، فأي تطابق آخر يعني الأسبوع القادم
+            target.setDate(target.getDate() + daysAhead);
+        } else {
+            return null; // نص يوم غير معروف - نتجاهل هذا الحجز بدل ما نخمّن تاريخ خاطئ
+        }
+
+        target.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+        return target;
+    }
+
+    // ==========================================================
+    // جلب البيانات من نافذة منبثقة (بدون مغادرة الصفحة الحالية)
+    // ==========================================================
+
+    function findDataTable(doc, requiredColumnVariants) {
+        var tables = Array.prototype.slice.call(doc.querySelectorAll('table'));
+        if (tables.length === 0) return null;
+
+        function headerMatches(table) {
+            var headerCells = Array.prototype.slice.call(table.querySelectorAll('thead tr th, thead tr td'));
+            var normalizedVariants = requiredColumnVariants.map(normalizeArabic);
+            return headerCells.some(function (cell) {
+                var text = normalizeArabic(cell.textContent);
+                return normalizedVariants.some(function (v) { return text.indexOf(v) !== -1; });
+            });
+        }
+
+        var matching = tables.filter(headerMatches);
+        var candidates = matching.length > 0 ? matching : tables;
+
+        var best = null;
+        var bestCount = -1;
+        candidates.forEach(function (t) {
+            var count = t.querySelectorAll('tbody tr').length;
+            if (count > bestCount) {
+                best = t;
+                bestCount = count;
+            }
+        });
+        return best;
+    }
+
+    function openHiddenFrame(url) {
+        var iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1100px;height:750px;border:0;opacity:0;pointer-events:none;';
+        document.body.appendChild(iframe);
+        return iframe;
+    }
+
+    function waitForFirstFrame(iframe, groupHint, timeoutMs) {
+        timeoutMs = timeoutMs || 20000;
+        return new Promise(function (resolve, reject) {
+            var start = Date.now();
+            (function check() {
+                if (!iframe.isConnected) {
+                    reject(new Error('تمت إزالة الـiframe قبل اكتمال التحميل'));
+                    return;
+                }
+                var doc;
+                try {
+                    doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+                } catch (err) {
+                    reject(new Error('تعذّر الوصول لمحتوى الـiframe'));
+                    return;
+                }
+                if (!doc || doc.readyState !== 'complete') {
+                    if (Date.now() - start > timeoutMs) { resolve(doc || null); return; }
+                    setTimeout(check, 300);
+                    return;
+                }
+                var table = findDataTable(doc, groupHint);
+                var hasRows = table && table.querySelectorAll('tbody tr').length > 0;
+                if (hasRows || Date.now() - start > timeoutMs) { resolve(doc); return; }
+                setTimeout(check, 300);
+            })();
+        });
+    }
+
+    var NEXT_PAGE_SELECTORS = [
+        '[aria-label="Next page"]',
+        '[aria-label="التالي"]',
+        '[aria-label="الصفحة التالية"]',
+        '.MuiTablePagination-actions button:last-of-type',
+        '.MuiPagination-ul li:last-child button',
+        '.ant-pagination-next',
+        '.pagination .page-item:last-child .page-link',
+        'button[data-testid*="next" i]',
+        'a[data-testid*="next" i]',
+    ];
+    var NEXT_PAGE_TEXT_PATTERN = /^(التالي|التالية|Next|تحميل المزيد|عرض المزيد|Load more|Show more|›|»|>)$/i;
+
+    function findNextPageControl(doc) {
+        for (var i = 0; i < NEXT_PAGE_SELECTORS.length; i++) {
+            var el = doc.querySelector(NEXT_PAGE_SELECTORS[i]);
+            if (el) return el;
+        }
+        var candidates = Array.prototype.slice.call(doc.querySelectorAll('button, a, [role="button"]'));
+        var textMatch = candidates.find(function (el) {
+            return NEXT_PAGE_TEXT_PATTERN.test((el.textContent || '').trim());
+        });
+        return textMatch || null;
+    }
+
+    function isControlDisabled(el) {
+        if (!el) return true;
+        if (el.disabled) return true;
+        if (el.getAttribute('aria-disabled') === 'true') return true;
+        var className = (el.className || '').toString().toLowerCase();
+        if (className.indexOf('disabled') !== -1) return true;
+        if (el.closest && el.closest('[aria-disabled="true"]')) return true;
+        return false;
+    }
+
+    /** يجمع صفوف كل الصفحات - rowReaderFn(doc) ترجع مصفوفة صفوف فيها __signature */
+    function collectAllPages(iframe, doc, groupHint, rowReaderFn) {
+        return new Promise(function (resolve) {
+            var allRows = [];
+            var seen = {};
+            var pageIndex = 0;
+            var maxIterations = 80;
+
+            function addRows(rows) {
+                rows.forEach(function (r) {
+                    if (!seen[r.__signature]) {
+                        seen[r.__signature] = true;
+                        allRows.push(r);
+                    }
+                });
+            }
+
+            function readRowsSafely() {
+                try {
+                    return rowReaderFn(doc);
+                } catch (err) {
+                    return [];
+                }
+            }
+
+            function waitForPageChange(beforeSignature) {
+                var waitStart = Date.now();
+                (function poll() {
+                    if (!iframe.isConnected) { resolve(allRows); return; }
+                    var currentRows = readRowsSafely();
+                    var currentLastSignature = currentRows.length ? currentRows[currentRows.length - 1].__signature : null;
+                    if (currentLastSignature !== beforeSignature || Date.now() - waitStart > 6000) { step(); return; }
+                    setTimeout(poll, 250);
+                })();
+            }
+
+            function step() {
+                if (!iframe.isConnected || pageIndex >= maxIterations) { resolve(allRows); return; }
+                pageIndex++;
+
+                var rows = readRowsSafely();
+                addRows(rows);
+
+                var nextControl = findNextPageControl(doc);
+                if (!nextControl || isControlDisabled(nextControl)) { resolve(allRows); return; }
+
+                var beforeSignature = rows.length ? rows[rows.length - 1].__signature : null;
+                try {
+                    nextControl.click();
+                } catch (err) {
+                    resolve(allRows);
+                    return;
+                }
+                waitForPageChange(beforeSignature);
+            }
+
+            step();
+        });
+    }
+
+    function fetchAllFromFrame(iframe, groupHint, rowReaderFn) {
+        return waitForFirstFrame(iframe, groupHint).then(function (doc) {
+            return collectAllPages(iframe, doc, groupHint, rowReaderFn).then(function (rows) {
+                try { iframe.remove(); } catch (err) { /* تجاهل */ }
+                return rows;
+            });
+        });
+    }
+
+    // -------- قارئ صفوف جدول السيارات الجاهزة (نفس منطق أداة "السيارات المتوفرة") --------
+    function readVehicleRows(doc) {
+        var table = findDataTable(doc, GROUP_COLUMN_HINT);
+        if (!table) return [];
+        var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+        return rows.map(function (row) {
+            var td = row.querySelectorAll('td');
+            if (td.length < 6) return null;
+            return {
+                group: td[3].textContent.trim(),
+                available: td[5].textContent.indexOf('غير مخصصة') !== -1,
+                __signature: Array.prototype.map.call(td, function (c) { return c.textContent.trim(); }).join('|'),
+            };
+        }).filter(Boolean);
+    }
+
+    // -------- قارئ صفوف جدول الحجوزات (حسب أسماء الأعمدة، لا مواقعها) --------
+    function findColumnIndex(headerCells, labelVariants) {
+        var normalizedVariants = labelVariants.map(normalizeArabic);
+        for (var i = 0; i < headerCells.length; i++) {
+            var headerText = normalizeArabic(headerCells[i].textContent);
+            for (var j = 0; j < normalizedVariants.length; j++) {
+                if (headerText.indexOf(normalizedVariants[j]) !== -1) return i;
+            }
+        }
+        return -1;
+    }
+
+    function readBookingRows(doc) {
+        var table = findDataTable(doc, GROUP_COLUMN_HINT);
+        if (!table) return [];
+        var headerCells = Array.prototype.slice.call(table.querySelectorAll('thead tr th, thead tr td'));
+        var pickupIdx = findColumnIndex(headerCells, BOOKING_COLUMNS_MAP.pickup);
+        var groupIdx = findColumnIndex(headerCells, BOOKING_COLUMNS_MAP.group);
+        if (pickupIdx === -1 || groupIdx === -1) return [];
+
+        var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+        return rows.map(function (row) {
+            var cells = Array.prototype.slice.call(row.querySelectorAll('td'));
+            if (cells.length === 0) return null;
+            return {
+                pickup: cells[pickupIdx] ? cells[pickupIdx].textContent.trim() : '',
+                group: cells[groupIdx] ? cells[groupIdx].textContent.trim() : '',
+                __signature: cells.map(function (c) { return c.textContent.trim(); }).join('|'),
+            };
+        }).filter(Boolean);
+    }
+
+    // ==========================================================
+    // التنفيذ
+    // ==========================================================
+
+    function runReport(hours) {
+        document.getElementById('airport-hours-box')?.remove();
+
+        // ننشئ الإطارات الثلاثة فوراً (يبدأ تحميلها بالخلفية فوراً)، لكن نقرأها
+        // بالتتابع لا بالتوازي (Promise.all): فتح 3 صفحات React ثقيلة والبدء
+        // بقراءتها كلها بنفس اللحظة يسبب تنافساً على الموارد يمنع إطار
+        // "الحوش" (آخر واحد) من اكتمال تحميله ضمن المهلة، فيرجع صفوفاً فارغة
+        // رغم وجود بيانات فعلية بالصفحة الحقيقية
+        var bookingsFrame = openHiddenFrame(BOOKINGS_URL);
+        var vehiclesFrame = openHiddenFrame(VEHICLES_URL);
+        var yardFrame = openHiddenFrame(YARD_VEHICLES_URL);
+
+        showLoading();
+
+        var now = new Date();
+
+        fetchAllFromFrame(bookingsFrame, GROUP_COLUMN_HINT, readBookingRows)
+            .then(function (bookingRows) {
+                return fetchAllFromFrame(vehiclesFrame, GROUP_COLUMN_HINT, readVehicleRows).then(function (vehicleRows) {
+                    return [bookingRows, vehicleRows];
+                });
+            })
+            .then(function (partial) {
+                return fetchAllFromFrame(yardFrame, GROUP_COLUMN_HINT, readVehicleRows).then(function (yardRows) {
+                    return partial.concat([yardRows]);
+                });
+            })
+            .then(function (results) {
+                var bookingRows = results[0];
+                var vehicleRows = results[1];
+                var yardRows = results[2];
+                console.log('[حجوزات المطار] عدد صفوف الحوش (53) المستخرجة:', yardRows.length);
+                var cutoff = new Date(now.getTime() + hours * 3600000);
+
+                var bookingCounts = {};
+                var totalBookings = 0;
+                bookingRows.forEach(function (r) {
+                    if (!r.group) return;
+                    var dt = resolveBookingDateTime(r.pickup, now);
+                    if (!dt || dt < now || dt > cutoff) return;
+                    bookingCounts[r.group] = (bookingCounts[r.group] || 0) + 1;
+                    totalBookings++;
+                });
+
+                var vehicleCounts = {};
+                var totalVehicles = 0;
+                vehicleRows.forEach(function (r) {
+                    if (!r.group || !r.available) return;
+                    vehicleCounts[r.group] = (vehicleCounts[r.group] || 0) + 1;
+                    totalVehicles++;
+                });
+
+                // عمود "سيارات الحوش" لا يجلب كامل أسطول الحوش، بل يقتصر فقط على
+                // القروبات الموجودة أصلاً في عمود "السيارات المتاحة" بالمطار -
+                // أي قروب موجود بالحوش لكن غير موجود بمطار مو له داعي نعرضه هنا
+                var yardCountsRaw = {};
+                yardRows.forEach(function (r) {
+                    if (!r.group || !r.available) return;
+                    yardCountsRaw[r.group] = (yardCountsRaw[r.group] || 0) + 1;
+                });
+                var yardVehicleCounts = {};
+                Object.keys(vehicleCounts).forEach(function (g) {
+                    yardVehicleCounts[g] = yardCountsRaw[g] || 0;
+                });
+
+                showReport(hours, bookingCounts, vehicleCounts, yardVehicleCounts, totalBookings, totalVehicles);
+            })
+            .catch(function (err) {
+                try { bookingsFrame.remove(); } catch (e) { /* تجاهل */ }
+                try { vehiclesFrame.remove(); } catch (e) { /* تجاهل */ }
+                try { yardFrame.remove(); } catch (e) { /* تجاهل */ }
+                showMessage('تعذّر جلب البيانات: ' + err.message);
+            });
+    }
+
+    // ==========================================================
+    // واجهة العرض
+    // ==========================================================
+
+    function overlayShell(innerHtml, width) {
+        return (
+            '<div id="airport-hours-box" style="' +
+            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
+            'justify-content:center;z-index:999999999;font-family:Arial;padding:24px;box-sizing:border-box;">' +
+            '<div style="width:' + width + 'px;max-width:100%;max-height:85vh;overflow:auto;' +
+            'background:#fff;border-radius:16px;padding:25px;box-sizing:border-box;' +
+            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+        );
+    }
+
+    function showHoursPrompt() {
+        document.getElementById('airport-hours-box')?.remove();
+
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<h3 style="margin-top:0">🛫 حجوزات المطار القادمة</h3>' +
+            '<div style="margin:15px 0;text-align:right">كم ساعة قدام تبغى تشوف الحجوزات؟</div>' +
+            '<input id="airport-hours-input" type="number" min="1" step="1" value="6" style="' +
+            'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
+            'text-align:center;box-sizing:border-box;" />' +
+            '<button id="airport-hours-submit" style="' +
+            'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
+            'background:#A3E635;font-size:15px;">عرض التقرير</button>' +
+            '<button id="airport-hours-cancel" style="' +
+            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
+            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
+            300
+        ));
+
+        var input = document.getElementById('airport-hours-input');
+        input.focus();
+        input.select();
+
+        function submit() {
+            var hours = parseFloat(input.value);
+            if (!hours || hours <= 0) {
+                input.style.border = '1px solid #dc2626';
+                return;
+            }
+            runReport(hours);
+        }
+
+        document.getElementById('airport-hours-submit').onclick = submit;
+        document.getElementById('airport-hours-cancel').onclick = function () {
+            document.getElementById('airport-hours-box')?.remove();
+        };
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') submit();
+        });
+    }
+
+    function showLoading() {
+        document.getElementById('airport-hours-box')?.remove();
+        document.body.insertAdjacentHTML('beforeend', overlayShell('جارٍ جلب الحجوزات والسيارات المتاحة...', 280));
+    }
+
+    function showMessage(text) {
+        document.getElementById('airport-hours-box')?.remove();
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div style="margin-bottom:15px">' + text + '</div>' +
+            '<button id="airport-hours-close" style="' +
+            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
+            300
+        ));
+        document.getElementById('airport-hours-close').onclick = function () {
+            document.getElementById('airport-hours-box')?.remove();
+        };
+    }
+
+    function showReport(hours, bookingCounts, vehicleCounts, yardVehicleCounts, totalBookings, totalVehicles) {
+        document.getElementById('airport-hours-box')?.remove();
+
+        var groups = Object.keys(Object.assign({}, bookingCounts, vehicleCounts)).sort();
+
+        var rowsHtml = groups.map(function (group) {
+            var vehicles = vehicleCounts[group] || 0;
+            var bookings = bookingCounts[group] || 0;
+            var yardVehicles = yardVehicleCounts[group] || 0;
+            var diff = vehicles - bookings;
+            var diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#b45309';
+            return (
+                '<tr>' +
+                '<td style="padding:9px;border-top:1px solid #eee;text-align:center;font-weight:bold;">' + group + '</td>' +
+                '<td style="border-top:1px solid #eee;text-align:center;">' + vehicles + '</td>' +
+                '<td style="border-top:1px solid #eee;text-align:center;">' + bookings + '</td>' +
+                '<td style="border-top:1px solid #eee;text-align:center;font-weight:bold;color:' + diffColor + '">' +
+                (diff > 0 ? '+' + diff : diff) + '</td>' +
+                '<td style="border-top:1px solid #eee;text-align:center;">' + yardVehicles + '</td>' +
+                '</tr>'
+            );
+        }).join('');
+
+        if (groups.length === 0) {
+            rowsHtml = '<tr><td colspan="5" style="padding:15px;text-align:center;color:#777;">لا توجد بيانات ضمن هذه المدة</td></tr>';
+        }
+
+        var html =
+            '<div id="airport-hours-box" style="' +
+            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
+            'z-index:999999999;font-family:Arial;padding:24px;box-sizing:border-box;">' +
+            '<div style="width:420px;max-width:100%;max-height:85vh;background:white;border-radius:16px;' +
+            'overflow:hidden;direction:rtl;display:flex;flex-direction:column;">' +
+            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
+            '<div style="font-size:16px">حجوزات المطار خلال ' + hours + ' ساعة القادمة</div>' +
+            '<div style="font-size:13px;margin-top:4px;opacity:.8;">إجمالي الحجوزات: ' + totalBookings +
+            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '</div>' +
+            '<div style="overflow:auto;flex:1;">' +
+            '<table style="width:100%;border-collapse:collapse;">' +
+            '<tr style="background:#f5f5f5">' +
+            '<th style="padding:10px">القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th>' +
+            '<th>سيارات الحوش (53)</th>' +
+            '</tr>' + rowsHtml + '</table>' +
+            '</div>' +
+            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
+            '<button id="airport-hours-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
+            '<button id="airport-hours-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
+            '<button id="airport-hours-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
+            '<button id="airport-hours-change" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            'background:#eee;color:#333;cursor:pointer;">تغيير المدة</button>' +
+            '<button id="airport-hours-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '</div></div></div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+
+        document.getElementById('airport-hours-close').onclick = function () {
+            document.getElementById('airport-hours-box')?.remove();
+        };
+        document.getElementById('airport-hours-change').onclick = function () {
+            showHoursPrompt();
+        };
+        document.getElementById('airport-hours-refresh').onclick = function () {
+            runReport(hours);
+        };
+        document.getElementById('airport-hours-print').onclick = function () {
+            printReport(hours, groups, vehicleCounts, bookingCounts, yardVehicleCounts, totalBookings, totalVehicles);
+        };
+        document.getElementById('airport-hours-whatsapp').onclick = function () {
+            handleSendWhatsApp(hours, groups, vehicleCounts, bookingCounts, yardVehicleCounts, totalBookings, totalVehicles);
+        };
+    }
+
+    function printReport(hours, groups, vehicleCounts, bookingCounts, yardVehicleCounts, totalBookings, totalVehicles) {
+        var printWindow = window.open('', '_blank', 'width=800,height=600');
+        if (!printWindow) {
+            showMessage('يرجى السماح بالنوافذ المنبثقة (Popups) لهذا الموقع للطباعة.');
+            return;
+        }
+
+        var rowsHtml = groups.map(function (group) {
+            var vehicles = vehicleCounts[group] || 0;
+            var bookings = bookingCounts[group] || 0;
+            var yardVehicles = yardVehicleCounts[group] || 0;
+            var diff = vehicles - bookings;
+            var diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#b45309';
+            return (
+                '<tr>' +
+                '<td>' + group + '</td>' +
+                '<td>' + vehicles + '</td>' +
+                '<td>' + bookings + '</td>' +
+                '<td style="color:' + diffColor + ';font-weight:bold;">' + (diff > 0 ? '+' + diff : diff) + '</td>' +
+                '<td>' + yardVehicles + '</td>' +
+                '</tr>'
+            );
+        }).join('');
+
+        if (groups.length === 0) {
+            rowsHtml = '<tr><td colspan="5">لا توجد بيانات ضمن هذه المدة</td></tr>';
+        }
+
+        var now = new Date().toLocaleString('ar-SA');
+
+        var printHtml =
+            '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">' +
+            '<title>حجوزات المطار القادمة</title><style>' +
+            '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
+            'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
+            'h1{font-size:20px;margin:0 0 4px;}' +
+            '.meta{color:#555;font-size:13px;margin-bottom:16px;}' +
+            'table{border-collapse:collapse;width:100%;font-size:14px;}' +
+            'th,td{border:1px solid #999;padding:8px 10px;text-align:center;}' +
+            'th{background:#f0f0f0;}' +
+            '</style></head><body>' +
+            '<h1>🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</h1>' +
+            '<div class="meta">' + now + ' | إجمالي الحجوزات: ' + totalBookings +
+            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<table><tr><th>القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th><th>سيارات الحوش (53)</th></tr>' +
+            rowsHtml + '</table></body></html>';
+
+        printWindow.document.write(printHtml);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    }
+
+    // ==========================================================
+    // إرسال صورة واتساب - نفس أسلوب أداة "تقرير الحجوزات القادمة"
+    // (SVG+foreignObject لرسم الجدول كصورة، بدون أي مكتبة خارجية)
+    // ==========================================================
+
+    /** يحوّل نص UTF-8 (فيه عربي) إلى base64 - btoa العادية تدعم Latin1 بس */
+    function utf8ToBase64(str) {
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    var IMAGE_EXPORT_CSS =
+        '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
+        'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
+        'h1{font-size:20px;margin:0 0 4px;}' +
+        '.meta{color:#555;font-size:13px;margin-bottom:16px;}' +
+        'table{border-collapse:collapse;width:100%;font-size:14px;}' +
+        'th,td{border:1px solid #999;padding:8px 10px;text-align:center;white-space:nowrap;}' +
+        'th{background:#f0f0f0;}';
+
+    function buildReportImageInnerHtml(hours, groups, vehicleCounts, bookingCounts, yardVehicleCounts, totalBookings, totalVehicles) {
+        var rowsHtml = groups.map(function (group) {
+            var vehicles = vehicleCounts[group] || 0;
+            var bookings = bookingCounts[group] || 0;
+            var yardVehicles = yardVehicleCounts[group] || 0;
+            var diff = vehicles - bookings;
+            var diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#b45309';
+            return (
+                '<tr>' +
+                '<td>' + group + '</td>' +
+                '<td>' + vehicles + '</td>' +
+                '<td>' + bookings + '</td>' +
+                '<td style="color:' + diffColor + ';font-weight:bold;">' + (diff > 0 ? '+' + diff : diff) + '</td>' +
+                '<td>' + yardVehicles + '</td>' +
+                '</tr>'
+            );
+        }).join('');
+
+        if (groups.length === 0) {
+            rowsHtml = '<tr><td colspan="5">لا توجد بيانات ضمن هذه المدة</td></tr>';
+        }
+
+        var now = new Date().toLocaleString('ar-SA');
+
+        return (
+            '<style>' + IMAGE_EXPORT_CSS + '</style>' +
+            '<h1>🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</h1>' +
+            '<div class="meta">' + now + ' | إجمالي الحجوزات: ' + totalBookings +
+            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<table><tr><th>القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th><th>سيارات الحوش (' + YARD_LOCATION_ID + ')</th></tr>' +
+            rowsHtml + '</table>'
+        );
+    }
+
+    /** يرسم الجدول كصورة PNG/JPEG عبر SVG+foreignObject. يعيد Promise بصيغة data URL */
+    function buildReportImageDataUrl(hours, groups, vehicleCounts, bookingCounts, yardVehicleCounts, totalBookings, totalVehicles) {
+        return new Promise(function (resolve, reject) {
+            var settled = false;
+            function settleResolve(value) { if (settled) return; settled = true; resolve(value); }
+            function settleReject(err) { if (settled) return; settled = true; reject(err); }
+
+            try {
+                var innerHtml = buildReportImageInnerHtml(hours, groups, vehicleCounts, bookingCounts, yardVehicleCounts, totalBookings, totalVehicles);
+                var wrapperStyle = 'font-family:Tahoma,Arial,sans-serif;background:#fff;padding:20px;display:inline-block;';
+
+                var measureEl = document.createElement('div');
+                measureEl.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;' + wrapperStyle;
+                measureEl.innerHTML = innerHtml;
+                document.body.appendChild(measureEl);
+                var measuredRect = measureEl.getBoundingClientRect();
+                var width = Math.max(Math.ceil(measuredRect.width), 400);
+                var height = Math.max(Math.ceil(measuredRect.height), 300);
+                document.body.removeChild(measureEl);
+
+                var contentHtml =
+                    '<div xmlns="http://www.w3.org/1999/xhtml" style="' + wrapperStyle + '">' + innerHtml + '</div>';
+
+                var svgString =
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+                    '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
+
+                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG
+                // فيها foreignObject لو كانت محمّلة من blob: (Tainted Canvas)
+                var svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
+
+                var img = new Image();
+                var timeoutId = setTimeout(function () {
+                    settleReject(new Error('انتهت مهلة رسم صورة الجدول'));
+                }, 15000);
+
+                img.onload = function () {
+                    clearTimeout(timeoutId);
+                    try {
+                        function trimWhitespace(canvas) {
+                            var ctx2d = canvas.getContext('2d');
+                            var w = canvas.width;
+                            var h = canvas.height;
+                            var data = ctx2d.getImageData(0, 0, w, h).data;
+                            var stride = Math.max(1, Math.floor(Math.min(w, h) / 600));
+                            function rowHasContent(y) {
+                                for (var x = 0; x < w; x += stride) {
+                                    var i = (y * w + x) * 4;
+                                    if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) return true;
+                                }
+                                return false;
+                            }
+                            function colHasContent(x) {
+                                for (var y = 0; y < h; y += stride) {
+                                    var i = (y * w + x) * 4;
+                                    if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) return true;
+                                }
+                                return false;
+                            }
+                            var lastRow = 0;
+                            for (var y = h - 1; y >= 0; y -= stride) { if (rowHasContent(y)) { lastRow = y; break; } }
+                            var lastCol = 0;
+                            for (var x = w - 1; x >= 0; x -= stride) { if (colHasContent(x)) { lastCol = x; break; } }
+
+                            var margin = stride * 2;
+                            var trimmedW = Math.min(w, lastCol + margin);
+                            var trimmedH = Math.min(h, lastRow + margin);
+                            if (trimmedW >= w - stride && trimmedH >= h - stride) return canvas;
+
+                            var trimmed = document.createElement('canvas');
+                            trimmed.width = trimmedW;
+                            trimmed.height = trimmedH;
+                            trimmed.getContext('2d').drawImage(canvas, 0, 0, trimmedW, trimmedH, 0, 0, trimmedW, trimmedH);
+                            return trimmed;
+                        }
+
+                        function drawAtScale(scale) {
+                            var canvas = document.createElement('canvas');
+                            canvas.width = width * scale;
+                            canvas.height = height * scale;
+                            var ctx = canvas.getContext('2d');
+                            ctx.scale(scale, scale);
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, width, height);
+                            ctx.drawImage(img, 0, 0, width, height);
+                            return trimWhitespace(canvas);
+                        }
+
+                        var TARGET_DATA_URL_LENGTH = 8000000; // ~6MB بعد فك التشفير - هامش مريح تحت حد الـ100mb
+                        var scales = [2, 1.5, 1];
+                        var qualities = [0.92, 0.85, 0.75, 0.6];
+                        var best = null;
+
+                        outer:
+                        for (var s = 0; s < scales.length; s++) {
+                            var canvas = drawAtScale(scales[s]);
+                            for (var q = 0; q < qualities.length; q++) {
+                                var dataUrl = canvas.toDataURL('image/jpeg', qualities[q]);
+                                if (!best || dataUrl.length < best.length) best = dataUrl;
+                                if (dataUrl.length <= TARGET_DATA_URL_LENGTH) break outer;
+                            }
+                        }
+
+                        settleResolve(best);
+                    } catch (err) {
+                        settleReject(err);
+                    }
+                };
+                img.onerror = function () {
+                    clearTimeout(timeoutId);
+                    settleReject(new Error('تعذّر رسم صورة الجدول (قد يكون المتصفح لا يدعم تحويل SVG لصورة)'));
+                };
+                img.src = svgDataUrl;
+            } catch (err) {
+                settleReject(err);
+            }
+        });
+    }
+
+    /** إرسال كصورة عبر بوت واتساب - نفس صيغة أداة "تقرير الحجوزات القادمة" */
+    function handleSendWhatsApp(hours, groups, vehicleCounts, bookingCounts, yardVehicleCounts, totalBookings, totalVehicles) {
+        if (typeof GM_xmlhttpRequest === 'undefined') {
+            showMessage('صلاحية GM_xmlhttpRequest غير مفعّلة - تأكد من تحديث السكربت في Tampermonkey');
+            return;
+        }
+        showLoading();
+        buildReportImageDataUrl(hours, groups, vehicleCounts, bookingCounts, yardVehicleCounts, totalBookings, totalVehicles)
+            .then(function (dataUrl) {
+                GM_xmlhttpRequest({
+                    method: 'POST',
+                    url: WHATSAPP_CONFIG.apiUrl,
+                    headers: {
+                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        'Content-Type': 'application/json',
+                    },
+                    data: JSON.stringify({
+                        target: WHATSAPP_CONFIG.target,
+                        type: 'image',
+                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
+                        // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
+                        imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
+                        caption: '🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة - ' + new Date().toLocaleString('ar-SA'),
+                    }),
+                    onload: function (response) {
+                        if (response.status >= 200 && response.status < 300) {
+                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                        } else if (response.status === 413) {
+                            console.error('[حجوزات المطار] فشل إرسال واتساب: 413', response.responseText);
+                            showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
+                        } else {
+                            console.error('[حجوزات المطار] فشل إرسال واتساب:', response.status, response.responseText);
+                            showMessage('فشل إرسال واتساب (رمز الحالة: ' + response.status + ')');
+                        }
+                    },
+                    onerror: function (error) {
+                        console.error('[حجوزات المطار] تعذّر الاتصال ببوت واتساب:', error);
+                        showMessage('تعذّر الاتصال بخادم بوت واتساب');
+                    },
+                });
+            })
+            .catch(function (err) {
+                console.error('[حجوزات المطار] تعذّر إنشاء صورة التقرير:', err);
+                showMessage('تعذّر إنشاء صورة التقرير: ' + err.message);
+            });
+    }
+
+    waitCore();
+
+})();

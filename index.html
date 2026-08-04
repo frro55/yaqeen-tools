@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>أدوات يقين</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, Tahoma, sans-serif;
+    background: #f5f5f5;
+    color: #1a1a1a;
+    padding: 24px 16px 60px;
+  }
+  .wrap {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  header h1 {
+    margin: 0 0 6px;
+    font-size: 24px;
+  }
+  header p {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+  }
+  .note {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    line-height: 1.8;
+    margin-bottom: 24px;
+  }
+  .note b { color: #7a5b00; }
+
+  .main-card {
+    background: #fff;
+    border: 3px solid #A3E635;
+    border-radius: 16px;
+    padding: 26px 22px;
+    text-align: center;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  }
+  .main-card .icon { font-size: 40px; margin-bottom: 8px; }
+  .main-card h2 { margin: 0 0 6px; font-size: 19px; }
+  .main-card p { margin: 0 0 18px; color: #666; font-size: 13.5px; line-height: 1.7; }
+  .install-btn-lg {
+    display: inline-block;
+    background: #A3E635;
+    color: #1a1a1a;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 40px;
+    font-size: 17px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+  .install-btn-lg:hover { background: #8fcf1e; }
+
+  details {
+    margin-top: 10px;
+  }
+  summary {
+    cursor: pointer;
+    font-size: 13.5px;
+    color: #888;
+    text-align: center;
+    margin-bottom: 14px;
+    user-select: none;
+  }
+  summary:hover { color: #555; }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .card-title {
+    font-size: 14.5px;
+    font-weight: bold;
+  }
+  .install-btn {
+    flex-shrink: 0;
+    background: #eee;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: bold;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .install-btn:hover { background: #ddd; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🛠 أدوات يقين</h1>
+      <p>ثبّتها مرة وحدة، وتحدّث لحالها بعد كذا</p>
+    </header>
+
+    <div class="note">
+      <b>قبل ما تبدأ:</b> لازم يكون عندك إضافة Tampermonkey مثبّتة بالمتصفح. بعدها بس اضغط
+      الزر تحت، وTampermonkey بيفتحلك صفحة تثبيت تلقائياً — اضغط "Install" فيها وخلصت.
+    </div>
+
+    <div class="main-card">
+      <div class="icon">📦</div>
+      <h2>تثبيت كل الأدوات - ملف واحد فقط</h2>
+      <p>ضغطة وحدة وتثبت كل شي (النظام الأساسي + كل الأدوات) بدفعة وحدة.<br>هذا الخيار الموصى به للجميع.</p>
+      <a class="install-btn-lg" href="https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js">📥 تثبيت الكل الآن</a>
+    </div>
+
+    <details>
+      <summary>▾ أو ثبّت الأدوات كل وحدة لحالها (اختياري، للمتقدمين)</summary>
+
+      <div class="card">
+        <div class="card-title">⚙️ Yaqeen Tools Core (أساسي)</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-core.user.js">تثبيت</a>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 تقرير الحجوزات القادمة</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-booking-report.user.js">تثبيت</a>
+      </div>
+      <div class="card">
+        <div class="card-title">🚗 جرد الأسطول</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-fleet-inventory.user.js">تثبيت</a>
+      </div>
+      <div class="card">
+        <div class="card-title">🚗 السيارات المتوفرة</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-available-vehicles.user.js">تثبيت</a>
+      </div>
+      <div class="card">
+        <div class="card-title">🛫 حجوزات المطار القادمة</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-airport-hours-report.user.js">تثبيت</a>
+      </div>
+      <div class="card">
+        <div class="card-title">💰 العقود المتأخرة في السداد (أفراد)</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-late-payments-report.user.js">تثبيت</a>
+      </div>
+      <div class="card">
+        <div class="card-title">🏢 عقود الشركات غير الممددة</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-company-extension-report.user.js">تثبيت</a>
+      </div>
+      <div class="card">
+        <div class="card-title">📧 إيميل</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-email-tools.user.js">تثبيت</a>
+      </div>
+      <div class="card">
+        <div class="card-title">💳 تحقق من الدفع</div>
+        <a class="install-btn" href="https://api.yaqeen-vip.space/tools/yaqeen-payment-verify.user.js">تثبيت</a>
+      </div>
+    </details>
+  </div>
+</body>
+</html>
