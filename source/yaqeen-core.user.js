@@ -41,9 +41,9 @@
         "available-vehicles",
         "email-tools",
         "payment-verify",
-        "airport-hours-report",
-        "late-payments-report",
-        "company-extension-report",
+        "airport-report",
+        "late-payments",
+        "company-extension",
         "booking-report",
     ];
 

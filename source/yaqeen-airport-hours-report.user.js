@@ -71,7 +71,7 @@
             return;
         }
         HOST_WINDOW.YAQEEN_TOOLS.add({
-            id: "airport-hours-report",
+            id: "airport-report",
             name: "🛫 حجوزات المطار القادمة",
             run() {
                 showHoursPrompt();

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0805.0542
+// @version      2026.0805.0605
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -16,14 +16,14 @@
 // ==/UserScript==
 
 // ============================================================
-// ملف مُولَّد آلياً بدمج كل ملفات tampermonkey/source/*.user.js بمصدر واحد.
+// ملف مُولَّد آلياً بدمج كل ملفات source/*.user.js بمصدر واحد.
 // لا تعدّل هذا الملف مباشرة - عدّل الملف الأصلي المقابل بمجلد source وأعد
-// التوليد (bash tampermonkey/build-bundle.sh) وارفع الناتج على الـVPS.
+// التوليد (bash build-bundle.sh) وارفع الناتج على الـVPS.
 // ترتيب الدمج: Core أولاً (يبني YAQEEN_TOOLS)، ثم بقية الأدوات.
 // ============================================================
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-core.user.js
+// المصدر: source/yaqeen-core.user.js
 // ============================================================
 
 (function () {
@@ -640,7 +640,7 @@
 })();
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-fleet-inventory.user.js
+// المصدر: source/yaqeen-fleet-inventory.user.js
 // ============================================================
 
 (function () {
@@ -1141,7 +1141,7 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
 })();
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-available-vehicles.user.js
+// المصدر: source/yaqeen-available-vehicles.user.js
 // ============================================================
 
 (function () {
@@ -1758,7 +1758,7 @@ ${rowsHtml}
 })();
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-email-tools.user.js
+// المصدر: source/yaqeen-email-tools.user.js
 // ============================================================
 
 (function () {
@@ -2923,7 +2923,7 @@ ${text}
 })();
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-payment-verify.user.js
+// المصدر: source/yaqeen-payment-verify.user.js
 // ============================================================
 
 (function () {
@@ -3314,7 +3314,7 @@ ${text}
 })();
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-airport-hours-report.user.js
+// المصدر: source/yaqeen-airport-hours-report.user.js
 // ============================================================
 
 (function () {
@@ -4151,7 +4151,7 @@ ${text}
 })();
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-late-payments-report.user.js
+// المصدر: source/yaqeen-late-payments-report.user.js
 // ============================================================
 
 (function () {
@@ -4994,7 +4994,7 @@ ${text}
 })();
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-company-extension-report.user.js
+// المصدر: source/yaqeen-company-extension-report.user.js
 // ============================================================
 
 (function () {
@@ -5752,7 +5752,7 @@ ${text}
 })();
 
 // ============================================================
-// المصدر: tampermonkey/source/yaqeen-booking-report.user.js
+// المصدر: source/yaqeen-booking-report.user.js
 // ============================================================
 
 /**

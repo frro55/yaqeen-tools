@@ -42,7 +42,7 @@
             return;
         }
         HOST_WINDOW.YAQEEN_TOOLS.add({
-            id: "late-payments-report",
+            id: "late-payments",
             name: "💰 العقود المتأخرة في السداد (أفراد)",
             run() {
                 showThresholdPrompt();

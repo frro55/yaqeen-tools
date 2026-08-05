@@ -42,7 +42,7 @@
             return;
         }
         HOST_WINDOW.YAQEEN_TOOLS.add({
-            id: "company-extension-report",
+            id: "company-extension",
             name: "🏢 عقود الشركات غير الممددة",
             run() {
                 runReport();
