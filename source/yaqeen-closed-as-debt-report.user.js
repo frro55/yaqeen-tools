@@ -191,46 +191,23 @@
     }
 
     // ==========================================================
-    // قراءة صف القائمة وتاريخ التسليم
+    // قراءة صف القائمة
     // ==========================================================
-
-    const ARABIC_MONTHS = {
-        'يناير': 1, 'فبراير': 2, 'مارس': 3, 'أبريل': 4, 'ابريل': 4, 'مايو': 5, 'يونيو': 6,
-        'يوليو': 7, 'أغسطس': 8, 'اغسطس': 8, 'سبتمبر': 9, 'أكتوبر': 10, 'اكتوبر': 10,
-        'نوفمبر': 11, 'ديسمبر': 12,
-    };
-
-    /** يحوّل "17, يناير 2026" + "16:16" (صيغة عمود "وقت التسليم" بالقائمة، 24 ساعة) إلى تاريخ حقيقي */
-    function parseListDropOffDate(dateText, timeText) {
-        if (!dateText || !timeText) return null;
-        const dateMatch = dateText.match(/(\d{1,2}),?\s*([؀-ۿ]+)\s*(\d{4})/);
-        if (!dateMatch) return null;
-        const day = parseInt(dateMatch[1], 10);
-        const month = ARABIC_MONTHS[dateMatch[2].trim()];
-        const year = parseInt(dateMatch[3], 10);
-        if (!month) return null;
-
-        const timeMatch = timeText.match(/(\d{1,2}):(\d{2})/);
-        if (!timeMatch) return null;
-        const hour = parseInt(timeMatch[1], 10);
-        const minute = parseInt(timeMatch[2], 10);
-
-        return new Date(year, month - 1, day, hour, minute);
-    }
 
     /**
      * يقرأ بيانات صف واحد بجدول "تتطلب إجراء" - ترتيب الأعمدة ثابت (مأخوذ
      * من الـHTML الفعلي للجدول): 0=رقم الحجز، 1=رقم الاتفاقية، 2=وقت
-     * التسليم، 3=السائق، 4=اسم المدين، البقية غير مستخدمة هنا.
+     * التسليم، 3=السائق، 4=اسم المدين، البقية غير مستخدمة هنا. تاريخ
+     * التسليم لا نقرأه من هذا العمود - نقرأه من داخل صفحة تفاصيل العقد
+     * نفسها (راجع parseDetailDropOffDate) بناءً على طلب صريح: لا نحسب
+     * الاستبعاد (تعدّي الشهر) من عمود القائمة قبل ما ندخل العقد، فقط بعد
+     * ما نفتحه فعلياً.
      */
     function readListRow(rowEl) {
         const cells = rowEl.querySelectorAll('td');
         if (cells.length < 9) return null;
         const bookingNo = cells[0].textContent.trim();
         const agreementNo = cells[1].textContent.trim();
-        const dateSpans = cells[2].querySelectorAll('span');
-        const dateText = dateSpans[0] ? dateSpans[0].textContent.trim() : '';
-        const timeText = dateSpans[1] ? dateSpans[1].textContent.trim() : '';
         const driverName = cells[3].textContent.trim();
         const debtorName = cells[4].textContent.trim();
         if (!bookingNo && !agreementNo) return null;
@@ -239,7 +216,6 @@
             agreementNo,
             driverName,
             debtorName,
-            dropOffDate: parseListDropOffDate(dateText, timeText),
             __signature: bookingNo || agreementNo,
         };
     }
@@ -268,6 +244,35 @@
         const days = Math.floor(totalHours / 24);
         const hours = totalHours % 24;
         return days + ' أيام : ' + hours + ' ساعات';
+    }
+
+    /**
+     * يقرأ تاريخ ووقت التسليم الفعلي من داخل صفحة تفاصيل العقد نفسها -
+     * قسم "التسليم" فيه data-testid="drop-off-date" (مثل "سبت, 04:16 م" -
+     * اسم اليوم + وقت 12 ساعة + ص/م) و data-testid="drop-off-date-secondary"
+     * (مثل "17/01/2026" - يوم/شهر/سنة). هذا المصدر الوحيد المعتمد لحساب
+     * "المدة من وقت التسليم" - لا نحسبها من عمود القائمة قبل فتح العقد.
+     */
+    function parseDetailDropOffDate(detailDoc) {
+        const dateText = detailDoc.querySelector('[data-testid="drop-off-date-secondary"]')?.textContent.trim();
+        const timeText = detailDoc.querySelector('[data-testid="drop-off-date"]')?.textContent.trim();
+        if (!dateText || !timeText) return null;
+
+        const dateMatch = dateText.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (!dateMatch) return null;
+        const day = parseInt(dateMatch[1], 10);
+        const month = parseInt(dateMatch[2], 10);
+        const year = parseInt(dateMatch[3], 10);
+
+        const timeMatch = timeText.match(/(\d{1,2}):(\d{2})\s*(ص|م)/);
+        if (!timeMatch) return null;
+        let hour = parseInt(timeMatch[1], 10);
+        const minute = parseInt(timeMatch[2], 10);
+        const isPm = timeMatch[3] === 'م';
+        if (isPm && hour !== 12) hour += 12;
+        if (!isPm && hour === 12) hour = 0;
+
+        return new Date(year, month - 1, day, hour, minute);
     }
 
     // ==========================================================
@@ -322,7 +327,10 @@
         const remaining = parseAmount(remainingText);
         const driverName = detailDoc.querySelector('[data-testid="driver-name"]')?.textContent.trim() || "";
 
-        return { idNumber, phone, remaining, driverName };
+        const dropOffDate = parseDetailDropOffDate(detailDoc);
+        const elapsedTotalHours = dropOffDate ? Math.floor((new Date() - dropOffDate) / 3600000) : null;
+
+        return { idNumber, phone, remaining, driverName, elapsedTotalHours };
     }
 
     /**
@@ -357,13 +365,14 @@
 
     /**
      * يمر على كل صفحات القائمة بسرعة (بدون فتح أي تفاصيل) عشان يعرف مقدماً
-     * كم عقد فعلاً مؤهّل (بعد استبعاد اللي تعدّت الشهر) - هذا يعطينا عدد
-     * إجمالي نعرضه أثناء مرحلة الفحص الفعلية بدل ما يبقى الرقم مجهول طول الوقت.
+     * كم عدد العقود الإجمالي بالقائمة - عدّ خام بدون أي فلترة بالتاريخ (قرار
+     * الاستبعاد ما يصير إلا بعد فتح العقد فعلياً، راجع parseDetailDropOffDate)،
+     * فقط عشان نعرض "N من الإجمالي" أثناء الفحص الفعلي بدل ما يبقى الرقم
+     * مجهول طول الوقت.
      */
-    async function collectQualifyingRows(frame) {
+    async function countAllRows(frame) {
         const seen = {};
-        const qualifying = [];
-        let excludedOldCount = 0;
+        let total = 0;
         let pageIndex = 0;
         const maxIterations = 80;
 
@@ -377,23 +386,7 @@
                 const rowData = readListRow(rowEl);
                 if (!rowData || seen[rowData.__signature]) return;
                 seen[rowData.__signature] = true;
-
-                const now = new Date();
-                const elapsedMs = rowData.dropOffDate ? (now - rowData.dropOffDate) : null;
-                const elapsedTotalHours = elapsedMs !== null ? Math.floor(elapsedMs / 3600000) : null;
-                const elapsedDays = elapsedTotalHours !== null ? Math.floor(elapsedTotalHours / 24) : null;
-
-                if (elapsedDays === null || elapsedDays > EXCLUDE_AFTER_DAYS) {
-                    excludedOldCount++;
-                    return;
-                }
-
-                qualifying.push({
-                    signature: rowData.__signature,
-                    agreementNo: rowData.agreementNo,
-                    driverName: rowData.driverName,
-                    elapsedTotalHours,
-                });
+                total++;
             });
 
             const nextControl = findNextPageControl(doc);
@@ -407,7 +400,7 @@
             await waitForListRefresh(frame, beforeSig);
         }
 
-        return { qualifying, excludedOldCount };
+        return total;
     }
 
     async function runReport() {
@@ -431,10 +424,10 @@
 
             showProgress(
                 'ملاحظة: لن يتم عرض أي عقد تعدّت مدة تسليمه شهر كامل (30 يوم) من وقت التسليم.' +
-                '<br><br>جارٍ حصر العقود المؤهّلة عبر كل الصفحات...'
+                '<br><br>جارٍ حصر عدد كل العقود بالقائمة...'
             );
-            const { qualifying, excludedOldCount } = await collectQualifyingRows(frame);
-            const totalQualifying = Math.min(qualifying.length, MAX_VISITS);
+            const totalRows = await countAllRows(frame);
+            const totalToVisit = Math.min(totalRows, MAX_VISITS);
 
             // نرجّع القائمة لأول صفحة من جديد - المرحلة السابقة تنقّلت بين
             // الصفحات كلها فمرّت آخر صفحة، ولازم نبدأ الفحص الفعلي من البداية
@@ -442,20 +435,17 @@
             doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null));
             if (!doc) {
                 try { frame.remove(); } catch (err) { /* تجاهل */ }
-                showReport([], 0, excludedOldCount);
+                showReport([], 0, 0);
                 return;
             }
 
-            const qualifyingSignatures = new Set(qualifying.map(q => q.signature));
-            const elapsedBySignature = {};
-            qualifying.forEach(q => { elapsedBySignature[q.signature] = q.elapsedTotalHours; });
-
             const visited = {};
             let visitedCount = 0;
+            let excludedOldCount = 0;
             let pageIndex = 0;
             const maxIterations = 80;
 
-            while (pageIndex < maxIterations && visitedCount < totalQualifying) {
+            while (pageIndex < maxIterations && visitedCount < totalToVisit) {
                 pageIndex++;
 
                 // نعيد استعلام مستند الـframe وصفوف الصفحة طازة قبل كل ضغطة،
@@ -466,7 +456,7 @@
                 // أو ضغطة عليها بلا أثر أو تكسر بخطأ (نتيجتها فشل صامت أو
                 // استثناء لكل عقد بعد أول عقد ناجح بالضبط)
                 let progressedOnThisPage = true;
-                while (progressedOnThisPage && visitedCount < totalQualifying) {
+                while (progressedOnThisPage && visitedCount < totalToVisit) {
                     progressedOnThisPage = false;
                     const currentDoc = getDoc(frame);
                     if (!currentDoc) break;
@@ -475,26 +465,38 @@
                     for (let i = 0; i < currentRowEls.length; i++) {
                         const rowEl = currentRowEls[i];
                         const rowData = readListRow(rowEl);
-                        if (!rowData || !qualifyingSignatures.has(rowData.__signature) || visited[rowData.__signature]) continue;
+                        if (!rowData || visited[rowData.__signature]) continue;
                         visited[rowData.__signature] = true;
                         progressedOnThisPage = true;
 
                         visitedCount++;
-                        showProgress(`جارٍ فحص العقود المؤهّلة... (${visitedCount} من ${totalQualifying})`);
+                        showProgress(`جارٍ فحص العقود... (${visitedCount} من ${totalToVisit})`);
 
                         const detail = await visitRowDetail(frame, rowEl);
                         if (detail) {
-                            const elapsedTotalHours = elapsedBySignature[rowData.__signature] || 0;
-                            results.push({
-                                agreementNo: rowData.agreementNo,
-                                name: detail.driverName || rowData.driverName,
-                                phone: detail.phone,
-                                idNumber: detail.idNumber,
-                                elapsedText: formatElapsed(elapsedTotalHours),
-                                remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
-                                remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
-                            });
+                            const elapsedDays = detail.elapsedTotalHours !== null
+                                ? Math.floor(detail.elapsedTotalHours / 24)
+                                : null;
+                            if (elapsedDays !== null && elapsedDays > EXCLUDE_AFTER_DAYS) {
+                                excludedOldCount++;
+                            } else {
+                                results.push({
+                                    agreementNo: rowData.agreementNo,
+                                    name: detail.driverName || rowData.driverName,
+                                    phone: detail.phone,
+                                    idNumber: detail.idNumber,
+                                    elapsedText: detail.elapsedTotalHours !== null
+                                        ? formatElapsed(detail.elapsedTotalHours)
+                                        : "-",
+                                    remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
+                                    remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
+                                });
+                            }
                         }
+
+                        // دائماً نرجع لنفس صفحة القائمة عبر تحميل رابطها مباشرة
+                        // (بدل الاعتماد على history.back() غير الموثوق هنا)
+                        await returnToListPage(frame, pageIndex);
 
                         // نخرج ونعيد استعلام الصفوف من جديد بدل ما نكمل على
                         // نفس المصفوفة (احتمال انفصلت عن الـDOM الحي)
@@ -502,7 +504,7 @@
                     }
                 }
 
-                if (visitedCount >= totalQualifying) break;
+                if (visitedCount >= totalToVisit) break;
 
                 const pageDoc = getDoc(frame);
                 if (!pageDoc) break;
