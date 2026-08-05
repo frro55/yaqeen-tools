@@ -285,9 +285,17 @@
         if (expandBtn) {
             try { expandBtn.click(); } catch (err) { /* تجاهل */ }
         }
-        await new Promise(r => setTimeout(r, 1200));
+        // بدل انتظار ثابت 1200ms دايماً، نستنى فعلياً لين تترسم لوحة بيانات
+        // العميل (رقم الهوية) - أسرع لو الشبكة سريعة، وسقف 2500ms احتياطي
+        // لو تأخرت
+        const dialogWaitStart = Date.now();
+        let dialog = detailDoc.querySelector('[role="dialog"]') || detailDoc;
+        while (Date.now() - dialogWaitStart < 2500) {
+            dialog = detailDoc.querySelector('[role="dialog"]') || detailDoc;
+            if (findValueNearLabel(dialog, "رقم الهوية")) break;
+            await new Promise(r => setTimeout(r, 150));
+        }
 
-        const dialog = detailDoc.querySelector('[role="dialog"]') || detailDoc;
         const idNumber = findValueNearLabel(dialog, "رقم الهوية");
         const phoneEl = Array.from(dialog.querySelectorAll('span'))
             .find(el => /^\+?\d[\d\s]{7,}$/.test(el.textContent.trim()));
@@ -305,12 +313,63 @@
         return record;
     }
 
+    /**
+     * يمر على كل صفحات القائمة بسرعة (بدون فتح أي تفاصيل) عشان يعرف مقدماً
+     * كم عقد فعلاً مؤهّل (بعد استبعاد اللي تعدّت الشهر) - هذا يعطينا عدد
+     * إجمالي نعرضه أثناء مرحلة الفحص الفعلية بدل ما يبقى الرقم مجهول طول الوقت.
+     */
+    async function collectQualifyingRows(doc) {
+        const seen = {};
+        const qualifying = [];
+        let excludedOldCount = 0;
+        let pageIndex = 0;
+        const maxIterations = 80;
+
+        while (pageIndex < maxIterations) {
+            pageIndex++;
+            const rowEls = Array.from(doc.querySelectorAll('table tbody tr'));
+
+            rowEls.forEach(rowEl => {
+                const rowData = readListRow(rowEl);
+                if (!rowData || seen[rowData.__signature]) return;
+                seen[rowData.__signature] = true;
+
+                const now = new Date();
+                const elapsedMs = rowData.dropOffDate ? (now - rowData.dropOffDate) : null;
+                const elapsedTotalHours = elapsedMs !== null ? Math.floor(elapsedMs / 3600000) : null;
+                const elapsedDays = elapsedTotalHours !== null ? Math.floor(elapsedTotalHours / 24) : null;
+
+                if (elapsedDays === null || elapsedDays > EXCLUDE_AFTER_DAYS) {
+                    excludedOldCount++;
+                    return;
+                }
+
+                qualifying.push({
+                    signature: rowData.__signature,
+                    agreementNo: rowData.agreementNo,
+                    driverName: rowData.driverName,
+                    elapsedTotalHours,
+                });
+            });
+
+            const nextControl = findNextPageControl(doc);
+            if (!nextControl || isControlDisabled(nextControl)) break;
+            const beforeSig = lastRowSignature(doc);
+            try {
+                nextControl.click();
+            } catch (err) {
+                break;
+            }
+            await waitForListRefresh(doc, beforeSig);
+        }
+
+        return { qualifying, excludedOldCount };
+    }
+
     async function runReport() {
 
         const frame = openHiddenFrame(LIST_URL);
         const results = [];
-        let excludedOldCount = 0;
-        let visitedCount = 0;
 
         showProgress(
             'ملاحظة: لن يتم عرض أي عقد تعدّت مدة تسليمه شهر كامل (30 يوم) من وقت التسليم.' +
@@ -319,46 +378,56 @@
 
         try {
 
-            const doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null));
+            let doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null));
             if (!doc) {
                 try { frame.remove(); } catch (err) { /* تجاهل */ }
                 showReport([], 0, 0);
                 return;
             }
 
-            const seen = {};
+            showProgress(
+                'ملاحظة: لن يتم عرض أي عقد تعدّت مدة تسليمه شهر كامل (30 يوم) من وقت التسليم.' +
+                '<br><br>جارٍ حصر العقود المؤهّلة عبر كل الصفحات...'
+            );
+            const { qualifying, excludedOldCount } = await collectQualifyingRows(doc);
+            const totalQualifying = Math.min(qualifying.length, MAX_VISITS);
+
+            // نرجّع القائمة لأول صفحة من جديد - المرحلة السابقة تنقّلت بين
+            // الصفحات كلها فمرّت آخر صفحة، ولازم نبدأ الفحص الفعلي من البداية
+            frame.src = LIST_URL;
+            doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null));
+            if (!doc) {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
+                showReport([], 0, excludedOldCount);
+                return;
+            }
+
+            const qualifyingSignatures = new Set(qualifying.map(q => q.signature));
+            const elapsedBySignature = {};
+            qualifying.forEach(q => { elapsedBySignature[q.signature] = q.elapsedTotalHours; });
+
+            const visited = {};
+            let visitedCount = 0;
             let pageIndex = 0;
             const maxIterations = 80;
 
-            while (pageIndex < maxIterations) {
+            while (pageIndex < maxIterations && visitedCount < totalQualifying) {
                 pageIndex++;
                 const rowEls = Array.from(doc.querySelectorAll('table tbody tr'));
 
                 for (let i = 0; i < rowEls.length; i++) {
                     const rowEl = rowEls[i];
                     const rowData = readListRow(rowEl);
-                    if (!rowData || seen[rowData.__signature]) continue;
-                    seen[rowData.__signature] = true;
+                    if (!rowData || !qualifyingSignatures.has(rowData.__signature) || visited[rowData.__signature]) continue;
+                    visited[rowData.__signature] = true;
 
-                    const now = new Date();
-                    const elapsedMs = rowData.dropOffDate ? (now - rowData.dropOffDate) : null;
-                    const elapsedTotalHours = elapsedMs !== null ? Math.floor(elapsedMs / 3600000) : null;
-                    const elapsedDays = elapsedTotalHours !== null ? Math.floor(elapsedTotalHours / 24) : null;
-
-                    // نستبعد قبل ما نفتح أي تفاصيل - يوفر وقت كبير بدل ما نزور
-                    // صفحة عقد بس عشان نكتشف بعدها إنه مستبعد أصلاً
-                    if (elapsedDays === null || elapsedDays > EXCLUDE_AFTER_DAYS) {
-                        excludedOldCount++;
-                        continue;
-                    }
-
-                    if (visitedCount >= MAX_VISITS) continue;
                     visitedCount++;
-                    showProgress(`جارٍ فحص العقود المرشّحة... (${visitedCount})`);
+                    showProgress(`جارٍ فحص العقود المؤهّلة... (${visitedCount} من ${totalQualifying})`);
 
                     const detail = await visitRowDetail(frame, doc, rowEl);
                     if (!detail) continue;
 
+                    const elapsedTotalHours = elapsedBySignature[rowData.__signature] || 0;
                     results.push({
                         agreementNo: rowData.agreementNo,
                         name: detail.driverName || rowData.driverName,
@@ -369,6 +438,8 @@
                         remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
                     });
                 }
+
+                if (visitedCount >= totalQualifying) break;
 
                 const nextControl = findNextPageControl(doc);
                 if (!nextControl || isControlDisabled(nextControl)) break;
