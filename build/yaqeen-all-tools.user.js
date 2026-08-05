@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0805.0722
+// @version      2026.0805.0741
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -4201,8 +4201,26 @@ ${text}
         target: '120363021290047142@g.us',
     };
 
-    const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings?status=LATE_RETURN&pageSize=500';
-    const MAX_AGREEMENTS = 300;
+    // كل الفروع اللي تُفحص عقودها المتأخرة - قبل كانت الأداة تفحص فرع مطار
+    // جدة فقط، الآن تفحص كل هذي الفروع مع بعض وتجمع نتائجها بتقرير واحد
+    const BRANCHES = [
+        { id: 29, name: 'مطار جدة' },
+        { id: 11, name: 'طريق المدينة' },
+        { id: 12, name: 'شارع التحلية' },
+        { id: 30, name: 'مطار الطائف' },
+        { id: 10, name: 'ينبع - الهيئة الملكية' },
+        { id: 25, name: 'مطار الأمير عبدالمحسن - ينبع' },
+        { id: 36, name: 'المدينة المنورة' },
+        { id: 59, name: 'مطار الأمير محمد بن عبدالعزيز الدولي - المدينة' },
+    ];
+
+    function lateReturnUrlForBranch(branchId) {
+        return 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings?status=LATE_RETURN&pageSize=500';
+    }
+
+    // رفعناه من 300 (فرع واحد) لأن التجميع الآن عبر 8 فروع مع بعض - سقف أمان
+    // يمنع فحصاً طويلاً جداً لو تجمّع عدد ضخم جداً من العقود المرشّحة
+    const MAX_AGREEMENTS = 600;
     // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع
     // تماماً بنفس منطق الفحص الأصلي، بس موزّعين على عدة إطارات بدل واحد
     // فقط، فتسرع العملية بمقدار العدد تقريباً بدون أي تغيير بمنطق الفحص نفسه
@@ -4472,6 +4490,34 @@ ${text}
         });
     }
 
+    /**
+     * يجمع صفوف العقود المتأخرة من كل الفروع مع بعض - فرع تلو فرع بالتتابع
+     * (لا بالتوازي) لنفس السبب المعروف بالأدوات الثانية: فتح عدة صفحات
+     * ثقيلة بنفس اللحظة يسبب تنافساً على الموارد ويفشل بعضها بصمت. أي
+     * فرع ما فيه عقود متأخرة إطلاقاً (doc1 يرجع null بعد المهلة) نتجاوزه
+     * بهدوء - مو خطأ، بس معناه صفر عقود بهذا الفرع وقتها.
+     */
+    async function collectAllBranchRows() {
+        let allRows = [];
+        for (const branch of BRANCHES) {
+            showProgress('جارٍ تحميل قائمة العقود المتأخرة - ' + branch.name + '...');
+            const frame = openHiddenFrame(lateReturnUrlForBranch(branch.id));
+            try {
+                const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
+                if (doc1) {
+                    const branchRows = await collectAllPages(frame, doc1);
+                    branchRows.forEach(r => { r.branchName = branch.name; });
+                    allRows = allRows.concat(branchRows);
+                }
+            } catch (err) {
+                console.error('[العقود المتأخرة] تعذّر تحميل فرع ' + branch.name + ':', err);
+            } finally {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
+            }
+        }
+        return allRows;
+    }
+
     // ==========================================================
     // التنفيذ الرئيسي
     // ==========================================================
@@ -4517,6 +4563,7 @@ ${text}
             checked: true,
             record: {
                 agreementNo: c.agreementNo,
+                branchName: c.branchName,
                 name: c.name,
                 phone,
                 idNumber,
@@ -4529,18 +4576,9 @@ ${text}
 
     async function runReport(threshold) {
 
-        const frame = openHiddenFrame(LATE_RETURN_URL);
-
-        showProgress("جارٍ تحميل قائمة العقود المتأخرة...");
-
         try {
 
-            const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
-            if (!doc1) throw new Error("لم يتم العثور على أي عقود متأخرة");
-
-            showProgress("جارٍ جمع كل صفحات القائمة...");
-            const allRows = await collectAllPages(frame, doc1);
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
+            const allRows = await collectAllBranchRows();
 
             // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً من زر
             // "إنهاء الاتفاقية" ونشوف "الرصيد المتبقي" الحقيقي بصفحة التفاصيل
@@ -4589,7 +4627,6 @@ ${text}
             showReport(results, threshold, checkedCount, candidates.length);
 
         } catch (err) {
-            try { frame.remove(); } catch (err2) { /* تجاهل */ }
             showMessage("تعذّر إتمام الفحص: " + err.message);
         }
     }
@@ -4665,10 +4702,10 @@ ${text}
     }
 
     function tableToTsv(records) {
-        const header = ['رقم العقد', 'الاسم', 'الجوال', 'رقم الهوية', 'الإجمالي', 'المدفوع', 'المتبقي'];
+        const header = ['رقم العقد', 'الفرع', 'الاسم', 'الجوال', 'رقم الهوية', 'الإجمالي', 'المدفوع', 'المتبقي'];
         const lines = [header.join('\t')];
         records.forEach(r => {
-            lines.push([r.agreementNo, r.name, r.phone, r.idNumber, r.total, r.paid, r.remaining].join('\t'));
+            lines.push([r.agreementNo, r.branchName, r.name, r.phone, r.idNumber, r.total, r.paid, r.remaining].join('\t'));
         });
         return lines.join('\n');
     }
@@ -4681,10 +4718,10 @@ ${text}
         }
 
         const rowsHtml = records.map(r => (
-            '<tr><td>' + r.agreementNo + '</td><td>' + r.name + '</td><td>' + r.phone + '</td>' +
+            '<tr><td>' + r.agreementNo + '</td><td>' + r.branchName + '</td><td>' + r.name + '</td><td>' + r.phone + '</td>' +
             '<td>' + r.idNumber + '</td><td>' + r.total + '</td><td>' + r.paid + '</td>' +
             '<td style="font-weight:bold;color:#dc2626;">' + r.remaining + '</td></tr>'
-        )).join('') || '<tr><td colspan="7">لا توجد عقود مطابقة</td></tr>';
+        )).join('') || '<tr><td colspan="8">لا توجد عقود مطابقة</td></tr>';
 
         const now = new Date().toLocaleString('ar-SA');
 
@@ -4701,7 +4738,7 @@ ${text}
             '</style></head><body>' +
             '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
-            '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
+            '<table><tr><th>رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
         );
@@ -4730,10 +4767,10 @@ ${text}
 
     function buildReportImageInnerHtml(records, threshold) {
         const rowsHtml = records.map(r => (
-            '<tr><td>' + r.agreementNo + '</td><td>' + r.name + '</td><td dir="ltr">' + r.phone + '</td>' +
+            '<tr><td>' + r.agreementNo + '</td><td>' + r.branchName + '</td><td>' + r.name + '</td><td dir="ltr">' + r.phone + '</td>' +
             '<td>' + r.idNumber + '</td><td>' + r.total + '</td><td>' + r.paid + '</td>' +
             '<td style="font-weight:bold;color:#dc2626;">' + r.remaining + '</td></tr>'
-        )).join('') || '<tr><td colspan="7">لا توجد عقود مطابقة</td></tr>';
+        )).join('') || '<tr><td colspan="8">لا توجد عقود مطابقة</td></tr>';
 
         const now = new Date().toLocaleString('ar-SA');
 
@@ -4741,7 +4778,7 @@ ${text}
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
-            '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
+            '<table><tr><th>رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
         );
     }
@@ -4943,6 +4980,7 @@ ${text}
         const rowsHtml = records.map(r => (
             '<tr>' +
             '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
+            '<td style="border-top:1px solid #eee;">' + r.branchName + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
             '<td style="border-top:1px solid #eee;" dir="ltr">' + r.phone + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.idNumber + '</td>' +
@@ -4954,7 +4992,7 @@ ${text}
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
+            : '<tr><td colspan="8" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
 
         const html =
             '<div id="late-payments-box" style="' +
@@ -4973,7 +5011,7 @@ ${text}
             '<div style="overflow:auto;flex:1;">' +
             '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
             '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
+            '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th>' +
             '<th id="late-payments-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
@@ -5044,8 +5082,26 @@ ${text}
         target: '120363021290047142@g.us',
     };
 
-    const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings?status=LATE_RETURN&pageSize=500';
-    const MAX_AGREEMENTS = 300;
+    // كل الفروع اللي تُفحص عقودها المتأخرة - قبل كانت الأداة تفحص فرع مطار
+    // جدة فقط، الآن تفحص كل هذي الفروع مع بعض وتجمع نتائجها بتقرير واحد
+    const BRANCHES = [
+        { id: 29, name: 'مطار جدة' },
+        { id: 11, name: 'طريق المدينة' },
+        { id: 12, name: 'شارع التحلية' },
+        { id: 30, name: 'مطار الطائف' },
+        { id: 10, name: 'ينبع - الهيئة الملكية' },
+        { id: 25, name: 'مطار الأمير عبدالمحسن - ينبع' },
+        { id: 36, name: 'المدينة المنورة' },
+        { id: 59, name: 'مطار الأمير محمد بن عبدالعزيز الدولي - المدينة' },
+    ];
+
+    function lateReturnUrlForBranch(branchId) {
+        return 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings?status=LATE_RETURN&pageSize=500';
+    }
+
+    // رفعناه من 300 (فرع واحد) لأن التجميع الآن عبر 8 فروع مع بعض - سقف أمان
+    // يمنع فحصاً طويلاً جداً لو تجمّع عدد ضخم جداً من العقود المرشّحة
+    const MAX_AGREEMENTS = 600;
     // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع،
     // فقط موزّعين على عدة إطارات بدل واحد فقط لتسريع العملية (نفس أسلوب أداة
     // "العقود المتأخرة في السداد (أفراد)")
@@ -5282,6 +5338,34 @@ ${text}
         });
     }
 
+    /**
+     * يجمع صفوف العقود المتأخرة من كل الفروع مع بعض - فرع تلو فرع بالتتابع
+     * (لا بالتوازي) لنفس السبب المعروف بالأدوات الثانية: فتح عدة صفحات
+     * ثقيلة بنفس اللحظة يسبب تنافساً على الموارد ويفشل بعضها بصمت. أي
+     * فرع ما فيه عقود متأخرة إطلاقاً (doc1 يرجع null بعد المهلة) نتجاوزه
+     * بهدوء - مو خطأ، بس معناه صفر عقود بهذا الفرع وقتها.
+     */
+    async function collectAllBranchRows() {
+        let allRows = [];
+        for (const branch of BRANCHES) {
+            showProgress('جارٍ تحميل قائمة العقود المتأخرة - ' + branch.name + '...');
+            const frame = openHiddenFrame(lateReturnUrlForBranch(branch.id));
+            try {
+                const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
+                if (doc1) {
+                    const branchRows = await collectAllPages(frame, doc1);
+                    branchRows.forEach(r => { r.branchName = branch.name; });
+                    allRows = allRows.concat(branchRows);
+                }
+            } catch (err) {
+                console.error('[عقود الشركات] تعذّر تحميل فرع ' + branch.name + ':', err);
+            } finally {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
+            }
+        }
+        return allRows;
+    }
+
     // ==========================================================
     // التنفيذ الرئيسي
     // ==========================================================
@@ -5323,6 +5407,7 @@ ${text}
             checked: true,
             record: {
                 agreementNo: c.agreementNo,
+                branchName: c.branchName,
                 personName: c.personName,
                 debtorName: c.debtorName,
                 actualDuration,
@@ -5335,18 +5420,9 @@ ${text}
 
     async function runReport() {
 
-        const frame = openHiddenFrame(LATE_RETURN_URL);
-
-        showProgress("جارٍ تحميل قائمة العقود المتأخرة...");
-
         try {
 
-            const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
-            if (!doc1) throw new Error("لم يتم العثور على أي عقود متأخرة");
-
-            showProgress("جارٍ جمع كل صفحات القائمة...");
-            const allRows = await collectAllPages(frame, doc1);
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
+            const allRows = await collectAllBranchRows();
 
             const candidates = allRows.slice(0, MAX_AGREEMENTS);
 
@@ -5387,7 +5463,6 @@ ${text}
             showReport(results, checkedCount, candidates.length);
 
         } catch (err) {
-            try { frame.remove(); } catch (err2) { /* تجاهل */ }
             showMessage("تعذّر إتمام الفحص: " + err.message);
         }
     }
@@ -5425,10 +5500,10 @@ ${text}
     }
 
     function tableToTsv(records) {
-        const header = ['رقم العقد', 'اسم الشخص', 'اسم المدين', 'المدة الفعلية', 'المدة المخطط لها + التمديد', 'متأخر بـ'];
+        const header = ['رقم العقد', 'الفرع', 'اسم الشخص', 'اسم المدين', 'المدة الفعلية', 'المدة المخطط لها + التمديد', 'متأخر بـ'];
         const lines = [header.join('\t')];
         records.forEach(r => {
-            lines.push([r.agreementNo, r.personName, r.debtorName, r.actualDuration, r.plannedPlusExtension, r.lateDuration].join('\t'));
+            lines.push([r.agreementNo, r.branchName, r.personName, r.debtorName, r.actualDuration, r.plannedPlusExtension, r.lateDuration].join('\t'));
         });
         return lines.join('\n');
     }
@@ -5441,10 +5516,10 @@ ${text}
         }
 
         const rowsHtml = records.map(r => (
-            '<tr><td>' + r.agreementNo + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
+            '<tr><td>' + r.agreementNo + '</td><td>' + r.branchName + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
             '<td>' + r.actualDuration + '</td><td>' + r.plannedPlusExtension + '</td>' +
             '<td style="font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td></tr>'
-        )).join('') || '<tr><td colspan="6">لا توجد عقود مطابقة</td></tr>';
+        )).join('') || '<tr><td colspan="7">لا توجد عقود مطابقة</td></tr>';
 
         const now = new Date().toLocaleString('ar-SA');
 
@@ -5461,7 +5536,7 @@ ${text}
             '</style></head><body>' +
             '<h1>🏢 عقود الشركات غير الممددة</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
-            '<table><tr><th>رقم العقد</th><th>اسم الشخص</th><th>اسم المدين</th>' +
+            '<table><tr><th>رقم العقد</th><th>الفرع</th><th>اسم الشخص</th><th>اسم المدين</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
         );
@@ -5489,10 +5564,10 @@ ${text}
 
     function buildReportImageInnerHtml(records) {
         const rowsHtml = records.map(r => (
-            '<tr><td>' + r.agreementNo + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
+            '<tr><td>' + r.agreementNo + '</td><td>' + r.branchName + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
             '<td>' + r.actualDuration + '</td><td>' + r.plannedPlusExtension + '</td>' +
             '<td style="font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td></tr>'
-        )).join('') || '<tr><td colspan="6">لا توجد عقود مطابقة</td></tr>';
+        )).join('') || '<tr><td colspan="7">لا توجد عقود مطابقة</td></tr>';
 
         const now = new Date().toLocaleString('ar-SA');
 
@@ -5500,7 +5575,7 @@ ${text}
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>🏢 عقود الشركات غير الممددة</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
-            '<table><tr><th>رقم العقد</th><th>اسم الشخص</th><th>اسم المدين</th>' +
+            '<table><tr><th>رقم العقد</th><th>الفرع</th><th>اسم الشخص</th><th>اسم المدين</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>'
         );
     }
@@ -5702,6 +5777,7 @@ ${text}
         const rowsHtml = records.map(r => (
             '<tr>' +
             '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
+            '<td style="border-top:1px solid #eee;">' + r.branchName + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.personName + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.debtorName + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.actualDuration + '</td>' +
@@ -5712,7 +5788,7 @@ ${text}
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#777;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
+            : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#777;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
 
         const html =
             '<div id="company-ext-box" style="' +
@@ -5731,7 +5807,7 @@ ${text}
             '<div style="overflow:auto;flex:1;">' +
             '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
             '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>اسم الشخص</th>' +
+            '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>اسم الشخص</th>' +
             '<th id="company-ext-sort-debtor" style="cursor:pointer;user-select:none;">اسم المدين' + sortIndicator('debtorName') + '</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th>' +
             '<th id="company-ext-sort-late" style="cursor:pointer;user-select:none;">متأخر بـ' + sortIndicator('lateHours') + '</th>' +
