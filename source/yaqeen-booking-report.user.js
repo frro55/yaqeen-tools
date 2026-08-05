@@ -126,9 +126,11 @@
     selectedSource: 'all',
     selectedDays: new Set(['اليوم']),
     sort: { key: null, dir: 1 },
-    // تعديلات يدوية لعدد السيارات لكل مجموعة، مفتاحها "مصدر::مجموعة" حتى لا
-    // يختلط تعديل مصدر بمصدر آخر لنفس المجموعة - تُستخدم لإعادة حساب نسبة
-    // الإشغال والفرق فوراً بدون أي طلب شبكة جديد
+    // تعديلات يدوية لعدد سيارات "الساحة" فقط لكل مجموعة (مفتاحها "yard::مجموعة" -
+    // ثابت بغض النظر عن مصدر السيارات المختار حالياً بالعرض). أسطول "الفرع" غير
+    // قابل للتعديل أبداً؛ في وضع "الكل" يُجمع أسطول الفرع الثابت مع رقم الساحة
+    // هذا (المعدَّل أو الأصلي) - تُستخدم لإعادة حساب نسبة الإشغال والفرق فوراً
+    // بدون أي طلب شبكة جديد
     vehicleOverrides: {},
   };
 
@@ -591,10 +593,21 @@
   // بناء صفوف التقرير (تجميع حسب المجموعة)
   // ==========================================================
 
-  function buildReportRows(bookings, vehicleGroups, selectedDaysOrdered) {
-    var vehicleCountByGroup = {};
-    vehicleGroups.forEach(function (group) {
-      vehicleCountByGroup[group] = (vehicleCountByGroup[group] || 0) + 1;
+  /**
+   * أسطول "الفرع" ثابت دائماً (غير قابل للتعديل). أسطول "الساحة" هو الوحيد
+   * القابل للتعديل اليدوي، بمفتاح ثابت لا يعتمد على مصدر السيارات المعروض
+   * حالياً - عشان لو المستخدم يعدّل وهو بوضع "الساحة" ثم يرجع لوضع "الكل"،
+   * التعديل يبقى منعكساً بنفس القيمة.
+   */
+  function buildReportRows(bookings, vehiclesBySource, selectedSource, selectedDaysOrdered, vehicleOverrides) {
+    var branchCountByGroup = {};
+    (vehiclesBySource.branch || []).forEach(function (group) {
+      branchCountByGroup[group] = (branchCountByGroup[group] || 0) + 1;
+    });
+
+    var yardCountByGroup = {};
+    (vehiclesBySource.yard || []).forEach(function (group) {
+      yardCountByGroup[group] = (yardCountByGroup[group] || 0) + 1;
     });
 
     var bookingCountByGroupDay = {};
@@ -605,17 +618,24 @@
     });
 
     var allGroups = {};
-    Object.keys(vehicleCountByGroup).forEach(function (g) {
-      allGroups[g] = true;
-    });
-    Object.keys(bookingCountByGroupDay).forEach(function (g) {
-      allGroups[g] = true;
-    });
+    Object.keys(branchCountByGroup).forEach(function (g) { allGroups[g] = true; });
+    Object.keys(yardCountByGroup).forEach(function (g) { allGroups[g] = true; });
+    Object.keys(bookingCountByGroupDay).forEach(function (g) { allGroups[g] = true; });
 
     var rows = Object.keys(allGroups).map(function (group) {
-      var vehicleCount = vehicleCountByGroup[group] || 0;
-      var dayMap = bookingCountByGroupDay[group] || {};
+      var branchCount = branchCountByGroup[group] || 0;
+      var rawYardCount = yardCountByGroup[group] || 0;
+      var overrideKey = yardOverrideKey(group);
+      var yardCount = Object.prototype.hasOwnProperty.call(vehicleOverrides, overrideKey)
+        ? vehicleOverrides[overrideKey]
+        : rawYardCount;
 
+      var vehicleCount =
+        selectedSource === 'branch' ? branchCount :
+        selectedSource === 'yard' ? yardCount :
+        branchCount + yardCount;
+
+      var dayMap = bookingCountByGroupDay[group] || {};
       var dayCounts = {};
       var totalBookings = 0;
       selectedDaysOrdered.forEach(function (day) {
@@ -630,6 +650,8 @@
       return {
         group: group,
         vehicleCount: vehicleCount,
+        branchCount: branchCount,
+        yardCount: yardCount,
         totalBookings: totalBookings,
         dayCounts: dayCounts,
         occupancyPercent: occupancyPercent,
@@ -732,6 +754,32 @@
    * المجموعة (بالمصدر الحالي) ويعيد رسم الجدول فوراً حتى تنعكس نسبة الإشغال
    * والفرق على القيمة الجديدة بدون أي طلب شبكة.
    */
+  function buildYardInput(row, onCommit) {
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.className = 'yqn-vehicle-input';
+    input.value = row.yardCount;
+    input.setAttribute('value', row.yardCount);
+    input.addEventListener('click', function (e) { e.stopPropagation(); });
+    input.addEventListener('change', function () {
+      var value = parseInt(input.value, 10);
+      if (!Number.isFinite(value) || value < 0) value = 0;
+      state.vehicleOverrides[yardOverrideKey(row.group)] = value;
+      renderTable();
+    });
+    return input;
+  }
+
+  /**
+   * أسطول "الفرع" ثابت وغير قابل للتعديل دائماً. الوحيد القابل للتعديل هو
+   * أسطول "الساحة":
+   *  - بوضع "الفرع": رقم ثابت فقط، بدون أي حقل تعديل.
+   *  - بوضع "الساحة": الرقم المعروض هو نفسه رقم الساحة القابل للتعديل مباشرة.
+   *  - بوضع "الكل": نعرض المجموع (ثابت الفرع + ساحة قابلة للتعديل) بالأعلى،
+   *    وتحته حقل تعديل صغير مخصص لرقم الساحة فقط - أي تعديل فيه يُعاد حساب
+   *    المجموع فوراً (فرع + الساحة الجديدة) دون لمس رقم الفرع.
+   */
   function buildVehiclesCell(row, extraClassName) {
     var td = document.createElement('td');
     td.className = ['yqn-vehicles-cell', extraClassName].filter(Boolean).join(' ');
@@ -739,21 +787,35 @@
     // صحيح عند نسخ outerHTML الجدول (بالطباعة/تصدير الصورة لواتساب)
     td.dataset.copyText = row.vehicleCount;
 
-    var input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    input.className = 'yqn-vehicle-input';
-    input.value = row.vehicleCount;
-    input.setAttribute('value', row.vehicleCount);
-    input.addEventListener('click', function (e) { e.stopPropagation(); });
-    input.addEventListener('change', function () {
-      var value = parseInt(input.value, 10);
-      if (!Number.isFinite(value) || value < 0) value = 0;
-      state.vehicleOverrides[vehicleOverrideKey(row.group)] = value;
-      renderTable();
-    });
+    if (state.selectedSource === 'branch') {
+      td.textContent = row.vehicleCount;
+      return td;
+    }
 
-    td.appendChild(input);
+    if (state.selectedSource === 'yard') {
+      td.appendChild(buildYardInput(row));
+      return td;
+    }
+
+    var totalEl = document.createElement('div');
+    totalEl.className = 'yqn-vehicles-total';
+    totalEl.textContent = row.vehicleCount;
+    td.appendChild(totalEl);
+
+    var yardRow = document.createElement('div');
+    yardRow.className = 'yqn-yard-edit';
+    yardRow.title = 'عدد سيارات الساحة - يُجمع تلقائياً مع أسطول الفرع (' + row.branchCount + ')';
+
+    var yardInput = buildYardInput(row);
+    yardInput.classList.add('yqn-yard-input');
+    yardRow.appendChild(yardInput);
+
+    var label = document.createElement('span');
+    label.className = 'yqn-yard-label';
+    label.textContent = 'ساحة';
+    yardRow.appendChild(label);
+
+    td.appendChild(yardRow);
     return td;
   }
 
@@ -877,35 +939,19 @@
     renderTable(); // إعادة ترتيب محلية فقط - بدون أي طلب شبكة جديد
   }
 
-  function vehicleOverrideKey(group) {
-    return state.selectedSource + '::' + group;
-  }
-
-  /** يطبّق أي تعديل يدوي على عدد السيارات ويعيد حساب نسبة الإشغال والفرق بناءً عليه */
-  function applyVehicleOverrides(rows) {
-    return rows.map(function (r) {
-      var key = vehicleOverrideKey(r.group);
-      if (!Object.prototype.hasOwnProperty.call(state.vehicleOverrides, key)) return r;
-      var vehicleCount = state.vehicleOverrides[key];
-      var occupancyPercent = vehicleCount > 0 ? (r.totalBookings / vehicleCount) * 100 : r.totalBookings > 0 ? Infinity : 0;
-      var difference = vehicleCount - r.totalBookings;
-      return Object.assign({}, r, {
-        vehicleCount: vehicleCount,
-        occupancyPercent: occupancyPercent,
-        difference: difference,
-      });
-    });
+  function yardOverrideKey(group) {
+    return 'yard::' + group;
   }
 
   /** يحسب صفوف التقرير الحالية (حسب الفلاتر المختارة) بدون أي لمس للـ DOM - تُستخدم لعرض الجدول ولبناء رسالة واتساب */
   function getCurrentReportData() {
     var selectedDaysOrdered = getSelectedDaysOrdered();
-    var vehicleGroups = state.vehiclesBySource[state.selectedSource] || [];
-    var rows = buildReportRows(state.bookings || [], vehicleGroups, selectedDaysOrdered);
-    rows = applyVehicleOverrides(rows);
-    // نخفي المجموعات اللي ما إلها ولا حجز ضمن الأيام المختارة حالياً
+    var rows = buildReportRows(state.bookings || [], state.vehiclesBySource, state.selectedSource, selectedDaysOrdered, state.vehicleOverrides);
+    // نعرض أي مجموعة عندها سيارات جاهزة حتى لو بدون أي حجز، أو عندها حجوزات
+    // حتى لو بدون سيارات جاهزة حالياً - نخفي فقط الصفوف الفارغة كلياً (لا
+    // سيارات ولا حجوزات) لأنها ما تضيف أي معلومة للتقرير
     rows = rows.filter(function (r) {
-      return r.totalBookings > 0;
+      return r.vehicleCount > 0 || r.totalBookings > 0;
     });
     return {
       selectedDaysOrdered: selectedDaysOrdered,
@@ -1083,13 +1129,15 @@
    * السيارات) للاستخدام بالطباعة/تصدير الصورة. مهم بالذات لصورة واتساب: عنصر
    * <input> يُسلسَل عبر outerHTML بدون إغلاق ذاتي (مثل <input ...> بدون />)،
    * وهذا غير صالح كـ XML صحيح داخل foreignObject بالـ SVG، فيفشل رسم الصورة
-   * بصمت (تعذّر تحويل SVG لصورة) - الحل نستبدل كل input بنص القيمة الحالية.
+   * بصمت (تعذّر تحويل SVG لصورة) - الحل نستبدل أي خلية فيها عنصر <input>
+   * بقيمة data-copy-text النهائية للخلية (المجموع الصحيح، مو رقم حقل الساحة
+   * وحده - بوضع "الكل" الخلية فيها رقمان: مجموع ثابت + حقل تعديل الساحة).
    */
   function buildStaticTableHtml() {
     var clone = modalEls.table.cloneNode(true);
-    Array.prototype.slice.call(clone.querySelectorAll('input.yqn-vehicle-input')).forEach(function (input) {
+    Array.prototype.slice.call(clone.querySelectorAll('input')).forEach(function (input) {
       var td = input.closest('td');
-      if (td) td.textContent = input.value;
+      if (td) td.textContent = td.dataset.copyText !== undefined ? td.dataset.copyText : input.value;
     });
     return clone.outerHTML;
   }
@@ -1576,6 +1624,10 @@
     '.yqn-vehicle-input{width:56px;padding:6px 4px;border:1px solid #ddd;border-radius:6px;text-align:center;' +
     'font:inherit;font-weight:bold;color:inherit;background:#fff;}' +
     '.yqn-vehicle-input:focus{outline:2px solid #78B500;border-color:#78B500;}' +
+    '.yqn-vehicles-total{font-weight:bold;font-size:15px;line-height:1.3;}' +
+    '.yqn-yard-edit{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:3px;}' +
+    '.yqn-yard-edit .yqn-vehicle-input{width:40px;padding:3px 2px;font-size:12px;}' +
+    '.yqn-yard-label{font-size:10px;opacity:.55;white-space:nowrap;}' +
     '.yqn-bar-wrapper{position:relative;height:22px;border-radius:7px;background:#e5e5e5;overflow:hidden;min-width:120px;}' +
     '.yqn-bar-fill{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:7px;transition:width .2s;}' +
     '.yqn-occ-good .yqn-bar-fill{background:#22c55e;}' +
