@@ -289,20 +289,30 @@
         });
     }
 
-    /** يجمع صفوف العقود المتأخرة للفرع المختار فقط */
-    async function collectAllRowsForBranch(branchId) {
-        const branchName = branchNameById(branchId);
-        showProgress('جارٍ تحميل قائمة العقود المتأخرة - ' + branchName + '...');
-        const frame = openHiddenFrame(lateReturnUrlForBranch(branchId));
-        try {
-            const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
-            if (!doc1) return [];
-            const rows = await collectAllPages(frame, doc1);
-            rows.forEach(r => { r.branchName = branchName; });
-            return rows;
-        } finally {
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
+    /**
+     * يجمع صفوف العقود المتأخرة من الفروع المختارة فقط - فرع تلو فرع
+     * بالتتابع (لا بالتوازي) لنفس السبب المعروف بالأدوات الثانية.
+     */
+    async function collectAllRowsForBranches(branchIds) {
+        let allRows = [];
+        for (const branchId of branchIds) {
+            const branchName = branchNameById(branchId);
+            showProgress('جارٍ تحميل قائمة العقود المتأخرة - ' + branchName + '...');
+            const frame = openHiddenFrame(lateReturnUrlForBranch(branchId));
+            try {
+                const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
+                if (doc1) {
+                    const rows = await collectAllPages(frame, doc1);
+                    rows.forEach(r => { r.branchName = branchName; });
+                    allRows = allRows.concat(rows);
+                }
+            } catch (err) {
+                console.error('[عقود الشركات] تعذّر تحميل فرع ' + branchName + ':', err);
+            } finally {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
+            }
         }
+        return allRows;
     }
 
     // ==========================================================
@@ -357,16 +367,16 @@
         };
     }
 
-    async function runReport(branchId) {
+    async function runReport(branchIds) {
 
         try {
 
-            const allRows = await collectAllRowsForBranch(branchId);
+            const allRows = await collectAllRowsForBranches(branchIds);
 
             const candidates = allRows.slice(0, MAX_AGREEMENTS);
 
             if (candidates.length === 0) {
-                showReport([], branchId, 0, 0);
+                showReport([], branchIds, 0, 0);
                 return;
             }
 
@@ -399,7 +409,7 @@
 
             const results = recordsByIndex.filter(Boolean);
 
-            showReport(results, branchId, checkedCount, candidates.length);
+            showReport(results, branchIds, checkedCount, candidates.length);
 
         } catch (err) {
             showMessage("تعذّر إتمام الفحص: " + err.message);
@@ -420,31 +430,55 @@
         );
     }
 
-    function showBranchPrompt(defaultBranchId) {
+    /** يبني الاختيار متعدد الفروع (Checkboxes) - defaultBranchIds فاضية أو غير معطاة = كلهم محدَّدين افتراضياً */
+    function showBranchPrompt(defaultBranchIds) {
         document.getElementById('company-ext-box')?.remove();
 
-        const branchOptionsHtml = BRANCHES.map(b => (
-            '<option value="' + b.id + '"' + (b.id === defaultBranchId ? ' selected' : '') + '>' + b.name + '</option>'
+        const preselected = (defaultBranchIds && defaultBranchIds.length) ? defaultBranchIds : BRANCHES.map(b => b.id);
+        const branchCheckboxesHtml = BRANCHES.map(b => (
+            '<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:15px;cursor:pointer;">' +
+            '<input type="checkbox" class="company-ext-branch-cb" value="' + b.id + '"' +
+            (preselected.indexOf(b.id) !== -1 ? ' checked' : '') + '> ' + b.name +
+            '</label>'
         )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
             '<h3 style="margin-top:0">🏢 عقود الشركات غير الممددة</h3>' +
-            '<div style="margin:15px 0;text-align:right">الفرع:</div>' +
-            '<select id="company-ext-branch" style="' +
-            'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
-            'text-align:right;box-sizing:border-box;">' + branchOptionsHtml + '</select>' +
+            '<div style="margin:15px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;">' +
+            '<span>الفروع:</span>' +
+            '<span>' +
+            '<a href="#" id="company-ext-select-all" style="font-size:12.5px;color:#2563eb;text-decoration:none;">تحديد الكل</a>' +
+            ' | <a href="#" id="company-ext-select-none" style="font-size:12.5px;color:#2563eb;text-decoration:none;">إلغاء الكل</a>' +
+            '</span>' +
+            '</div>' +
+            '<div id="company-ext-branches-list" style="' +
+            'text-align:right;max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:8px 12px;">' +
+            branchCheckboxesHtml + '</div>' +
             '<button id="company-ext-submit" style="' +
             'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
             'background:#A3E635;font-size:15px;">فحص العقود</button>' +
             '<button id="company-ext-cancel" style="' +
             'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
             'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
-            320
+            340
         ));
 
+        document.getElementById('company-ext-select-all').onclick = e => {
+            e.preventDefault();
+            document.querySelectorAll('.company-ext-branch-cb').forEach(cb => { cb.checked = true; });
+        };
+        document.getElementById('company-ext-select-none').onclick = e => {
+            e.preventDefault();
+            document.querySelectorAll('.company-ext-branch-cb').forEach(cb => { cb.checked = false; });
+        };
+
         document.getElementById('company-ext-submit').onclick = () => {
-            const branchId = parseInt(document.getElementById('company-ext-branch').value, 10);
-            runReport(branchId);
+            const branchIds = Array.from(document.querySelectorAll('.company-ext-branch-cb:checked')).map(cb => parseInt(cb.value, 10));
+            if (branchIds.length === 0) {
+                alert('اختر فرع واحد على الأقل');
+                return;
+            }
+            runReport(branchIds);
         };
         document.getElementById('company-ext-cancel').onclick = () => {
             document.getElementById('company-ext-box')?.remove();
@@ -478,7 +512,7 @@
         return lines.join('\n');
     }
 
-    function printReport(records, branchName) {
+    function printReport(records, branchesLabel) {
         const printWindow = window.open('', '_blank', 'width=1100,height=700');
         if (!printWindow) {
             showMessage('يرجى السماح بالنوافذ المنبثقة (Popups) لهذا الموقع للطباعة.');
@@ -486,10 +520,10 @@
         }
 
         const rowsHtml = records.map(r => (
-            '<tr><td>' + r.agreementNo + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
+            '<tr><td>' + r.agreementNo + '</td><td>' + r.branchName + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
             '<td>' + r.actualDuration + '</td><td>' + r.plannedPlusExtension + '</td>' +
             '<td style="font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td></tr>'
-        )).join('') || '<tr><td colspan="6">لا توجد عقود مطابقة</td></tr>';
+        )).join('') || '<tr><td colspan="7">لا توجد عقود مطابقة</td></tr>';
 
         const now = new Date().toLocaleString('ar-SA');
 
@@ -504,9 +538,9 @@
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
-            '<h1>🏢 عقود الشركات غير الممددة - ' + branchName + '</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
-            '<table><tr><th>رقم العقد</th><th>اسم الشخص</th><th>اسم المدين</th>' +
+            '<h1>🏢 عقود الشركات غير الممددة</h1>' +
+            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + ' | عدد العقود: ' + records.length + '</div>' +
+            '<table><tr><th>رقم العقد</th><th>الفرع</th><th>اسم الشخص</th><th>اسم المدين</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
         );
@@ -532,20 +566,20 @@
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
 
-    function buildReportImageInnerHtml(records, branchName) {
+    function buildReportImageInnerHtml(records, branchesLabel) {
         const rowsHtml = records.map(r => (
-            '<tr><td>' + r.agreementNo + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
+            '<tr><td>' + r.agreementNo + '</td><td>' + r.branchName + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
             '<td>' + r.actualDuration + '</td><td>' + r.plannedPlusExtension + '</td>' +
             '<td style="font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td></tr>'
-        )).join('') || '<tr><td colspan="6">لا توجد عقود مطابقة</td></tr>';
+        )).join('') || '<tr><td colspan="7">لا توجد عقود مطابقة</td></tr>';
 
         const now = new Date().toLocaleString('ar-SA');
 
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
-            '<h1>🏢 عقود الشركات غير الممددة - ' + branchName + '</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
-            '<table><tr><th>رقم العقد</th><th>اسم الشخص</th><th>اسم المدين</th>' +
+            '<h1>🏢 عقود الشركات غير الممددة</h1>' +
+            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + ' | عدد العقود: ' + records.length + '</div>' +
+            '<table><tr><th>رقم العقد</th><th>الفرع</th><th>اسم الشخص</th><th>اسم المدين</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>'
         );
     }
@@ -733,21 +767,22 @@
         return sorted;
     }
 
-    function handleSortClick(records, branchId, key) {
+    function handleSortClick(records, branchIds, key) {
         if (sortState.key === key) sortState.dir *= -1;
         else { sortState.key = key; sortState.dir = 1; }
-        showReport(sortRecords(records, key), branchId, lastCheckedCount, lastTotalCandidates);
+        showReport(sortRecords(records, key), branchIds, lastCheckedCount, lastTotalCandidates);
     }
 
-    function showReport(records, branchId, checkedCount, totalCandidates) {
+    function showReport(records, branchIds, checkedCount, totalCandidates) {
         document.getElementById('company-ext-box')?.remove();
         lastCheckedCount = checkedCount;
         lastTotalCandidates = totalCandidates;
-        const branchName = branchNameById(branchId);
+        const branchesLabel = branchIds.map(branchNameById).join('، ');
 
         const rowsHtml = records.map(r => (
             '<tr>' +
             '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
+            '<td style="border-top:1px solid #eee;">' + r.branchName + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.personName + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.debtorName + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.actualDuration + '</td>' +
@@ -758,7 +793,7 @@
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#777;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
+            : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#777;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
 
         const html =
             '<div id="company-ext-box" style="' +
@@ -767,7 +802,8 @@
             '<div style="width:min(1040px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
             '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">🏢 عقود الشركات غير الممددة - ' + branchName + '</div>' +
+            '<div style="font-size:16px;font-weight:bold;">🏢 عقود الشركات غير الممددة</div>' +
+            '<div style="font-size:13px;margin-top:4px;opacity:.8;">الفروع: ' + branchesLabel + '</div>' +
             '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد شركة بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
@@ -777,7 +813,7 @@
             '<div style="overflow:auto;flex:1;">' +
             '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
             '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>اسم الشخص</th>' +
+            '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>اسم الشخص</th>' +
             '<th id="company-ext-sort-debtor" style="cursor:pointer;user-select:none;">اسم المدين' + sortIndicator('debtorName') + '</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th>' +
             '<th id="company-ext-sort-late" style="cursor:pointer;user-select:none;">متأخر بـ' + sortIndicator('lateHours') + '</th>' +
@@ -791,7 +827,7 @@
             '<button id="company-ext-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
             '<button id="company-ext-change-branch" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🏢 تغيير الفرع</button>' +
+            'background:#eee;color:#333;cursor:pointer;">🏢 تغيير الفروع</button>' +
             '<button id="company-ext-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
             '<button id="company-ext-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
@@ -804,18 +840,18 @@
             document.getElementById('company-ext-box')?.remove();
         };
         document.getElementById('company-ext-change-branch').onclick = () => {
-            showBranchPrompt(branchId);
+            showBranchPrompt(branchIds);
         };
         document.getElementById('company-ext-refresh').onclick = () => {
             sortState.key = null;
             sortState.dir = 1;
-            runReport(branchId);
+            runReport(branchIds);
         };
         document.getElementById('company-ext-print').onclick = () => {
-            printReport(records, branchName);
+            printReport(records, branchesLabel);
         };
         document.getElementById('company-ext-whatsapp').onclick = () => {
-            handleSendWhatsApp(records, branchName);
+            handleSendWhatsApp(records, branchesLabel);
         };
         document.getElementById('company-ext-copy').onclick = async () => {
             try {
@@ -825,8 +861,8 @@
                 alert('تعذّر النسخ: ' + err.message);
             }
         };
-        document.getElementById('company-ext-sort-debtor').onclick = () => handleSortClick(records, branchId, 'debtorName');
-        document.getElementById('company-ext-sort-late').onclick = () => handleSortClick(records, branchId, 'lateHours');
+        document.getElementById('company-ext-sort-debtor').onclick = () => handleSortClick(records, branchIds, 'debtorName');
+        document.getElementById('company-ext-sort-late').onclick = () => handleSortClick(records, branchIds, 'lateHours');
     }
 
     waitCore();
