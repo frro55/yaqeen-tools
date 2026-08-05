@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0805.0605
+// @version      2026.0805.0611
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -81,7 +81,7 @@
 
     const PERMISSIONS_API_URL = "https://api.yaqeen-vip.space/api/tools";
     const PERMISSIONS_CACHE_KEY = "yaqeen_tool_permissions";
-    const PERMISSIONS_CACHE_MS = 5 * 60 * 1000; // 5 دقائق
+    const PERMISSIONS_CACHE_MS = 60 * 1000; // دقيقة وحدة - سحب صلاحية موظف يتطبق بسرعة معقولة
 
     /** يبحث عن أول نص يشبه إيميل داخل نص عام */
     function findEmailInText(text) {
@@ -231,7 +231,7 @@
         });
     }
 
-    /** نتيجة مخزّنة بـsessionStorage صالحة لآخر 5 دقائق - نتفادى طلب API بكل تحميل صفحة */
+    /** نتيجة مخزّنة بـsessionStorage صالحة لآخر دقيقة - نتفادى طلب API بكل تحميل صفحة */
     function readCachedPermissions() {
         try {
             const raw = sessionStorage.getItem(PERMISSIONS_CACHE_KEY);
