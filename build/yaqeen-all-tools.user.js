@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0805.0718
+// @version      2026.0805.0722
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -3365,6 +3365,10 @@ ${text}
         'السبت': 6,
     };
 
+    // تعديلات يدوية على عدد سيارات الحوش لكل قروب - تُمسح مع كل تحديث حقيقي
+    // للبيانات (تحديث/تغيير المدة) عشان ما تطغى على الأرقام الفعلية الجديدة
+    var yardOverrides = {};
+
     // ==========================================================
     // تسجيل الأداة في نظام Yaqeen
     // ==========================================================
@@ -3386,6 +3390,18 @@ ${text}
     // ==========================================================
     // أدوات نصية
     // ==========================================================
+
+    function escapeHtml(text) {
+        return String(text == null ? '' : text).replace(/[&<>"']/g, function (ch) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+        });
+    }
+
+    /** رقم الحوش الفعلي المعروض لهذا القروب - يفضّل التعديل اليدوي إن وُجد، وإلا الرقم المسحوب تلقائياً */
+    function getEffectiveYardCount(group, rawYardCounts) {
+        if (Object.prototype.hasOwnProperty.call(yardOverrides, group)) return yardOverrides[group];
+        return rawYardCounts[group] || 0;
+    }
 
     function normalizeArabic(text) {
         return (text || '')
@@ -3701,18 +3717,18 @@ ${text}
                     totalVehicles++;
                 });
 
-                // عمود "سيارات الحوش" لا يجلب كامل أسطول الحوش، بل يقتصر فقط على
-                // القروبات الموجودة أصلاً في عمود "السيارات المتاحة" بالمطار -
-                // أي قروب موجود بالحوش لكن غير موجود بمطار مو له داعي نعرضه هنا
-                var yardCountsRaw = {};
+                // عمود "سيارات الحوش" يشمل الآن كل قروبات الحوش فعلياً - حتى لو
+                // القروب ما عنده أي سيارة بالمطار نفسه ولا أي حجز، عشان يظهر
+                // بالتقرير ويصير قابل للتعديل اليدوي
+                var yardVehicleCounts = {};
                 yardRows.forEach(function (r) {
                     if (!r.group || !r.available) return;
-                    yardCountsRaw[r.group] = (yardCountsRaw[r.group] || 0) + 1;
+                    yardVehicleCounts[r.group] = (yardVehicleCounts[r.group] || 0) + 1;
                 });
-                var yardVehicleCounts = {};
-                Object.keys(vehicleCounts).forEach(function (g) {
-                    yardVehicleCounts[g] = yardCountsRaw[g] || 0;
-                });
+
+                // تحديث حقيقي جديد للبيانات - نمسح أي تعديل يدوي سابق حتى ما يظل
+                // يطغى على الأرقام الفعلية الجديدة
+                yardOverrides = {};
 
                 showReport(hours, bookingCounts, vehicleCounts, yardVehicleCounts, totalBookings, totalVehicles);
             })
@@ -3800,22 +3816,27 @@ ${text}
     function showReport(hours, bookingCounts, vehicleCounts, yardVehicleCounts, totalBookings, totalVehicles) {
         document.getElementById('airport-hours-box')?.remove();
 
-        var groups = Object.keys(Object.assign({}, bookingCounts, vehicleCounts)).sort();
+        // اتحاد كل القروبات (حجوزات + سيارات مطار + سيارات حوش) عشان أي قروب
+        // له حوش فقط بدون سيارات مطار ولا حجوزات يظل يظهر بالتقرير
+        var groups = Object.keys(Object.assign({}, bookingCounts, vehicleCounts, yardVehicleCounts)).sort();
 
         var rowsHtml = groups.map(function (group) {
             var vehicles = vehicleCounts[group] || 0;
             var bookings = bookingCounts[group] || 0;
-            var yardVehicles = yardVehicleCounts[group] || 0;
+            var yardVehicles = getEffectiveYardCount(group, yardVehicleCounts);
             var diff = vehicles - bookings;
             var diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#b45309';
             return (
                 '<tr>' +
-                '<td style="padding:9px;border-top:1px solid #eee;text-align:center;font-weight:bold;">' + group + '</td>' +
+                '<td style="padding:9px;border-top:1px solid #eee;text-align:center;font-weight:bold;">' + escapeHtml(group) + '</td>' +
                 '<td style="border-top:1px solid #eee;text-align:center;">' + vehicles + '</td>' +
                 '<td style="border-top:1px solid #eee;text-align:center;">' + bookings + '</td>' +
                 '<td style="border-top:1px solid #eee;text-align:center;font-weight:bold;color:' + diffColor + '">' +
                 (diff > 0 ? '+' + diff : diff) + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;">' + yardVehicles + '</td>' +
+                '<td style="border-top:1px solid #eee;text-align:center;padding:4px;">' +
+                '<input type="number" min="0" class="yard-vehicle-input" data-group="' + escapeHtml(group) + '" value="' + yardVehicles + '" style="' +
+                'width:52px;padding:5px 3px;border:1px solid #ddd;border-radius:6px;text-align:center;font:inherit;font-weight:bold;">' +
+                '</td>' +
                 '</tr>'
             );
         }).join('');
@@ -3857,6 +3878,16 @@ ${text}
 
         document.body.insertAdjacentHTML('beforeend', html);
 
+        Array.prototype.slice.call(document.querySelectorAll('.yard-vehicle-input')).forEach(function (input) {
+            input.addEventListener('click', function (e) { e.stopPropagation(); });
+            input.addEventListener('change', function () {
+                var value = parseInt(input.value, 10);
+                if (!Number.isFinite(value) || value < 0) value = 0;
+                input.value = value;
+                yardOverrides[input.dataset.group] = value;
+            });
+        });
+
         document.getElementById('airport-hours-close').onclick = function () {
             document.getElementById('airport-hours-box')?.remove();
         };
@@ -3884,12 +3915,12 @@ ${text}
         var rowsHtml = groups.map(function (group) {
             var vehicles = vehicleCounts[group] || 0;
             var bookings = bookingCounts[group] || 0;
-            var yardVehicles = yardVehicleCounts[group] || 0;
+            var yardVehicles = getEffectiveYardCount(group, yardVehicleCounts);
             var diff = vehicles - bookings;
             var diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#b45309';
             return (
                 '<tr>' +
-                '<td>' + group + '</td>' +
+                '<td>' + escapeHtml(group) + '</td>' +
                 '<td>' + vehicles + '</td>' +
                 '<td>' + bookings + '</td>' +
                 '<td style="color:' + diffColor + ';font-weight:bold;">' + (diff > 0 ? '+' + diff : diff) + '</td>' +
@@ -3950,12 +3981,12 @@ ${text}
         var rowsHtml = groups.map(function (group) {
             var vehicles = vehicleCounts[group] || 0;
             var bookings = bookingCounts[group] || 0;
-            var yardVehicles = yardVehicleCounts[group] || 0;
+            var yardVehicles = getEffectiveYardCount(group, yardVehicleCounts);
             var diff = vehicles - bookings;
             var diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#b45309';
             return (
                 '<tr>' +
-                '<td>' + group + '</td>' +
+                '<td>' + escapeHtml(group) + '</td>' +
                 '<td>' + vehicles + '</td>' +
                 '<td>' + bookings + '</td>' +
                 '<td style="color:' + diffColor + ';font-weight:bold;">' + (diff > 0 ? '+' + diff : diff) + '</td>' +
