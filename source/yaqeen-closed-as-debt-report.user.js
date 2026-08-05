@@ -94,6 +94,21 @@
         });
     }
 
+    /**
+     * يجيب مستند الـiframe الحالي طازة - لا نخزّن أي مرجع document بمتغيّر
+     * طويل العمر عبر عدة عمليات تنقّل، لأنه لو صار تنقّل حقيقي (لا SPA) بأي
+     * لحظة، المستند القديم اللي كنا ماسكينه يصير "ميت" و.location فيه يرجع
+     * null، وأي قراءة مباشرة لـ.location.href عليه تكسر بخطأ Cannot read
+     * properties of null
+     */
+    function getDoc(frame) {
+        try {
+            return frame.contentDocument || (frame.contentWindow && frame.contentWindow.document) || null;
+        } catch (err) {
+            return null;
+        }
+    }
+
     /** يحاكي كليك حقيقي (pointerdown/up) لأزرار/صفوف React اللي ما تستجيب لـ.click() العادي دايماً */
     function dispatchFullClick(el) {
         try {
@@ -229,18 +244,21 @@
         };
     }
 
-    function lastRowSignature(doc) {
+    /** يقرأ توقيع آخر صف بالجدول - يجيب المستند طازة من الـframe نفسه كل مرة */
+    function lastRowSignature(frame) {
+        const doc = getDoc(frame);
+        if (!doc) return null;
         const rows = Array.from(doc.querySelectorAll('table tbody tr'));
         if (!rows.length) return null;
         const data = readListRow(rows[rows.length - 1]);
         return data ? data.__signature : null;
     }
 
-    async function waitForListRefresh(doc, beforeSig, timeoutMs) {
+    async function waitForListRefresh(frame, beforeSig, timeoutMs) {
         timeoutMs = timeoutMs || 6000;
         const start = Date.now();
         while (true) {
-            const currentSig = lastRowSignature(doc);
+            const currentSig = lastRowSignature(frame);
             if (currentSig !== beforeSig || Date.now() - start > timeoutMs) return;
             await new Promise(r => setTimeout(r, 250));
         }
@@ -264,18 +282,21 @@
      * بعدها عبر history.back() - بما إنه تنقّل SPA بدون أي تحميل صفحة
      * حقيقي، نفس document يبقى صالح طول الوقت.
      */
-    async function visitRowDetail(frame, doc, rowEl) {
-        const beforeHref = doc.location.href;
+    async function visitRowDetail(frame, rowEl) {
+        const startDoc = getDoc(frame);
+        if (!startDoc || !startDoc.location) return null;
+        const beforeHref = startDoc.location.href;
+
         dispatchFullClick(rowEl);
 
         const detailDoc = await waitFor(frame, d => {
-            if (d.location.href === beforeHref) return null;
+            if (!d || !d.location || d.location.href === beforeHref) return null;
             return d.querySelector('[data-testid="remaining-balance-value"]') ? d : null;
         }, 20000);
 
         if (!detailDoc) {
             try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
-            await waitFor(frame, d => (d.location.href === beforeHref && d.querySelectorAll('table tbody tr').length > 0) ? d : null, 15000);
+            await waitFor(frame, d => (d && d.location && d.location.href === beforeHref && d.querySelectorAll('table tbody tr').length > 0) ? d : null, 15000);
             return null;
         }
 
@@ -308,7 +329,7 @@
         const record = { idNumber, phone, remaining, driverName };
 
         try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
-        await waitFor(frame, d => (d.location.href === beforeHref && d.querySelectorAll('table tbody tr').length > 0) ? d : null, 15000);
+        await waitFor(frame, d => (d && d.location && d.location.href === beforeHref && d.querySelectorAll('table tbody tr').length > 0) ? d : null, 15000);
 
         return record;
     }
@@ -318,7 +339,7 @@
      * كم عقد فعلاً مؤهّل (بعد استبعاد اللي تعدّت الشهر) - هذا يعطينا عدد
      * إجمالي نعرضه أثناء مرحلة الفحص الفعلية بدل ما يبقى الرقم مجهول طول الوقت.
      */
-    async function collectQualifyingRows(doc) {
+    async function collectQualifyingRows(frame) {
         const seen = {};
         const qualifying = [];
         let excludedOldCount = 0;
@@ -327,6 +348,8 @@
 
         while (pageIndex < maxIterations) {
             pageIndex++;
+            const doc = getDoc(frame);
+            if (!doc) break;
             const rowEls = Array.from(doc.querySelectorAll('table tbody tr'));
 
             rowEls.forEach(rowEl => {
@@ -354,13 +377,13 @@
 
             const nextControl = findNextPageControl(doc);
             if (!nextControl || isControlDisabled(nextControl)) break;
-            const beforeSig = lastRowSignature(doc);
+            const beforeSig = lastRowSignature(frame);
             try {
                 nextControl.click();
             } catch (err) {
                 break;
             }
-            await waitForListRefresh(doc, beforeSig);
+            await waitForListRefresh(frame, beforeSig);
         }
 
         return { qualifying, excludedOldCount };
@@ -389,7 +412,7 @@
                 'ملاحظة: لن يتم عرض أي عقد تعدّت مدة تسليمه شهر كامل (30 يوم) من وقت التسليم.' +
                 '<br><br>جارٍ حصر العقود المؤهّلة عبر كل الصفحات...'
             );
-            const { qualifying, excludedOldCount } = await collectQualifyingRows(doc);
+            const { qualifying, excludedOldCount } = await collectQualifyingRows(frame);
             const totalQualifying = Math.min(qualifying.length, MAX_VISITS);
 
             // نرجّع القائمة لأول صفحة من جديد - المرحلة السابقة تنقّلت بين
@@ -414,16 +437,19 @@
             while (pageIndex < maxIterations && visitedCount < totalQualifying) {
                 pageIndex++;
 
-                // نعيد استعلام صفوف الصفحة الحالية طازة قبل كل ضغطة، بدل ما
-                // نعتمد على مصفوفة عناصر ثابتة نلقطها مرة وحدة أول الصفحة -
-                // بعض صفحات يقين تعيد جلب/رسم الجدول بالكامل لما نرجع
-                // للقائمة من تفاصيل عقد سابق، فتنفصل عناصر <tr> القديمة عن
-                // الشجرة الحية وتصير أي ضغطة عليها بلا أي أثر (نتيجتها فشل
-                // صامت لكل عقد بعد أول عقد ناجح بالضبط)
+                // نعيد استعلام مستند الـframe وصفوف الصفحة طازة قبل كل ضغطة،
+                // بدل ما نعتمد على مرجع document/مصفوفة عناصر ثابتة نلقطها
+                // مرة وحدة - بعض صفحات يقين تعيد جلب/رسم الجدول بالكامل لما
+                // نرجع للقائمة من تفاصيل عقد سابق، فتنفصل العناصر (وأحياناً
+                // حتى المستند نفسه) القديمة عن الشجرة الحية، وتصير أي قراءة
+                // أو ضغطة عليها بلا أثر أو تكسر بخطأ (نتيجتها فشل صامت أو
+                // استثناء لكل عقد بعد أول عقد ناجح بالضبط)
                 let progressedOnThisPage = true;
                 while (progressedOnThisPage && visitedCount < totalQualifying) {
                     progressedOnThisPage = false;
-                    const currentRowEls = Array.from(doc.querySelectorAll('table tbody tr'));
+                    const currentDoc = getDoc(frame);
+                    if (!currentDoc) break;
+                    const currentRowEls = Array.from(currentDoc.querySelectorAll('table tbody tr'));
 
                     for (let i = 0; i < currentRowEls.length; i++) {
                         const rowEl = currentRowEls[i];
@@ -435,7 +461,7 @@
                         visitedCount++;
                         showProgress(`جارٍ فحص العقود المؤهّلة... (${visitedCount} من ${totalQualifying})`);
 
-                        const detail = await visitRowDetail(frame, doc, rowEl);
+                        const detail = await visitRowDetail(frame, rowEl);
                         if (detail) {
                             const elapsedTotalHours = elapsedBySignature[rowData.__signature] || 0;
                             results.push({
@@ -457,15 +483,17 @@
 
                 if (visitedCount >= totalQualifying) break;
 
-                const nextControl = findNextPageControl(doc);
+                const pageDoc = getDoc(frame);
+                if (!pageDoc) break;
+                const nextControl = findNextPageControl(pageDoc);
                 if (!nextControl || isControlDisabled(nextControl)) break;
-                const beforeSig = lastRowSignature(doc);
+                const beforeSig = lastRowSignature(frame);
                 try {
                     nextControl.click();
                 } catch (err) {
                     break;
                 }
-                await waitForListRefresh(doc, beforeSig);
+                await waitForListRefresh(frame, beforeSig);
             }
 
             try { frame.remove(); } catch (err) { /* تجاهل */ }
