@@ -37,8 +37,10 @@
     // عدد الإطارات المتوازية اللي تفحص العقود بنفس الوقت - كل إطار مستقل
     // (نسخته الخاصة من القائمة + توقيته الخاص بالتنقل)، ويتشارك الكل نفس
     // قائمة "visited" عشان ما يزور عقد نفسه أكثر من مرة (نفس أسلوب أداة
-    // "عقود الشركات غير الممددة")
-    const CHECK_CONCURRENCY = 4;
+    // "عقود الشركات غير الممددة"). هذي الأداة تفتح صفحة قائمة كاملة (تطبيق
+    // React ثقيل) بكل زيارة رجوع، فرقم أعلى من 2 يضغط على المتصفح ويصير
+    // أبطأ بدل أسرع
+    const CHECK_CONCURRENCY = 2;
 
     function waitCore() {
         if (!HOST_WINDOW.YAQEEN_TOOLS) {
@@ -453,11 +455,22 @@
              * إنهم يشتغلون بنفس الوقت (نفس أسلوب أداة "عقود الشركات غير
              * الممددة").
              */
-            async function worker() {
-                const workerFrame = openHiddenFrame(LIST_URL);
-                const workerDoc = await waitFor(workerFrame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null), 20000);
-                if (!workerDoc) {
-                    try { workerFrame.remove(); } catch (err) { /* تجاهل */ }
+            async function worker(workerIndex) {
+                // نفتح إطارات العمّال بفارق بسيط بينها بدل كلها بنفس اللحظة
+                // - فتح 4 نسخ من تطبيق React ثقيل بنفس الثانية يضغط على
+                // المتصفح والشبكة ويصير أبطأ من فتحها بالتتابع بفارق بسيط
+                await new Promise(r => setTimeout(r, workerIndex * 700));
+
+                let workerFrame;
+                try {
+                    workerFrame = openHiddenFrame(LIST_URL);
+                    const workerDoc = await waitFor(workerFrame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null), 20000);
+                    if (!workerDoc) {
+                        try { workerFrame.remove(); } catch (err) { /* تجاهل */ }
+                        return;
+                    }
+                } catch (err) {
+                    try { workerFrame && workerFrame.remove(); } catch (err2) { /* تجاهل */ }
                     return;
                 }
 
@@ -465,6 +478,7 @@
                 const maxIterations = 80;
                 let iterations = 0;
 
+                try {
                 while (iterations < maxIterations && visitedCount < totalToVisit) {
                     iterations++;
 
@@ -540,12 +554,16 @@
                     await waitForListRefresh(workerFrame, beforeSig);
                     pageIndex++;
                 }
+                } catch (err) {
+                    // نتجاهل خطأ هذا العامل بس - باقي العمّال يكملون شغلهم
+                    // بدل ما يفشل الفحص كامل بسبب مشكلة بعامل واحد
+                }
 
                 try { workerFrame.remove(); } catch (err) { /* تجاهل */ }
             }
 
             const workerCount = Math.min(CHECK_CONCURRENCY, totalToVisit);
-            await Promise.all(Array.from({ length: workerCount }, () => worker()));
+            await Promise.all(Array.from({ length: workerCount }, (_, i) => worker(i)));
 
             showReport(results, visitedCount, excludedOldCount);
 
