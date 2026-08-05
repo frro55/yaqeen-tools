@@ -38,6 +38,16 @@ index.html                # صفحة التثبيت (زر واحد)
    pm2 restart whatsapp-api
    ```
    تأكد بعد النسخ إن رقم النسخة تطابق: `grep "@version" ../yaqeen-all-tools.user.js`
+5. لو عدّلت `admin/admin-users.html` أيضاً، انسخه لمكانه المنشور فعلياً
+   (`git pull` وحده ما يكفي - نفس درس يوزر بندل الأدوات):
+   ```
+   cp admin/admin-users.html ~/whatsapp-baileys/tools/adminusers.html
+   ```
+   ما يحتاج `pm2 restart` (ملف static، Express يقدّمه مباشرة). الصفحة
+   منشورة فعلياً على: `https://api.yaqeen-vip.space/tools/adminusers.html`
+   (لاحظ الاسم بدون شرطات، ومسار `/tools` لا `/admin` - `express.static`
+   لمسار `/admin` مضاف بـbot.js لكن مجلد `~/whatsapp-baileys/admin/`
+   نفسه غير موجود على هذا الـVPS، فلا تعتمد عليه).
 
 بعدها Tampermonkey (عندك وعند كل موظف مثبّت الأداة) يكتشف رقم الإصدار
 الجديد ويحدّث نفسه تلقائياً - بدون أي تدخل يدوي إضافي (قد يأخذ وقت لأن
