@@ -46,6 +46,7 @@
         "late-payments-branches",
         "company-extension",
         "company-extension-branches",
+        "closed-as-debt",
         "booking-report",
     ];
 

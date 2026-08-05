@@ -57,6 +57,7 @@ FILES=(
   yaqeen-late-payments-branches-report.user.js
   yaqeen-company-extension-report.user.js
   yaqeen-company-extension-branches-report.user.js
+  yaqeen-closed-as-debt-report.user.js
   yaqeen-booking-report.user.js
 )
 
