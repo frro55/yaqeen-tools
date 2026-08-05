@@ -277,10 +277,10 @@
     /**
      * يفتح صفحة تفاصيل عقد واحد عبر الضغط على صفّه بالجدول مباشرة - هذا
      * الجدول (بعكس جدول "العقود المتأخرة") ما فيه رابط <a href> إطلاقاً،
-     * التنقّل يصير جافاسكربت داخلي (SPA) عند الضغط على الصف نفسه، والرقم
-     * الداخلي المستخدم بالرابط غير ظاهر بأي عمود بالجدول. نرجع للقائمة
-     * بعدها عبر history.back() - بما إنه تنقّل SPA بدون أي تحميل صفحة
-     * حقيقي، نفس document يبقى صالح طول الوقت.
+     * والرقم الداخلي المستخدم برابط التفاصيل غير ظاهر بأي عمود بالجدول.
+     * ما نرجع للقائمة من هنا (كان history.back() سابقاً، لكن اتضح إنه غير
+     * موثوق - راجع تعليق returnToListPage) - الاستدعاء المسؤول عن الرجوع
+     * للقائمة بعدها.
      */
     async function visitRowDetail(frame, rowEl) {
         const startDoc = getDoc(frame);
@@ -294,11 +294,7 @@
             return d.querySelector('[data-testid="remaining-balance-value"]') ? d : null;
         }, 20000);
 
-        if (!detailDoc) {
-            try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
-            await waitFor(frame, d => (d && d.location && d.location.href === beforeHref && d.querySelectorAll('table tbody tr').length > 0) ? d : null, 15000);
-            return null;
-        }
+        if (!detailDoc) return null;
 
         // نفس زر "توسيع بيانات العميل" المستخدم بأداة العقود المتأخرة (نفس أيقونة SVG)
         const expandBtn = Array.from(detailDoc.querySelectorAll('button'))
@@ -326,12 +322,37 @@
         const remaining = parseAmount(remainingText);
         const driverName = detailDoc.querySelector('[data-testid="driver-name"]')?.textContent.trim() || "";
 
-        const record = { idNumber, phone, remaining, driverName };
+        return { idNumber, phone, remaining, driverName };
+    }
 
-        try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
-        await waitFor(frame, d => (d && d.location && d.location.href === beforeHref && d.querySelectorAll('table tbody tr').length > 0) ? d : null, 15000);
-
-        return record;
+    /**
+     * يرجع لصفحة القائمة عبر تحميل رابطها مباشرة (frame.src) بدل
+     * history.back() ثم يعيد الوصول لنفس رقم الصفحة (pageIndex) بالضغط على
+     * "التالي" بالتكرار اللازم. history.back() كان غير موثوق هنا: لو ما
+     * كمّل الرجوع فعلياً خلال المهلة، كان الكود يفسّر عدم وجود صفحة تالية
+     * (لأنه أصلاً لسا واقف بصفحة التفاصيل) على إنه "خلصت كل الصفحات"
+     * فيوقف الفحص بالكامل بصمت بعد أول عقد ناجح بالضبط - وهذا كان السبب
+     * الحقيقي وراء ظهور عقد واحد بس، والبطء الشديد بسبب انتظار مهلة
+     * history.back() الفاشلة (15 ثانية) بكل عقد.
+     */
+    async function returnToListPage(frame, pageIndex) {
+        frame.src = LIST_URL;
+        let doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null), 20000);
+        if (!doc) return null;
+        for (let i = 1; i < pageIndex; i++) {
+            const nextControl = findNextPageControl(doc);
+            if (!nextControl || isControlDisabled(nextControl)) break;
+            const beforeSig = lastRowSignature(frame);
+            try {
+                nextControl.click();
+            } catch (err) {
+                break;
+            }
+            await waitForListRefresh(frame, beforeSig);
+            doc = getDoc(frame);
+            if (!doc) return null;
+        }
+        return doc;
     }
 
     /**
