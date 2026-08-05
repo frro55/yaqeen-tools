@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0805.1208
+// @version      2026.0805.1211
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7902,14 +7902,13 @@ ${text}
         const detailDoc = await waitFor(frame, d => (d.querySelector('[data-testid="remaining-balance-value"]') ? d : null), 20000);
         if (!detailDoc) return { checked: false, record: null, excludedOld: false };
 
-        // تحقق أمان: نتأكد إن اسم السائق بالصفحة اللي فتحناها يطابق اللي
-        // كان بالقائمة - عشان نضمن إننا فعلاً وصلنا لصفحة العقد الصحيح ومو
-        // عقد ثاني بالغلط (رقم الحجز بالمسار بالرابط مو حقيقي لهذا العقد،
-        // فقط agreementNo هو المعتمد فعلياً)
+        // كنا نتحقق هنا إن اسم السائق بالصفحة يطابق اللي بالقائمة كطبقة أمان
+        // ضد فتح عقد غلط، لكن تبيّن إنه دايماً ما يتطابق (على الأغلب صيغة
+        // "driver-name" بصفحة التفاصيل تختلف شكلياً عن عمود "السائق"
+        // بالقائمة، مسافات أو ترتيب أو حروف زايدة) فكان يستبعد كل النتائج
+        // بالخطأ. شلناه - agreementNo نفسه (اللي بنينا الرابط بناءً عليه)
+        // هو التحقق الحقيقي إننا بالعقد الصحيح
         const loadedDriverName = detailDoc.querySelector('[data-testid="driver-name"]')?.textContent.trim() || "";
-        if (candidate.driverName && loadedDriverName && loadedDriverName !== candidate.driverName) {
-            return { checked: true, record: null, excludedOld: false };
-        }
 
         // نفس زر "توسيع بيانات العميل" المستخدم بأداة العقود المتأخرة (نفس أيقونة SVG)
         const expandBtn = Array.from(detailDoc.querySelectorAll('button'))
