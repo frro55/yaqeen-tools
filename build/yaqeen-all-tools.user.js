@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0805.1149
+// @version      2026.0805.1154
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7596,6 +7596,11 @@ ${text}
     const EXCLUDE_AFTER_DAYS = 30;
     // سقف أمان لعدد صفحات التفاصيل اللي نفتحها فعلياً بجلسة واحدة
     const MAX_VISITS = 300;
+    // عدد الإطارات المتوازية اللي تفحص العقود بنفس الوقت - كل إطار مستقل
+    // (نسخته الخاصة من القائمة + توقيته الخاص بالتنقل)، ويتشارك الكل نفس
+    // قائمة "visited" عشان ما يزور عقد نفسه أكثر من مرة (نفس أسلوب أداة
+    // "عقود الشركات غير الممددة")
+    const CHECK_CONCURRENCY = 4;
 
     function waitCore() {
         if (!HOST_WINDOW.YAQEEN_TOOLS) {
@@ -7990,13 +7995,9 @@ ${text}
             );
             const totalRows = await countAllRows(frame);
             const totalToVisit = Math.min(totalRows, MAX_VISITS);
+            try { frame.remove(); } catch (err) { /* تجاهل */ }
 
-            // نرجّع القائمة لأول صفحة من جديد - المرحلة السابقة تنقّلت بين
-            // الصفحات كلها فمرّت آخر صفحة، ولازم نبدأ الفحص الفعلي من البداية
-            frame.src = LIST_URL;
-            doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null));
-            if (!doc) {
-                try { frame.remove(); } catch (err) { /* تجاهل */ }
+            if (totalToVisit === 0) {
                 showReport([], 0, 0);
                 return;
             }
@@ -8004,84 +8005,109 @@ ${text}
             const visited = {};
             let visitedCount = 0;
             let excludedOldCount = 0;
-            let pageIndex = 0;
-            const maxIterations = 80;
 
-            while (pageIndex < maxIterations && visitedCount < totalToVisit) {
-                pageIndex++;
+            /**
+             * عامل مستقل بإطار خاص فيه (بدل إطار واحد يزور كل عقد بالتتابع) -
+             * كل عامل يحمّل نسخته الخاصة من القائمة، ويتنقّل بصفحاتها برقم
+             * صفحة خاص فيه، ويتشارك مع بقية العمّال نفس قائمة "visited" عشان
+             * ما يزوروا نفس العقد مرتين. الادّعاء (visited[...] = true) يصير
+             * بشكل متزامن (sync) قبل أي await، فما فيه تعارض بين العمّال رغم
+             * إنهم يشتغلون بنفس الوقت (نفس أسلوب أداة "عقود الشركات غير
+             * الممددة").
+             */
+            async function worker() {
+                const workerFrame = openHiddenFrame(LIST_URL);
+                const workerDoc = await waitFor(workerFrame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null), 20000);
+                if (!workerDoc) {
+                    try { workerFrame.remove(); } catch (err) { /* تجاهل */ }
+                    return;
+                }
 
-                // نعيد استعلام مستند الـframe وصفوف الصفحة طازة قبل كل ضغطة،
-                // بدل ما نعتمد على مرجع document/مصفوفة عناصر ثابتة نلقطها
-                // مرة وحدة - بعض صفحات يقين تعيد جلب/رسم الجدول بالكامل لما
-                // نرجع للقائمة من تفاصيل عقد سابق، فتنفصل العناصر (وأحياناً
-                // حتى المستند نفسه) القديمة عن الشجرة الحية، وتصير أي قراءة
-                // أو ضغطة عليها بلا أثر أو تكسر بخطأ (نتيجتها فشل صامت أو
-                // استثناء لكل عقد بعد أول عقد ناجح بالضبط)
-                let progressedOnThisPage = true;
-                while (progressedOnThisPage && visitedCount < totalToVisit) {
-                    progressedOnThisPage = false;
-                    const currentDoc = getDoc(frame);
-                    if (!currentDoc) break;
-                    const currentRowEls = Array.from(currentDoc.querySelectorAll('table tbody tr'));
+                let pageIndex = 1;
+                const maxIterations = 80;
+                let iterations = 0;
 
-                    for (let i = 0; i < currentRowEls.length; i++) {
-                        const rowEl = currentRowEls[i];
-                        const rowData = readListRow(rowEl);
-                        if (!rowData || visited[rowData.__signature]) continue;
-                        visited[rowData.__signature] = true;
-                        progressedOnThisPage = true;
+                while (iterations < maxIterations && visitedCount < totalToVisit) {
+                    iterations++;
 
-                        visitedCount++;
-                        showProgress(`جارٍ فحص العقود... (${visitedCount} من ${totalToVisit})`);
+                    // نعيد استعلام مستند الـframe وصفوف الصفحة طازة قبل كل
+                    // ضغطة، بدل ما نعتمد على مرجع document/مصفوفة عناصر
+                    // ثابتة نلقطها مرة وحدة - بعض صفحات يقين تعيد جلب/رسم
+                    // الجدول بالكامل لما نرجع للقائمة من تفاصيل عقد سابق،
+                    // فتنفصل العناصر (وأحياناً حتى المستند نفسه) القديمة عن
+                    // الشجرة الحية
+                    let progressedOnThisPage = true;
+                    while (progressedOnThisPage && visitedCount < totalToVisit) {
+                        progressedOnThisPage = false;
+                        const currentDoc = getDoc(workerFrame);
+                        if (!currentDoc) break;
+                        const currentRowEls = Array.from(currentDoc.querySelectorAll('table tbody tr'));
 
-                        const detail = await visitRowDetail(frame, rowEl);
-                        if (detail) {
-                            const elapsedDays = detail.elapsedTotalHours !== null
-                                ? Math.floor(detail.elapsedTotalHours / 24)
-                                : null;
-                            if (elapsedDays !== null && elapsedDays > EXCLUDE_AFTER_DAYS) {
-                                excludedOldCount++;
-                            } else {
-                                results.push({
-                                    agreementNo: rowData.agreementNo,
-                                    name: detail.driverName || rowData.driverName,
-                                    phone: detail.phone,
-                                    idNumber: detail.idNumber,
-                                    elapsedText: detail.elapsedTotalHours !== null
-                                        ? formatElapsed(detail.elapsedTotalHours)
-                                        : "-",
-                                    remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
-                                    remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
-                                });
+                        for (let i = 0; i < currentRowEls.length; i++) {
+                            const rowEl = currentRowEls[i];
+                            const rowData = readListRow(rowEl);
+                            if (!rowData || visited[rowData.__signature]) continue;
+                            visited[rowData.__signature] = true;
+                            progressedOnThisPage = true;
+
+                            visitedCount++;
+                            showProgress(`جارٍ فحص العقود... (${visitedCount} من ${totalToVisit})`);
+
+                            const detail = await visitRowDetail(workerFrame, rowEl);
+                            if (detail) {
+                                const elapsedDays = detail.elapsedTotalHours !== null
+                                    ? Math.floor(detail.elapsedTotalHours / 24)
+                                    : null;
+                                if (elapsedDays !== null && elapsedDays > EXCLUDE_AFTER_DAYS) {
+                                    excludedOldCount++;
+                                } else {
+                                    results.push({
+                                        agreementNo: rowData.agreementNo,
+                                        name: detail.driverName || rowData.driverName,
+                                        phone: detail.phone,
+                                        idNumber: detail.idNumber,
+                                        elapsedText: detail.elapsedTotalHours !== null
+                                            ? formatElapsed(detail.elapsedTotalHours)
+                                            : "-",
+                                        remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
+                                        remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
+                                    });
+                                }
                             }
+
+                            // دائماً نرجع لنفس صفحة القائمة (حسب رقم صفحة هذا
+                            // العامل تحديداً) عبر تحميل رابطها مباشرة
+                            await returnToListPage(workerFrame, pageIndex);
+
+                            // نخرج ونعيد استعلام الصفوف من جديد بدل ما نكمل
+                            // على نفس المصفوفة (احتمال انفصلت عن الـDOM الحي)
+                            break;
                         }
+                    }
 
-                        // دائماً نرجع لنفس صفحة القائمة عبر تحميل رابطها مباشرة
-                        // (بدل الاعتماد على history.back() غير الموثوق هنا)
-                        await returnToListPage(frame, pageIndex);
+                    if (visitedCount >= totalToVisit) break;
 
-                        // نخرج ونعيد استعلام الصفوف من جديد بدل ما نكمل على
-                        // نفس المصفوفة (احتمال انفصلت عن الـDOM الحي)
+                    // ما بقي شي غير مزار بهذي الصفحة (إما خلصت أو عمّال ثانين
+                    // شايلينها) - ننتقل لصفحة هذا العامل التالية
+                    const pageDoc = getDoc(workerFrame);
+                    if (!pageDoc) break;
+                    const nextControl = findNextPageControl(pageDoc);
+                    if (!nextControl || isControlDisabled(nextControl)) break;
+                    const beforeSig = lastRowSignature(workerFrame);
+                    try {
+                        nextControl.click();
+                    } catch (err) {
                         break;
                     }
+                    await waitForListRefresh(workerFrame, beforeSig);
+                    pageIndex++;
                 }
 
-                if (visitedCount >= totalToVisit) break;
-
-                const pageDoc = getDoc(frame);
-                if (!pageDoc) break;
-                const nextControl = findNextPageControl(pageDoc);
-                if (!nextControl || isControlDisabled(nextControl)) break;
-                const beforeSig = lastRowSignature(frame);
-                try {
-                    nextControl.click();
-                } catch (err) {
-                    break;
-                }
-                await waitForListRefresh(frame, beforeSig);
+                try { workerFrame.remove(); } catch (err) { /* تجاهل */ }
             }
 
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
+            const workerCount = Math.min(CHECK_CONCURRENCY, totalToVisit);
+            await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
             showReport(results, visitedCount, excludedOldCount);
 
