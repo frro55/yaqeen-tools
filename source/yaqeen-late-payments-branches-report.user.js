@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Yaqeen Tool - العقود المتأخرة في السداد (أفراد)
+// @name         Yaqeen Tool - العقود المتأخرة في السداد (أفراد - فروع)
 // @namespace    https://yaqeen.lumirental.com/
 // @version      1.0
-// @description  يفحص عقود الأفراد المتأخرة في السداد (LATE_RETURN) بفرع المطار (يستبعد عقود الشركات)، ويطلع فقط اللي متأخرين بمبلغ معيّن أو أكثر مع بياناتهم
+// @description  نفس أداة "العقود المتأخرة في السداد (أفراد)" بس تختار الفرع المطلوب فحصه من قائمة (فرع واحد بكل مرة، مو كل الفروع مع بعض)
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
 // @grant        unsafeWindow
@@ -29,7 +29,29 @@
         target: '120363021290047142@g.us',
     };
 
-    const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings?status=LATE_RETURN&pageSize=500';
+    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع واحد بكل مرة يشغّل
+    // فيها الأداة (بعكس أداة "العقود المتأخرة في السداد (أفراد)" الأصلية
+    // اللي تفحص فرع مطار جدة فقط، وبعكس أي نسخة تفحص كل الفروع مع بعض)
+    const BRANCHES = [
+        { id: 29, name: 'مطار جدة' },
+        { id: 11, name: 'طريق المدينة' },
+        { id: 12, name: 'شارع التحلية' },
+        { id: 30, name: 'مطار الطائف' },
+        { id: 10, name: 'ينبع - الهيئة الملكية' },
+        { id: 25, name: 'مطار الأمير عبدالمحسن - ينبع' },
+        { id: 36, name: 'المدينة المنورة' },
+        { id: 59, name: 'مطار الأمير محمد بن عبدالعزيز الدولي - المدينة' },
+    ];
+
+    function lateReturnUrlForBranch(branchId) {
+        return 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings?status=LATE_RETURN&pageSize=500';
+    }
+
+    function branchNameById(branchId) {
+        const branch = BRANCHES.find(b => b.id === branchId);
+        return branch ? branch.name : ('فرع #' + branchId);
+    }
+
     const MAX_AGREEMENTS = 300;
     // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع
     // تماماً بنفس منطق الفحص الأصلي، بس موزّعين على عدة إطارات بدل واحد
@@ -42,8 +64,8 @@
             return;
         }
         HOST_WINDOW.YAQEEN_TOOLS.add({
-            id: "late-payments",
-            name: "💰 العقود المتأخرة في السداد (أفراد)",
+            id: "late-payments-branches",
+            name: "💰 العقود المتأخرة (اختيار الفرع)",
             run() {
                 showThresholdPrompt();
             }
@@ -300,6 +322,22 @@
         });
     }
 
+    /** يجمع صفوف العقود المتأخرة للفرع المختار فقط */
+    async function collectAllRowsForBranch(branchId) {
+        const branchName = branchNameById(branchId);
+        showProgress('جارٍ تحميل قائمة العقود المتأخرة - ' + branchName + '...');
+        const frame = openHiddenFrame(lateReturnUrlForBranch(branchId));
+        try {
+            const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
+            if (!doc1) return [];
+            const rows = await collectAllPages(frame, doc1);
+            rows.forEach(r => { r.branchName = branchName; });
+            return rows;
+        } finally {
+            try { frame.remove(); } catch (err) { /* تجاهل */ }
+        }
+    }
+
     // ==========================================================
     // التنفيذ الرئيسي
     // ==========================================================
@@ -345,6 +383,7 @@
             checked: true,
             record: {
                 agreementNo: c.agreementNo,
+                branchName: c.branchName,
                 name: c.name,
                 phone,
                 idNumber,
@@ -355,27 +394,18 @@
         };
     }
 
-    async function runReport(threshold) {
-
-        const frame = openHiddenFrame(LATE_RETURN_URL);
-
-        showProgress("جارٍ تحميل قائمة العقود المتأخرة...");
+    async function runReport(branchId, threshold) {
 
         try {
 
-            const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
-            if (!doc1) throw new Error("لم يتم العثور على أي عقود متأخرة");
-
-            showProgress("جارٍ جمع كل صفحات القائمة...");
-            const allRows = await collectAllPages(frame, doc1);
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
+            const allRows = await collectAllRowsForBranch(branchId);
 
             // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً من زر
             // "إنهاء الاتفاقية" ونشوف "الرصيد المتبقي" الحقيقي بصفحة التفاصيل
             const candidates = allRows.slice(0, MAX_AGREEMENTS);
 
             if (candidates.length === 0) {
-                showReport([], threshold, 0, 0);
+                showReport([], branchId, threshold, 0, 0);
                 return;
             }
 
@@ -414,10 +444,9 @@
 
             const results = recordsByIndex.filter(Boolean);
 
-            showReport(results, threshold, checkedCount, candidates.length);
+            showReport(results, branchId, threshold, checkedCount, candidates.length);
 
         } catch (err) {
-            try { frame.remove(); } catch (err2) { /* تجاهل */ }
             showMessage("تعذّر إتمام الفحص: " + err.message);
         }
     }
@@ -436,11 +465,19 @@
         );
     }
 
-    function showThresholdPrompt() {
+    function showThresholdPrompt(defaultBranchId) {
         document.getElementById('late-payments-box')?.remove();
+
+        const branchOptionsHtml = BRANCHES.map(b => (
+            '<option value="' + b.id + '"' + (b.id === defaultBranchId ? ' selected' : '') + '>' + b.name + '</option>'
+        )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
             '<h3 style="margin-top:0">💰 العقود المتأخرة في السداد</h3>' +
+            '<div style="margin:15px 0;text-align:right">الفرع:</div>' +
+            '<select id="late-payments-branch" style="' +
+            'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
+            'text-align:right;box-sizing:border-box;">' + branchOptionsHtml + '</select>' +
             '<div style="margin:15px 0;text-align:right">بيفلتر أول شي من نفس القائمة (المسدَّدة وتحت الحد ما تُفتح)، وبيفتح بس العقود المرشّحة للتأكد من التفاصيل.<br>أقل مبلغ تأخير تبغى تشوفه (ريال):</div>' +
             '<input id="late-payments-input" type="number" min="1" step="1" value="500" style="' +
             'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
@@ -454,6 +491,7 @@
             320
         ));
 
+        const branchSelect = document.getElementById('late-payments-branch');
         const input = document.getElementById('late-payments-input');
         input.focus();
         input.select();
@@ -464,7 +502,7 @@
                 input.style.border = '1px solid #dc2626';
                 return;
             }
-            runReport(threshold);
+            runReport(parseInt(branchSelect.value, 10), threshold);
         }
 
         document.getElementById('late-payments-submit').onclick = submit;
@@ -493,15 +531,15 @@
     }
 
     function tableToTsv(records) {
-        const header = ['رقم العقد', 'الاسم', 'الجوال', 'رقم الهوية', 'الإجمالي', 'المدفوع', 'المتبقي'];
+        const header = ['رقم العقد', 'الفرع', 'الاسم', 'الجوال', 'رقم الهوية', 'الإجمالي', 'المدفوع', 'المتبقي'];
         const lines = [header.join('\t')];
         records.forEach(r => {
-            lines.push([r.agreementNo, r.name, r.phone, r.idNumber, r.total, r.paid, r.remaining].join('\t'));
+            lines.push([r.agreementNo, r.branchName, r.name, r.phone, r.idNumber, r.total, r.paid, r.remaining].join('\t'));
         });
         return lines.join('\n');
     }
 
-    function printReport(records, threshold) {
+    function printReport(records, branchName, threshold) {
         const printWindow = window.open('', '_blank', 'width=1000,height=700');
         if (!printWindow) {
             showMessage('يرجى السماح بالنوافذ المنبثقة (Popups) لهذا الموقع للطباعة.');
@@ -527,7 +565,7 @@
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
-            '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
+            '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر) - ' + branchName + '</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
@@ -556,7 +594,7 @@
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
 
-    function buildReportImageInnerHtml(records, threshold) {
+    function buildReportImageInnerHtml(records, branchName, threshold) {
         const rowsHtml = records.map(r => (
             '<tr><td>' + r.agreementNo + '</td><td>' + r.name + '</td><td dir="ltr">' + r.phone + '</td>' +
             '<td>' + r.idNumber + '</td><td>' + r.total + '</td><td>' + r.paid + '</td>' +
@@ -567,7 +605,7 @@
 
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
-            '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
+            '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر) - ' + branchName + '</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
@@ -575,14 +613,14 @@
     }
 
     /** يرسم الجدول كصورة PNG/JPEG عبر SVG+foreignObject. يعيد Promise بصيغة data URL */
-    function buildReportImageDataUrl(records, threshold) {
+    function buildReportImageDataUrl(records, branchName, threshold) {
         return new Promise((resolve, reject) => {
             let settled = false;
             function settleResolve(value) { if (settled) return; settled = true; resolve(value); }
             function settleReject(err) { if (settled) return; settled = true; reject(err); }
 
             try {
-                const innerHtml = buildReportImageInnerHtml(records, threshold);
+                const innerHtml = buildReportImageInnerHtml(records, branchName, threshold);
                 const wrapperStyle = 'font-family:Tahoma,Arial,sans-serif;background:#fff;padding:20px;display:inline-block;';
 
                 const measureEl = document.createElement('div');
@@ -694,13 +732,13 @@
     }
 
     /** إرسال كصورة عبر بوت واتساب - نفس صيغة باقي الأدوات */
-    function handleSendWhatsApp(records, threshold) {
+    function handleSendWhatsApp(records, branchName, threshold) {
         if (typeof GM_xmlhttpRequest === 'undefined') {
             showMessage('صلاحية GM_xmlhttpRequest غير مفعّلة - تأكد من تحديث السكربت في Tampermonkey');
             return;
         }
         showProgress('جارٍ تجهيز وإرسال صورة التقرير...');
-        buildReportImageDataUrl(records, threshold)
+        buildReportImageDataUrl(records, branchName, threshold)
             .then(dataUrl => {
                 GM_xmlhttpRequest({
                     method: 'POST',
@@ -715,7 +753,7 @@
                         // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
                         // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
-                        caption: '💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر) - ' + new Date().toLocaleString('ar-SA'),
+                        caption: '💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر) - ' + branchName + ' - ' + new Date().toLocaleString('ar-SA'),
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
@@ -759,14 +797,15 @@
         return sorted;
     }
 
-    function handleSortClick(records, threshold, checkedCount, totalCandidates, key) {
+    function handleSortClick(records, branchId, threshold, checkedCount, totalCandidates, key) {
         if (sortState.key === key) sortState.dir *= -1;
         else { sortState.key = key; sortState.dir = 1; }
-        showReport(sortRecords(records, key), threshold, checkedCount, totalCandidates);
+        showReport(sortRecords(records, key), branchId, threshold, checkedCount, totalCandidates);
     }
 
-    function showReport(records, threshold, checkedCount, totalCandidates) {
+    function showReport(records, branchId, threshold, checkedCount, totalCandidates) {
         document.getElementById('late-payments-box')?.remove();
+        const branchName = branchNameById(branchId);
 
         const rowsHtml = records.map(r => (
             '<tr>' +
@@ -791,7 +830,7 @@
             '<div style="width:min(960px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
             '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
+            '<div style="font-size:16px;font-weight:bold;">العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر - ' + branchName + '</div>' +
             '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
@@ -813,6 +852,8 @@
             'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
             '<button id="late-payments-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
+            '<button id="late-payments-change-branch" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            'background:#eee;color:#333;cursor:pointer;">🏢 تغيير الفرع</button>' +
             '<button id="late-payments-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
             '<button id="late-payments-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
@@ -824,19 +865,22 @@
         document.getElementById('late-payments-close').onclick = () => {
             document.getElementById('late-payments-box')?.remove();
         };
+        document.getElementById('late-payments-change-branch').onclick = () => {
+            showThresholdPrompt(branchId);
+        };
         document.getElementById('late-payments-refresh').onclick = () => {
             sortState.key = null;
             sortState.dir = 1;
-            runReport(threshold);
+            runReport(branchId, threshold);
         };
         document.getElementById('late-payments-sort-remaining').onclick = () => {
-            handleSortClick(records, threshold, checkedCount, totalCandidates, 'remaining');
+            handleSortClick(records, branchId, threshold, checkedCount, totalCandidates, 'remaining');
         };
         document.getElementById('late-payments-print').onclick = () => {
-            printReport(records, threshold);
+            printReport(records, branchName, threshold);
         };
         document.getElementById('late-payments-whatsapp').onclick = () => {
-            handleSendWhatsApp(records, threshold);
+            handleSendWhatsApp(records, branchName, threshold);
         };
         document.getElementById('late-payments-copy').onclick = async () => {
             try {

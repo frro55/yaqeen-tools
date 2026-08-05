@@ -54,7 +54,9 @@ FILES=(
   yaqeen-payment-verify.user.js
   yaqeen-airport-hours-report.user.js
   yaqeen-late-payments-report.user.js
+  yaqeen-late-payments-branches-report.user.js
   yaqeen-company-extension-report.user.js
+  yaqeen-company-extension-branches-report.user.js
   yaqeen-booking-report.user.js
 )
 

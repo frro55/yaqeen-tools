@@ -43,7 +43,9 @@
         "payment-verify",
         "airport-report",
         "late-payments",
+        "late-payments-branches",
         "company-extension",
+        "company-extension-branches",
         "booking-report",
     ];
 

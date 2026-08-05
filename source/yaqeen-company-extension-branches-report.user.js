@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Yaqeen Tool - العقود المتأخرة في السداد (أفراد)
+// @name         Yaqeen Tool - عقود الشركات غير الممددة (فروع)
 // @namespace    https://yaqeen.lumirental.com/
 // @version      1.0
-// @description  يفحص عقود الأفراد المتأخرة في السداد (LATE_RETURN) بفرع المطار (يستبعد عقود الشركات)، ويطلع فقط اللي متأخرين بمبلغ معيّن أو أكثر مع بياناتهم
+// @description  نفس أداة "عقود الشركات غير الممددة" بس تختار الفرع المطلوب فحصه من قائمة (فرع واحد بكل مرة، مو كل الفروع مع بعض)
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
 // @grant        unsafeWindow
@@ -29,11 +29,33 @@
         target: '120363021290047142@g.us',
     };
 
-    const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings?status=LATE_RETURN&pageSize=500';
+    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع واحد بكل مرة يشغّل
+    // فيها الأداة (بعكس أداة "عقود الشركات غير الممددة" الأصلية اللي تفحص
+    // فرع مطار جدة فقط، وبعكس أي نسخة تفحص كل الفروع مع بعض)
+    const BRANCHES = [
+        { id: 29, name: 'مطار جدة' },
+        { id: 11, name: 'طريق المدينة' },
+        { id: 12, name: 'شارع التحلية' },
+        { id: 30, name: 'مطار الطائف' },
+        { id: 10, name: 'ينبع - الهيئة الملكية' },
+        { id: 25, name: 'مطار الأمير عبدالمحسن - ينبع' },
+        { id: 36, name: 'المدينة المنورة' },
+        { id: 59, name: 'مطار الأمير محمد بن عبدالعزيز الدولي - المدينة' },
+    ];
+
+    function lateReturnUrlForBranch(branchId) {
+        return 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings?status=LATE_RETURN&pageSize=500';
+    }
+
+    function branchNameById(branchId) {
+        const branch = BRANCHES.find(b => b.id === branchId);
+        return branch ? branch.name : ('فرع #' + branchId);
+    }
+
     const MAX_AGREEMENTS = 300;
-    // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع
-    // تماماً بنفس منطق الفحص الأصلي، بس موزّعين على عدة إطارات بدل واحد
-    // فقط، فتسرع العملية بمقدار العدد تقريباً بدون أي تغيير بمنطق الفحص نفسه
+    // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع،
+    // فقط موزّعين على عدة إطارات بدل واحد فقط لتسريع العملية (نفس أسلوب أداة
+    // "العقود المتأخرة في السداد (أفراد)")
     const CHECK_CONCURRENCY = 4;
 
     function waitCore() {
@@ -42,10 +64,10 @@
             return;
         }
         HOST_WINDOW.YAQEEN_TOOLS.add({
-            id: "late-payments",
-            name: "💰 العقود المتأخرة في السداد (أفراد)",
+            id: "company-extension-branches",
+            name: "🏢 عقود الشركات (اختيار الفرع)",
             run() {
-                showThresholdPrompt();
+                showBranchPrompt();
             }
         });
     }
@@ -95,44 +117,6 @@
         });
     }
 
-    /** يلقط أي عنصر عنده نص مباشر (text node) يطابق التسمية تماماً - يتحمّل وجود أيقونة SVG جنبه */
-    function findLabelElement(doc, labelText) {
-        const candidates = doc.querySelectorAll('p, span, div, td, th, label, dt');
-        for (const el of candidates) {
-            for (const node of el.childNodes) {
-                if (node.nodeType === 3 && node.textContent.trim() === labelText) return el;
-            }
-        }
-        return null;
-    }
-
-    /** يدور القيمة القريبة من عنصر تسمية (يجرب الإخوة القريبين بالترتيبين، ما نعرف بالضبط ترتيب DOM) */
-    function findValueNearLabel(doc, labelText) {
-        const labelEl = findLabelElement(doc, labelText);
-        if (!labelEl) return "";
-        const candidates = [
-            labelEl.nextElementSibling,
-            labelEl.previousElementSibling,
-            labelEl.parentElement && labelEl.parentElement.nextElementSibling,
-            labelEl.parentElement && labelEl.parentElement.previousElementSibling,
-        ].filter(Boolean);
-        for (const c of candidates) {
-            const text = c.textContent.trim();
-            if (text) return text;
-        }
-        return "";
-    }
-
-    function parseAmount(text) {
-        if (!text) return NaN;
-        const isNegative = text.indexOf('-') !== -1;
-        const cleaned = text.replace(/[^\d.]/g, '');
-        if (!cleaned) return NaN;
-        const value = parseFloat(cleaned);
-        if (isNaN(value)) return NaN;
-        return isNegative ? -value : value;
-    }
-
     function normalizeArabic(text) {
         return (text || '')
             .replace(/[ً-ْ]/g, '')
@@ -152,8 +136,24 @@
         return -1;
     }
 
+    /** يحوّل نص مدة بصيغة "X أيام : Y ساعات" إلى إجمالي عدد الساعات (رقم صحيح) */
+    function parseDurationToHours(text) {
+        if (!text) return null;
+        const match = text.match(/(\d+)\s*أيام?\s*:\s*(\d+)\s*ساعات?/);
+        if (!match) return null;
+        return parseInt(match[1], 10) * 24 + parseInt(match[2], 10);
+    }
+
+    /** يحوّل إجمالي عدد ساعات إلى نفس صيغة يقين "X أيام : Y ساعات" */
+    function formatHoursToDuration(totalHours) {
+        if (totalHours == null || isNaN(totalHours)) return "";
+        const days = Math.floor(totalHours / 24);
+        const hours = totalHours % 24;
+        return days + " أيام : " + hours + " ساعات";
+    }
+
     // ==========================================================
-    // ترقيم الصفحات (نفس منطق الأدوات الثانية)
+    // ترقيم الصفحات (نفس منطق باقي الأدوات)
     // ==========================================================
 
     const NEXT_PAGE_SELECTORS = [
@@ -189,10 +189,9 @@
     }
 
     /**
-     * كل صف بجدول "العقود المتأخرة" فيه عمود "الإجمالي (ريال)" برقم + أيقونة:
-     * أيقونة خضراء (fill-green-600) = تم السداد فعلياً رغم تأخر التسليم، ما نعتبره متأخر بالسداد.
-     * أيقونة رمادية (fill-slate-400) = لسا عليه مبلغ متأخر فعلاً.
-     * هذا يغنينا عن فتح كل عقد للتأكد - نفلتر أول شي من نفس القائمة، ونفتح بس اللي يستاهل.
+     * يقرأ صفوف قائمة "العقود المتأخرة" - بعكس أداة الأفراد، هنا نحتفظ فقط
+     * بالصفوف اللي عمود "اسم المدين" فيها اسم شركة حقيقي (مو "غير متاح")،
+     * لأن هذي الأداة مخصصة لعقود الشركات تحديداً.
      */
     function readLateReturnRows(doc) {
         const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
@@ -202,7 +201,6 @@
         const bookingIdx = findColumnIndex(headerCells, ["رقم الحجز"]);
         const agreementIdx = findColumnIndex(headerCells, ["رقم الاتفاقية"]);
         const driverIdx = findColumnIndex(headerCells, ["السائق"]);
-        const totalIdx = findColumnIndex(headerCells, ["الإجمالي"]);
         const debtorIdx = findColumnIndex(headerCells, ["اسم المدين"]);
 
         const rows = Array.from(table.querySelectorAll("tbody tr"));
@@ -210,21 +208,13 @@
             const cells = row.querySelectorAll("td");
             if (!cells.length) return null;
 
-            // عمود "اسم المدين" يكون "غير متاح" للأفراد، ويعرض اسم الشركة
-            // الفعلي للعقود التابعة لشركات - وأغلب عقود الشركات المتأخرة سببها
-            // إن الشركة نفسها ما مدّدت العقد بعد (مو تأخر سداد فردي). هذي
-            // الأداة للأفراد فقط، فنتجاهل أي صف عنده اسم شركة حقيقي بهذا العمود
+            // "غير متاح" = فرد (بدون شركة راعية) - نتجاهله، هذي الأداة للشركات فقط
             const debtorText = debtorIdx !== -1 ? cells[debtorIdx].textContent.trim() : "";
-            if (debtorText && debtorText !== "غير متاح") return null;
+            if (!debtorText || debtorText === "غير متاح") return null;
 
             const link = Array.from(row.querySelectorAll("a"))
                 .find(a => (a.getAttribute("href") || "").includes("/close-agreements/"));
             if (!link) return null;
-
-            const totalCell = totalIdx !== -1 ? cells[totalIdx] : null;
-            const amountText = totalCell?.querySelector("p")?.textContent || "";
-            const svg = totalCell?.querySelector("svg");
-            const isSettled = svg ? (svg.getAttribute("class") || "").includes("fill-green-600") : false;
 
             const bookingNo = bookingIdx !== -1 ? cells[bookingIdx].textContent.trim() : "";
             const agreementNo = agreementIdx !== -1 ? cells[agreementIdx].textContent.trim() : "";
@@ -233,9 +223,8 @@
                 href: new URL(link.getAttribute("href"), location.origin).href,
                 bookingNo,
                 agreementNo,
-                name: driverIdx !== -1 ? cells[driverIdx].textContent.trim() : "",
-                listAmount: parseAmount(amountText),
-                isSettled,
+                personName: driverIdx !== -1 ? cells[driverIdx].textContent.trim() : "",
+                debtorName: debtorText,
                 __signature: agreementNo || bookingNo || link.getAttribute("href"),
             };
         }).filter(Boolean);
@@ -300,95 +289,91 @@
         });
     }
 
+    /** يجمع صفوف العقود المتأخرة للفرع المختار فقط */
+    async function collectAllRowsForBranch(branchId) {
+        const branchName = branchNameById(branchId);
+        showProgress('جارٍ تحميل قائمة العقود المتأخرة - ' + branchName + '...');
+        const frame = openHiddenFrame(lateReturnUrlForBranch(branchId));
+        try {
+            const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
+            if (!doc1) return [];
+            const rows = await collectAllPages(frame, doc1);
+            rows.forEach(r => { r.branchName = branchName; });
+            return rows;
+        } finally {
+            try { frame.remove(); } catch (err) { /* تجاهل */ }
+        }
+    }
+
     // ==========================================================
     // التنفيذ الرئيسي
     // ==========================================================
 
     /**
-     * يفحص عقداً واحداً بالتفصيل (نفس المنطق الأصلي بالضبط، بدون أي تغيير):
-     * يفتح صفحة العقد، يقرأ الرصيد المتبقي الحقيقي، ويرجع null لو تعذّر الفتح
-     * أو لو الرصيد أقل من الحد المطلوب - وإلا يوسّع بيانات العميل ويرجع النتيجة.
+     * يفحص عقداً واحداً: يفتح صفحة العقد، يوسّع أكورديون "المدة المحتسبة"
+     * (مطوي افتراضياً)، ويقرأ تفاصيله. عمود "متأخر بـ" ما يظهر إطلاقاً إلا
+     * لو العقد فعلاً متأخر ويحتاج تمديد - غيابه يعني العقد لسا ضمن مدته
+     * المخطط لها ولا يحتاج شي، فنستبعده.
      */
-    async function checkOneAgreement(frame, c, threshold) {
-        // نتأكد إن الرابط فعلاً تغيّر قبل قراءة القيمة، وإلا ممكن نلقط DOM العقد السابق
-        // اللي لسا موجود لحظة التنقّل، ونظل نقرأ نفس القيمة القديمة لكل العقود اللي بعده
+    async function checkOneAgreement(frame, c) {
         const targetPath = new URL(c.href).pathname;
         frame.src = c.href;
         const doc2 = await waitFor(frame, d => {
             if (d.location.pathname !== targetPath) return null;
-            return d.querySelector('[data-testid="remaining-balance-value"]') ? d : null;
+            return d.querySelector('[data-testid="billable-duration-toggle"]') ? d : null;
         }, 20000);
         if (!doc2) return { checked: false, record: null };
 
-        const total = parseAmount(doc2.querySelector('[data-testid="total-value"]')?.textContent);
-        const paid = parseAmount(doc2.querySelector('[data-testid="paid-amount-value"]')?.textContent);
-        const remaining = parseAmount(doc2.querySelector('[data-testid="remaining-balance-value"]')?.textContent);
-
-        // الرصيد المتبقي الحقيقي (من صفحة العقد نفسها) هو أساس الفلترة، مو أي مؤشر بالقائمة
-        if (isNaN(remaining) || remaining < threshold) return { checked: true, record: null };
-
-        // نفس زر توسيع بيانات العميل المستخدم بأدوات الإيميل - يفتح لوحة فيها الجوال ورقم الهوية
-        const expandBtn = Array.from(doc2.querySelectorAll('button.inline-flex'))
-            .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));
-        if (expandBtn) {
-            try { expandBtn.click(); } catch (err) { /* تجاهل */ }
+        const toggle = doc2.querySelector('[data-testid="billable-duration-toggle"]');
+        if (toggle && toggle.getAttribute('aria-expanded') !== 'true') {
+            try { toggle.click(); } catch (err) { /* تجاهل */ }
         }
-        await new Promise(r => setTimeout(r, 1200));
+        // ننتظر انتهاء أنيميشن التوسيع حتى تترسم عناصر التفاصيل بالـDOM
+        await new Promise(r => setTimeout(r, 700));
 
-        const dialog = doc2.querySelector('[role="dialog"]') || doc2;
-        const idNumber = findValueNearLabel(dialog, "رقم الهوية");
-        const phoneEl = Array.from(dialog.querySelectorAll('span'))
-            .find(el => /^\+?\d[\d\s]{7,}$/.test(el.textContent.trim()));
-        const phone = phoneEl ? phoneEl.textContent.trim() : "";
+        const lateEl = doc2.querySelector('[data-testid="billable-late-early"]');
+        if (!lateEl) return { checked: true, record: null };
+
+        const actualDuration = doc2.querySelector('[data-testid="billable-actual-duration"]')?.textContent.trim() || "";
+        const plannedDuration = doc2.querySelector('[data-testid="billable-planned-duration"]')?.textContent.trim() || "";
+        const extensionDuration = doc2.querySelector('[data-testid="billable-extension-duration"]')?.textContent.trim() || "";
+        const lateDuration = lateEl.textContent.trim();
+
+        const plannedHours = parseDurationToHours(plannedDuration) || 0;
+        const extensionHours = parseDurationToHours(extensionDuration) || 0;
 
         return {
             checked: true,
             record: {
                 agreementNo: c.agreementNo,
-                name: c.name,
-                phone,
-                idNumber,
-                total: isNaN(total) ? "" : total.toFixed(2),
-                paid: isNaN(paid) ? "" : paid.toFixed(2),
-                remaining: remaining.toFixed(2),
+                branchName: c.branchName,
+                personName: c.personName,
+                debtorName: c.debtorName,
+                actualDuration,
+                plannedPlusExtension: formatHoursToDuration(plannedHours + extensionHours),
+                lateDuration,
+                lateHours: parseDurationToHours(lateDuration) || 0,
             },
         };
     }
 
-    async function runReport(threshold) {
-
-        const frame = openHiddenFrame(LATE_RETURN_URL);
-
-        showProgress("جارٍ تحميل قائمة العقود المتأخرة...");
+    async function runReport(branchId) {
 
         try {
 
-            const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
-            if (!doc1) throw new Error("لم يتم العثور على أي عقود متأخرة");
+            const allRows = await collectAllRowsForBranch(branchId);
 
-            showProgress("جارٍ جمع كل صفحات القائمة...");
-            const allRows = await collectAllPages(frame, doc1);
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
-
-            // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً من زر
-            // "إنهاء الاتفاقية" ونشوف "الرصيد المتبقي" الحقيقي بصفحة التفاصيل
             const candidates = allRows.slice(0, MAX_AGREEMENTS);
 
             if (candidates.length === 0) {
-                showReport([], threshold, 0, 0);
+                showReport([], branchId, 0, 0);
                 return;
             }
 
             let checkedCount = 0;
             let processedCount = 0;
-            // نتيجة كل عقد تُحفظ في نفس فهرسه الأصلي (وليس بترتيب الاكتمال) حتى
-            // يبقى ترتيب التقرير النهائي مطابقاً تماماً لترتيب قائمة LATE_RETURN
-            // الأصلية، بغض النظر عن أي عامل خلص قبل غيره
             const recordsByIndex = new Array(candidates.length).fill(null);
 
-            // نوزّع العقود على عدة إطارات مخفية بالتناوب (round robin)، كل إطار
-            // يعالج نصيبه بالتتابع بنفس منطق الفحص الأصلي بالضبط - فقط موازاة
-            // على مستوى الإطارات، بدون أي تغيير على كيفية فحص العقد الواحد
             const workerCount = Math.min(CHECK_CONCURRENCY, candidates.length);
             const workerFrames = [];
 
@@ -397,10 +382,10 @@
                 workerFrames.push(workerFrame);
                 for (let i = workerIndex; i < candidates.length; i += workerCount) {
                     processedCount++;
-                    showProgress(`جارٍ فحص العقود المرشّحة... (${processedCount} من ${candidates.length})`);
+                    showProgress(`جارٍ فحص عقود الشركات... (${processedCount} من ${candidates.length})`);
                     const c = candidates[i];
                     try {
-                        const { checked, record } = await checkOneAgreement(workerFrame, c, threshold);
+                        const { checked, record } = await checkOneAgreement(workerFrame, c);
                         if (checked) checkedCount++;
                         if (record) recordsByIndex[i] = record;
                     } catch (err) {
@@ -414,10 +399,9 @@
 
             const results = recordsByIndex.filter(Boolean);
 
-            showReport(results, threshold, checkedCount, candidates.length);
+            showReport(results, branchId, checkedCount, candidates.length);
 
         } catch (err) {
-            try { frame.remove(); } catch (err2) { /* تجاهل */ }
             showMessage("تعذّر إتمام الفحص: " + err.message);
         }
     }
@@ -428,7 +412,7 @@
 
     function overlayShell(innerHtml, width) {
         return (
-            '<div id="late-payments-box" style="' +
+            '<div id="company-ext-box" style="' +
             'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
             'justify-content:center;z-index:999999999;font-family:Arial;">' +
             '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
@@ -436,89 +420,82 @@
         );
     }
 
-    function showThresholdPrompt() {
-        document.getElementById('late-payments-box')?.remove();
+    function showBranchPrompt(defaultBranchId) {
+        document.getElementById('company-ext-box')?.remove();
+
+        const branchOptionsHtml = BRANCHES.map(b => (
+            '<option value="' + b.id + '"' + (b.id === defaultBranchId ? ' selected' : '') + '>' + b.name + '</option>'
+        )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">💰 العقود المتأخرة في السداد</h3>' +
-            '<div style="margin:15px 0;text-align:right">بيفلتر أول شي من نفس القائمة (المسدَّدة وتحت الحد ما تُفتح)، وبيفتح بس العقود المرشّحة للتأكد من التفاصيل.<br>أقل مبلغ تأخير تبغى تشوفه (ريال):</div>' +
-            '<input id="late-payments-input" type="number" min="1" step="1" value="500" style="' +
+            '<h3 style="margin-top:0">🏢 عقود الشركات غير الممددة</h3>' +
+            '<div style="margin:15px 0;text-align:right">الفرع:</div>' +
+            '<select id="company-ext-branch" style="' +
             'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
-            'text-align:center;box-sizing:border-box;" />' +
-            '<button id="late-payments-submit" style="' +
+            'text-align:right;box-sizing:border-box;">' + branchOptionsHtml + '</select>' +
+            '<button id="company-ext-submit" style="' +
             'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
             'background:#A3E635;font-size:15px;">فحص العقود</button>' +
-            '<button id="late-payments-cancel" style="' +
+            '<button id="company-ext-cancel" style="' +
             'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
             'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
             320
         ));
 
-        const input = document.getElementById('late-payments-input');
-        input.focus();
-        input.select();
-
-        function submit() {
-            const threshold = parseFloat(input.value);
-            if (!threshold || threshold <= 0) {
-                input.style.border = '1px solid #dc2626';
-                return;
-            }
-            runReport(threshold);
-        }
-
-        document.getElementById('late-payments-submit').onclick = submit;
-        document.getElementById('late-payments-cancel').onclick = () => {
-            document.getElementById('late-payments-box')?.remove();
+        document.getElementById('company-ext-submit').onclick = () => {
+            const branchId = parseInt(document.getElementById('company-ext-branch').value, 10);
+            runReport(branchId);
         };
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+        document.getElementById('company-ext-cancel').onclick = () => {
+            document.getElementById('company-ext-box')?.remove();
+        };
     }
 
     function showProgress(text) {
-        document.getElementById('late-payments-box')?.remove();
+        document.getElementById('company-ext-box')?.remove();
         document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
     }
 
     function showMessage(text) {
-        document.getElementById('late-payments-box')?.remove();
+        document.getElementById('company-ext-box')?.remove();
         document.body.insertAdjacentHTML('beforeend', overlayShell(
             '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="late-payments-close" style="' +
+            '<button id="company-ext-close" style="' +
             'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
             320
         ));
-        document.getElementById('late-payments-close').onclick = () => {
-            document.getElementById('late-payments-box')?.remove();
+        document.getElementById('company-ext-close').onclick = () => {
+            document.getElementById('company-ext-box')?.remove();
         };
     }
 
     function tableToTsv(records) {
-        const header = ['رقم العقد', 'الاسم', 'الجوال', 'رقم الهوية', 'الإجمالي', 'المدفوع', 'المتبقي'];
+        const header = ['رقم العقد', 'الفرع', 'اسم الشخص', 'اسم المدين', 'المدة الفعلية', 'المدة المخطط لها + التمديد', 'متأخر بـ'];
         const lines = [header.join('\t')];
         records.forEach(r => {
-            lines.push([r.agreementNo, r.name, r.phone, r.idNumber, r.total, r.paid, r.remaining].join('\t'));
+            lines.push([r.agreementNo, r.branchName, r.personName, r.debtorName, r.actualDuration, r.plannedPlusExtension, r.lateDuration].join('\t'));
         });
         return lines.join('\n');
     }
 
-    function printReport(records, threshold) {
-        const printWindow = window.open('', '_blank', 'width=1000,height=700');
+    function printReport(records, branchName) {
+        const printWindow = window.open('', '_blank', 'width=1100,height=700');
         if (!printWindow) {
             showMessage('يرجى السماح بالنوافذ المنبثقة (Popups) لهذا الموقع للطباعة.');
             return;
         }
 
         const rowsHtml = records.map(r => (
-            '<tr><td>' + r.agreementNo + '</td><td>' + r.name + '</td><td>' + r.phone + '</td>' +
-            '<td>' + r.idNumber + '</td><td>' + r.total + '</td><td>' + r.paid + '</td>' +
-            '<td style="font-weight:bold;color:#dc2626;">' + r.remaining + '</td></tr>'
-        )).join('') || '<tr><td colspan="7">لا توجد عقود مطابقة</td></tr>';
+            '<tr><td>' + r.agreementNo + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
+            '<td>' + r.actualDuration + '</td><td>' + r.plannedPlusExtension + '</td>' +
+            '<td style="font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td></tr>'
+        )).join('') || '<tr><td colspan="6">لا توجد عقود مطابقة</td></tr>';
 
         const now = new Date().toLocaleString('ar-SA');
 
         printWindow.document.write(
             '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">' +
-            '<title>العقود المتأخرة في السداد</title><style>' +
+            '<title>عقود الشركات غير الممددة</title><style>' +
             '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
@@ -527,10 +504,10 @@
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
-            '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
+            '<h1>🏢 عقود الشركات غير الممددة - ' + branchName + '</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
-            '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
-            '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
+            '<table><tr><th>رقم العقد</th><th>اسم الشخص</th><th>اسم المدين</th>' +
+            '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
         );
         printWindow.document.close();
@@ -542,7 +519,6 @@
     // إرسال صورة واتساب - نفس أسلوب باقي الأدوات (SVG+foreignObject)
     // ==========================================================
 
-    /** يحوّل نص UTF-8 (فيه عربي) إلى base64 - btoa العادية تدعم Latin1 بس */
     function utf8ToBase64(str) {
         return btoa(unescape(encodeURIComponent(str)));
     }
@@ -556,33 +532,32 @@
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
 
-    function buildReportImageInnerHtml(records, threshold) {
+    function buildReportImageInnerHtml(records, branchName) {
         const rowsHtml = records.map(r => (
-            '<tr><td>' + r.agreementNo + '</td><td>' + r.name + '</td><td dir="ltr">' + r.phone + '</td>' +
-            '<td>' + r.idNumber + '</td><td>' + r.total + '</td><td>' + r.paid + '</td>' +
-            '<td style="font-weight:bold;color:#dc2626;">' + r.remaining + '</td></tr>'
-        )).join('') || '<tr><td colspan="7">لا توجد عقود مطابقة</td></tr>';
+            '<tr><td>' + r.agreementNo + '</td><td>' + r.personName + '</td><td>' + r.debtorName + '</td>' +
+            '<td>' + r.actualDuration + '</td><td>' + r.plannedPlusExtension + '</td>' +
+            '<td style="font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td></tr>'
+        )).join('') || '<tr><td colspan="6">لا توجد عقود مطابقة</td></tr>';
 
         const now = new Date().toLocaleString('ar-SA');
 
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
-            '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
+            '<h1>🏢 عقود الشركات غير الممددة - ' + branchName + '</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
-            '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
-            '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
+            '<table><tr><th>رقم العقد</th><th>اسم الشخص</th><th>اسم المدين</th>' +
+            '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>'
         );
     }
 
-    /** يرسم الجدول كصورة PNG/JPEG عبر SVG+foreignObject. يعيد Promise بصيغة data URL */
-    function buildReportImageDataUrl(records, threshold) {
+    function buildReportImageDataUrl(records, branchName) {
         return new Promise((resolve, reject) => {
             let settled = false;
             function settleResolve(value) { if (settled) return; settled = true; resolve(value); }
             function settleReject(err) { if (settled) return; settled = true; reject(err); }
 
             try {
-                const innerHtml = buildReportImageInnerHtml(records, threshold);
+                const innerHtml = buildReportImageInnerHtml(records, branchName);
                 const wrapperStyle = 'font-family:Tahoma,Arial,sans-serif;background:#fff;padding:20px;display:inline-block;';
 
                 const measureEl = document.createElement('div');
@@ -601,8 +576,6 @@
                     '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
                     '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
 
-                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG
-                // فيها foreignObject لو كانت محمّلة من blob: (Tainted Canvas)
                 const svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
 
                 const img = new Image();
@@ -662,7 +635,7 @@
                             return trimWhitespace(canvas);
                         }
 
-                        const TARGET_DATA_URL_LENGTH = 8000000; // ~6MB بعد فك التشفير - هامش مريح تحت حد الـ100mb
+                        const TARGET_DATA_URL_LENGTH = 8000000;
                         const scales = [2, 1.5, 1];
                         const qualities = [0.92, 0.85, 0.75, 0.6];
                         let best = null;
@@ -693,14 +666,13 @@
         });
     }
 
-    /** إرسال كصورة عبر بوت واتساب - نفس صيغة باقي الأدوات */
-    function handleSendWhatsApp(records, threshold) {
+    function handleSendWhatsApp(records, branchName) {
         if (typeof GM_xmlhttpRequest === 'undefined') {
             showMessage('صلاحية GM_xmlhttpRequest غير مفعّلة - تأكد من تحديث السكربت في Tampermonkey');
             return;
         }
         showProgress('جارٍ تجهيز وإرسال صورة التقرير...');
-        buildReportImageDataUrl(records, threshold)
+        buildReportImageDataUrl(records, branchName)
             .then(dataUrl => {
                 GM_xmlhttpRequest({
                     method: 'POST',
@@ -712,39 +684,39 @@
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
                         type: 'image',
-                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
-                        // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
-                        caption: '💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر) - ' + new Date().toLocaleString('ar-SA'),
+                        caption: '🏢 عقود الشركات غير الممددة - ' + branchName + ' - ' + new Date().toLocaleString('ar-SA'),
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
                             showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
                         } else if (response.status === 413) {
-                            console.error('[العقود المتأخرة] فشل إرسال واتساب: 413', response.responseText);
+                            console.error('[عقود الشركات] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
                         } else {
-                            console.error('[العقود المتأخرة] فشل إرسال واتساب:', response.status, response.responseText);
+                            console.error('[عقود الشركات] فشل إرسال واتساب:', response.status, response.responseText);
                             showMessage('فشل إرسال واتساب (رمز الحالة: ' + response.status + ')');
                         }
                     },
                     onerror: error => {
-                        console.error('[العقود المتأخرة] تعذّر الاتصال ببوت واتساب:', error);
+                        console.error('[عقود الشركات] تعذّر الاتصال ببوت واتساب:', error);
                         showMessage('تعذّر الاتصال بخادم بوت واتساب');
                     },
                 });
             })
             .catch(err => {
-                console.error('[العقود المتأخرة] تعذّر إنشاء صورة التقرير:', err);
+                console.error('[عقود الشركات] تعذّر إنشاء صورة التقرير:', err);
                 showMessage('تعذّر إنشاء صورة التقرير: ' + err.message);
             });
     }
 
     // ==========================================================
-    // الترتيب (فرز حسب المبلغ المتبقي)
+    // الترتيب (فرز حسب اسم المدين أو مدة التأخير)
     // ==========================================================
 
     const sortState = { key: null, dir: 1 };
+    let lastCheckedCount = 0;
+    let lastTotalCandidates = 0;
 
     function sortIndicator(key) {
         if (sortState.key !== key) return '';
@@ -753,92 +725,99 @@
 
     function sortRecords(records, key) {
         const sorted = records.slice();
-        if (key === 'remaining') {
-            sorted.sort((a, b) => (parseFloat(a.remaining) - parseFloat(b.remaining)) * sortState.dir);
+        if (key === 'debtorName') {
+            sorted.sort((a, b) => a.debtorName.localeCompare(b.debtorName, 'ar') * sortState.dir);
+        } else if (key === 'lateHours') {
+            sorted.sort((a, b) => (a.lateHours - b.lateHours) * sortState.dir);
         }
         return sorted;
     }
 
-    function handleSortClick(records, threshold, checkedCount, totalCandidates, key) {
+    function handleSortClick(records, branchId, key) {
         if (sortState.key === key) sortState.dir *= -1;
         else { sortState.key = key; sortState.dir = 1; }
-        showReport(sortRecords(records, key), threshold, checkedCount, totalCandidates);
+        showReport(sortRecords(records, key), branchId, lastCheckedCount, lastTotalCandidates);
     }
 
-    function showReport(records, threshold, checkedCount, totalCandidates) {
-        document.getElementById('late-payments-box')?.remove();
+    function showReport(records, branchId, checkedCount, totalCandidates) {
+        document.getElementById('company-ext-box')?.remove();
+        lastCheckedCount = checkedCount;
+        lastTotalCandidates = totalCandidates;
+        const branchName = branchNameById(branchId);
 
         const rowsHtml = records.map(r => (
             '<tr>' +
             '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
-            '<td style="border-top:1px solid #eee;" dir="ltr">' + r.phone + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.idNumber + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.total + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.paid + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.remaining + '</td>' +
+            '<td style="border-top:1px solid #eee;">' + r.personName + '</td>' +
+            '<td style="border-top:1px solid #eee;">' + r.debtorName + '</td>' +
+            '<td style="border-top:1px solid #eee;">' + r.actualDuration + '</td>' +
+            '<td style="border-top:1px solid #eee;">' + r.plannedPlusExtension + '</td>' +
+            '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
+            : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#777;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
 
         const html =
-            '<div id="late-payments-box" style="' +
+            '<div id="company-ext-box" style="' +
             'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
             'z-index:999999999;font-family:Arial;">' +
-            '<div style="width:min(960px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
+            '<div style="width:min(1040px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
             '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
+            '<div style="font-size:16px;font-weight:bold;">🏢 عقود الشركات غير الممددة - ' + branchName + '</div>' +
             '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
-            'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد بقائمة LATE_RETURN' +
+            'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد شركة بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' | عدد العقود المطابقة: ' + records.length +
+            ' | عدد العقود المحتاجة تمديد: ' + records.length +
             '</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;">' +
             '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
             '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
-            '<th>الإجمالي</th><th>المدفوع</th>' +
-            '<th id="late-payments-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
+            '<th style="padding:10px">رقم العقد</th><th>اسم الشخص</th>' +
+            '<th id="company-ext-sort-debtor" style="cursor:pointer;user-select:none;">اسم المدين' + sortIndicator('debtorName') + '</th>' +
+            '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th>' +
+            '<th id="company-ext-sort-late" style="cursor:pointer;user-select:none;">متأخر بـ' + sortIndicator('lateHours') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="late-payments-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            '<button id="company-ext-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="late-payments-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            '<button id="company-ext-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="late-payments-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            '<button id="company-ext-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="late-payments-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            '<button id="company-ext-change-branch" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            'background:#eee;color:#333;cursor:pointer;">🏢 تغيير الفرع</button>' +
+            '<button id="company-ext-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="late-payments-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            '<button id="company-ext-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#A3E635;cursor:pointer;">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
 
-        document.getElementById('late-payments-close').onclick = () => {
-            document.getElementById('late-payments-box')?.remove();
+        document.getElementById('company-ext-close').onclick = () => {
+            document.getElementById('company-ext-box')?.remove();
         };
-        document.getElementById('late-payments-refresh').onclick = () => {
+        document.getElementById('company-ext-change-branch').onclick = () => {
+            showBranchPrompt(branchId);
+        };
+        document.getElementById('company-ext-refresh').onclick = () => {
             sortState.key = null;
             sortState.dir = 1;
-            runReport(threshold);
+            runReport(branchId);
         };
-        document.getElementById('late-payments-sort-remaining').onclick = () => {
-            handleSortClick(records, threshold, checkedCount, totalCandidates, 'remaining');
+        document.getElementById('company-ext-print').onclick = () => {
+            printReport(records, branchName);
         };
-        document.getElementById('late-payments-print').onclick = () => {
-            printReport(records, threshold);
+        document.getElementById('company-ext-whatsapp').onclick = () => {
+            handleSendWhatsApp(records, branchName);
         };
-        document.getElementById('late-payments-whatsapp').onclick = () => {
-            handleSendWhatsApp(records, threshold);
-        };
-        document.getElementById('late-payments-copy').onclick = async () => {
+        document.getElementById('company-ext-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
                 alert('تم نسخ الجدول');
@@ -846,6 +825,8 @@
                 alert('تعذّر النسخ: ' + err.message);
             }
         };
+        document.getElementById('company-ext-sort-debtor').onclick = () => handleSortClick(records, branchId, 'debtorName');
+        document.getElementById('company-ext-sort-late').onclick = () => handleSortClick(records, branchId, 'lateHours');
     }
 
     waitCore();
