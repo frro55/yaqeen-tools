@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0805.1119
+// @version      2026.0805.1122
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7975,30 +7975,46 @@ ${text}
 
             while (pageIndex < maxIterations && visitedCount < totalQualifying) {
                 pageIndex++;
-                const rowEls = Array.from(doc.querySelectorAll('table tbody tr'));
 
-                for (let i = 0; i < rowEls.length; i++) {
-                    const rowEl = rowEls[i];
-                    const rowData = readListRow(rowEl);
-                    if (!rowData || !qualifyingSignatures.has(rowData.__signature) || visited[rowData.__signature]) continue;
-                    visited[rowData.__signature] = true;
+                // نعيد استعلام صفوف الصفحة الحالية طازة قبل كل ضغطة، بدل ما
+                // نعتمد على مصفوفة عناصر ثابتة نلقطها مرة وحدة أول الصفحة -
+                // بعض صفحات يقين تعيد جلب/رسم الجدول بالكامل لما نرجع
+                // للقائمة من تفاصيل عقد سابق، فتنفصل عناصر <tr> القديمة عن
+                // الشجرة الحية وتصير أي ضغطة عليها بلا أي أثر (نتيجتها فشل
+                // صامت لكل عقد بعد أول عقد ناجح بالضبط)
+                let progressedOnThisPage = true;
+                while (progressedOnThisPage && visitedCount < totalQualifying) {
+                    progressedOnThisPage = false;
+                    const currentRowEls = Array.from(doc.querySelectorAll('table tbody tr'));
 
-                    visitedCount++;
-                    showProgress(`جارٍ فحص العقود المؤهّلة... (${visitedCount} من ${totalQualifying})`);
+                    for (let i = 0; i < currentRowEls.length; i++) {
+                        const rowEl = currentRowEls[i];
+                        const rowData = readListRow(rowEl);
+                        if (!rowData || !qualifyingSignatures.has(rowData.__signature) || visited[rowData.__signature]) continue;
+                        visited[rowData.__signature] = true;
+                        progressedOnThisPage = true;
 
-                    const detail = await visitRowDetail(frame, doc, rowEl);
-                    if (!detail) continue;
+                        visitedCount++;
+                        showProgress(`جارٍ فحص العقود المؤهّلة... (${visitedCount} من ${totalQualifying})`);
 
-                    const elapsedTotalHours = elapsedBySignature[rowData.__signature] || 0;
-                    results.push({
-                        agreementNo: rowData.agreementNo,
-                        name: detail.driverName || rowData.driverName,
-                        phone: detail.phone,
-                        idNumber: detail.idNumber,
-                        elapsedText: formatElapsed(elapsedTotalHours),
-                        remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
-                        remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
-                    });
+                        const detail = await visitRowDetail(frame, doc, rowEl);
+                        if (detail) {
+                            const elapsedTotalHours = elapsedBySignature[rowData.__signature] || 0;
+                            results.push({
+                                agreementNo: rowData.agreementNo,
+                                name: detail.driverName || rowData.driverName,
+                                phone: detail.phone,
+                                idNumber: detail.idNumber,
+                                elapsedText: formatElapsed(elapsedTotalHours),
+                                remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
+                                remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
+                            });
+                        }
+
+                        // نخرج ونعيد استعلام الصفوف من جديد بدل ما نكمل على
+                        // نفس المصفوفة (احتمال انفصلت عن الـDOM الحي)
+                        break;
+                    }
                 }
 
                 if (visitedCount >= totalQualifying) break;
