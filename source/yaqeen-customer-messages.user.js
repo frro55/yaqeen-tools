@@ -59,6 +59,23 @@
                 );
             },
         },
+        location: {
+            // رسالة معلومات ثابتة (بدون اسم العميل) - شرح موقع استلام السيارة
+            label: '📍 رسالة موقع الاستلام (مطار الملك عبدالعزيز)',
+            build() {
+                return (
+                    'لومي لتأجير السيارات (مطار الملك عبد العزيز).\n' +
+                    'للاستفسار الاتصال على خدمة العملاء 920028428\n' +
+                    '‏______________\n' +
+                    '● شرح الوصول الى موقع تسليم السيارة\n\n' +
+                    '- الموقع الى نقطة التفتيش\n' +
+                    'https://goo.gl/maps/x5bLYZMbqLtajQ1Q9\n\n' +
+                    '- بعد الوصول الى نقطة التفتيش الرجاء إتباع مقطع الفيديو الموضح ادناه\n' +
+                    'https://youtu.be/nJ67mhANEso?si=6e5kRqBeNkOslgi-\n\n' +
+                    '- بعد ذلك التوجه الى العامود ( J ) ..'
+                );
+            },
+        },
     };
 
     function waitCore() {
@@ -235,18 +252,18 @@
 
     function showChoicePrompt(customer) {
         closeBox();
+        const templateButtonsHtml = Object.keys(MESSAGE_TEMPLATES).map(key => (
+            '<button data-template="' + key + '" class="customer-msg-tpl-btn" style="' +
+            'width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:8px;cursor:pointer;' +
+            'background:#A3E635;font-size:14px;">' + MESSAGE_TEMPLATES[key].label + '</button>'
+        )).join('');
         const html =
             '<div style="font-size:16px;font-weight:bold;margin-bottom:6px;">💬 رسائل واتساب للعميل</div>' +
             '<div style="font-size:13px;color:#555;margin-bottom:16px;">' +
             'الاسم: ' + escapeHtml(customer.name || 'غير معروف') + '<br>' +
             'الجوال: <span dir="ltr">' + escapeHtml(customer.phone || 'غير معروف') + '</span>' +
             '</div>' +
-            '<button data-template="open" class="customer-msg-tpl-btn" style="' +
-            'width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:14px;">' + MESSAGE_TEMPLATES.open.label + '</button>' +
-            '<button data-template="close" class="customer-msg-tpl-btn" style="' +
-            'width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:14px;">' + MESSAGE_TEMPLATES.close.label + '</button>' +
+            templateButtonsHtml +
             '<button id="customer-msg-cancel" style="' +
             'width:100%;padding:10px;border:none;border-radius:8px;cursor:pointer;' +
             'background:#eee;color:#333;font-size:14px;">إلغاء</button>';
