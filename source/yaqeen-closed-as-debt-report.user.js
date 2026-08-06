@@ -357,9 +357,12 @@
      * الفعلي على الصف هو الطريقة اللي يقين نفسه يعتمدها للتنقّل، وبالتالي
      * أدق من أي رابط نبنيه يدوياً.
      */
-    async function visitRowDetail(frame, rowEl) {
+    async function visitRowDetail(frame, rowEl, label) {
         const startDoc = getDoc(frame);
-        if (!startDoc || !startDoc.location) return null;
+        if (!startDoc || !startDoc.location) {
+            console.warn('[عقود أغلقت كمديونية] تعذّر قراءة مستند القائمة قبل الضغط على الصف:', label);
+            return null;
+        }
         const beforeHref = startDoc.location.href;
 
         dispatchFullClick(rowEl);
@@ -369,7 +372,16 @@
             return d.querySelector('[data-testid="remaining-balance-value"]') ? d : null;
         }, 20000);
 
-        if (!detailDoc) return null;
+        if (!detailDoc) {
+            let currentHref = '';
+            try { currentHref = getDoc(frame)?.location?.href || ''; } catch (err) { /* تجاهل */ }
+            console.warn(
+                '[عقود أغلقت كمديونية] انتهت مهلة فتح تفاصيل العقد (20 ثانية):', label,
+                '| الرابط قبل الضغط:', beforeHref,
+                '| الرابط الحالي:', currentHref
+            );
+            return null;
+        }
 
         // نفس زر "توسيع بيانات العميل" المستخدم بأداة العقود المتأخرة (نفس أيقونة SVG)
         const expandBtn = Array.from(detailDoc.querySelectorAll('button'))
@@ -517,7 +529,7 @@
                         visitedCount++;
                         showProgress(`جارٍ فحص العقود... (${visitedCount} من ${totalToVisit})`);
 
-                        const detail = await visitRowDetail(frame, rowEl);
+                        const detail = await visitRowDetail(frame, rowEl, rowData.agreementNo || rowData.bookingNo);
                         if (detail) {
                             results.push({
                                 agreementNo: rowData.agreementNo,

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1300
+// @version      2026.0806.1307
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7920,9 +7920,12 @@ ${text}
      * الفعلي على الصف هو الطريقة اللي يقين نفسه يعتمدها للتنقّل، وبالتالي
      * أدق من أي رابط نبنيه يدوياً.
      */
-    async function visitRowDetail(frame, rowEl) {
+    async function visitRowDetail(frame, rowEl, label) {
         const startDoc = getDoc(frame);
-        if (!startDoc || !startDoc.location) return null;
+        if (!startDoc || !startDoc.location) {
+            console.warn('[عقود أغلقت كمديونية] تعذّر قراءة مستند القائمة قبل الضغط على الصف:', label);
+            return null;
+        }
         const beforeHref = startDoc.location.href;
 
         dispatchFullClick(rowEl);
@@ -7932,7 +7935,16 @@ ${text}
             return d.querySelector('[data-testid="remaining-balance-value"]') ? d : null;
         }, 20000);
 
-        if (!detailDoc) return null;
+        if (!detailDoc) {
+            let currentHref = '';
+            try { currentHref = getDoc(frame)?.location?.href || ''; } catch (err) { /* تجاهل */ }
+            console.warn(
+                '[عقود أغلقت كمديونية] انتهت مهلة فتح تفاصيل العقد (20 ثانية):', label,
+                '| الرابط قبل الضغط:', beforeHref,
+                '| الرابط الحالي:', currentHref
+            );
+            return null;
+        }
 
         // نفس زر "توسيع بيانات العميل" المستخدم بأداة العقود المتأخرة (نفس أيقونة SVG)
         const expandBtn = Array.from(detailDoc.querySelectorAll('button'))
@@ -8080,7 +8092,7 @@ ${text}
                         visitedCount++;
                         showProgress(`جارٍ فحص العقود... (${visitedCount} من ${totalToVisit})`);
 
-                        const detail = await visitRowDetail(frame, rowEl);
+                        const detail = await visitRowDetail(frame, rowEl, rowData.agreementNo || rowData.bookingNo);
                         if (detail) {
                             results.push({
                                 agreementNo: rowData.agreementNo,
