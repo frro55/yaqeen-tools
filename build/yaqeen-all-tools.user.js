@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1250
+// @version      2026.0806.1300
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7595,19 +7595,6 @@ ${text}
     const LIST_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings/needs-action?pendingActions=TAJEER_SUSPENDED&pageSize=500';
     // سقف أمان لعدد صفحات التفاصيل اللي نفتحها فعلياً بجلسة واحدة
     const MAX_VISITS = 300;
-    // عدد الإطارات المتوازية اللي تفحص العقود بنفس الوقت (نفس رقم أداة
-    // "عقود الشركات غير الممددة" الناجحة) - آمن هنا لأننا صرنا نفتح رابط
-    // تفاصيل كل عقد مباشرة (frame.src) بدل الضغط على صفوف بجدول قائمة
-    // مشترك، فما فيه أي اعتماد على حالة مشتركة بين الإطارات تسبب تعارض
-    const CHECK_CONCURRENCY = 4;
-
-    // رابط صفحة تفاصيل العقد - رقم الاتفاقية نفسه جزء من المسار مباشرة
-    // (بدون أي رقم حجز/توقيت مخمّن أو ثابت من عقد ثاني)، فهذا الرابط أدق
-    // وأوثق من صيغة bookings/:id?agreementNo= القديمة
-    function buildDetailUrl(agreementNo) {
-        return 'https://yaqeen.lumirental.com/rental/branches/29/close-agreements/' +
-            encodeURIComponent(agreementNo) + '/inspection-details';
-    }
 
     function waitCore() {
         if (!HOST_WINDOW.YAQEEN_TOOLS) {
@@ -7681,6 +7668,15 @@ ${text}
         } catch (err) {
             return null;
         }
+    }
+
+    /** يحاكي كليك حقيقي (pointerdown/up) لأزرار/صفوف React اللي ما تستجيب لـ.click() العادي دايماً */
+    function dispatchFullClick(el) {
+        try {
+            el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+            el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+        } catch (err) { /* تجاهل */ }
+        el.click();
     }
 
     function findLabelElement(doc, labelText) {
@@ -7871,10 +7867,9 @@ ${text}
     // ==========================================================
 
     /**
-     * يمر على كل صفحات القائمة (بدون فتح أي تفاصيل) ويجمع بيانات كل صف -
-     * هذا المصدر الوحيد لأرقام الاتفاقيات. لا نبني/نخمّن أي رابط من فراغ،
-     * كل رقم اتفاقية مسحوب فعلياً من القائمة، وفقط نضعه ببارامتر
-     * agreementNo برابط ثابت البنية (راجع buildDetailUrl).
+     * يمر على كل صفحات القائمة (بدون فتح أي تفاصيل) ويجمع بيانات كل صف
+     * (بما فيها شهر/سنة التسليم) - يُستخدم لبناء قائمة الشهور المتاحة
+     * وتحديد الصفوف المستهدفة قبل مرحلة الضغط الفعلي على كل صف.
      */
     async function collectAllCandidates(frame) {
         const seen = {};
@@ -7919,19 +7914,25 @@ ${text}
     }
 
     /**
-     * يفتح رابط تفاصيل عقد واحد مباشرة (frame.src) بدل الضغط على صفّه
-     * بجدول القائمة - آمن تماماً للتوازي لأنه ما يعتمد على أي حالة مشتركة
-     * بين الإطارات (كل إطار يفتح رابطه الخاص باستقلالية كاملة). ما فيه أي
-     * استبعاد هنا (لا بالتاريخ ولا بالمبلغ المتبقي) - المستخدم اختار
-     * الشهور مسبقاً، وكل عقد بهذي الشهور يظهر بالتقرير سواء عليه مبلغ
-     * متبقي أو لا.
+     * يفتح صفحة تفاصيل عقد واحد عبر الضغط على صفّه بالجدول مباشرة (بدل
+     * رابط مباشر) - هذا الجدول ما فيه رابط <a href> إطلاقاً، والرقم
+     * الداخلي المستخدم برابط التفاصيل غير ظاهر بأي عمود بالجدول، فالضغط
+     * الفعلي على الصف هو الطريقة اللي يقين نفسه يعتمدها للتنقّل، وبالتالي
+     * أدق من أي رابط نبنيه يدوياً.
      */
-    async function checkOneAgreement(frame, candidate) {
-        frame.src = buildDetailUrl(candidate.agreementNo);
-        const detailDoc = await waitFor(frame, d => (d.querySelector('[data-testid="remaining-balance-value"]') ? d : null), 20000);
-        if (!detailDoc) return { checked: false, record: null };
+    async function visitRowDetail(frame, rowEl) {
+        const startDoc = getDoc(frame);
+        if (!startDoc || !startDoc.location) return null;
+        const beforeHref = startDoc.location.href;
 
-        const loadedDriverName = detailDoc.querySelector('[data-testid="driver-name"]')?.textContent.trim() || "";
+        dispatchFullClick(rowEl);
+
+        const detailDoc = await waitFor(frame, d => {
+            if (!d || !d.location || d.location.href === beforeHref) return null;
+            return d.querySelector('[data-testid="remaining-balance-value"]') ? d : null;
+        }, 20000);
+
+        if (!detailDoc) return null;
 
         // نفس زر "توسيع بيانات العميل" المستخدم بأداة العقود المتأخرة (نفس أيقونة SVG)
         const expandBtn = Array.from(detailDoc.querySelectorAll('button'))
@@ -7957,22 +7958,38 @@ ${text}
 
         const remainingText = detailDoc.querySelector('[data-testid="remaining-balance-value"]')?.textContent.trim();
         const remaining = parseAmount(remainingText);
+        const driverName = detailDoc.querySelector('[data-testid="driver-name"]')?.textContent.trim() || "";
 
         const dropOffDate = parseDetailDropOffDate(detailDoc);
         const elapsedTotalHours = dropOffDate ? Math.floor((new Date() - dropOffDate) / 3600000) : null;
 
-        return {
-            checked: true,
-            record: {
-                agreementNo: candidate.agreementNo,
-                name: loadedDriverName || candidate.driverName,
-                phone,
-                idNumber,
-                elapsedText: elapsedTotalHours !== null ? formatElapsed(elapsedTotalHours) : "-",
-                remaining: isNaN(remaining) ? "" : remaining.toFixed(2),
-                remainingRaw: isNaN(remaining) ? 0 : remaining,
-            },
-        };
+        return { idNumber, phone, remaining, driverName, elapsedTotalHours };
+    }
+
+    /**
+     * يرجع لصفحة القائمة عبر تحميل رابطها مباشرة (frame.src) بدل
+     * history.back() ثم يعيد الوصول لنفس رقم الصفحة (pageIndex) بالضغط على
+     * "التالي" بالتكرار اللازم - history.back() ثبت سابقاً إنه غير موثوق
+     * هنا.
+     */
+    async function returnToListPage(frame, pageIndex) {
+        frame.src = LIST_URL;
+        let doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null), 20000);
+        if (!doc) return null;
+        for (let i = 1; i < pageIndex; i++) {
+            const nextControl = findNextPageControl(doc);
+            if (!nextControl || isControlDisabled(nextControl)) break;
+            const beforeSig = lastRowSignature(frame);
+            try {
+                nextControl.click();
+            } catch (err) {
+                break;
+            }
+            await waitForListRefresh(frame, beforeSig);
+            doc = getDoc(frame);
+            if (!doc) return null;
+        }
+        return doc;
     }
 
     async function runReport() {
@@ -7993,57 +8010,116 @@ ${text}
 
             showProgress('جارٍ جمع كل العقود عبر كل الصفحات...');
             const allCandidates = await collectAllCandidates(frame);
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
 
             const months = getAvailableMonths(allCandidates);
             if (months.length === 0) {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
                 showReport([], 0, '');
                 return;
             }
 
             const selectedMonthKeys = await showMonthPrompt(months);
-            if (!selectedMonthKeys || selectedMonthKeys.length === 0) return;
+            if (!selectedMonthKeys || selectedMonthKeys.length === 0) {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
+                return;
+            }
 
             const selectedSet = new Set(selectedMonthKeys);
             const monthsLabel = months.filter(m => selectedSet.has(m.key)).map(m => m.label).join('، ');
-            const candidates = allCandidates
-                .filter(c => c.monthKey && selectedSet.has(c.monthKey))
-                .slice(0, MAX_VISITS);
+            const targetSignatures = new Set(
+                allCandidates
+                    .filter(c => c.monthKey && selectedSet.has(c.monthKey))
+                    .slice(0, MAX_VISITS)
+                    .map(c => c.__signature)
+            );
 
-            if (candidates.length === 0) {
+            if (targetSignatures.size === 0) {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
                 showReport([], 0, monthsLabel);
                 return;
             }
 
-            showProgress(`جارٍ فحص العقود... (0 من ${candidates.length})`);
+            const totalToVisit = targetSignatures.size;
 
-            let checkedCount = 0;
-            let processedCount = 0;
-
-            const workerCount = Math.min(CHECK_CONCURRENCY, candidates.length);
-            const workerFrames = [];
-
-            async function worker(workerIndex) {
-                const workerFrame = openHiddenFrame('about:blank');
-                workerFrames.push(workerFrame);
-                for (let i = workerIndex; i < candidates.length; i += workerCount) {
-                    processedCount++;
-                    showProgress(`جارٍ فحص العقود... (${processedCount} من ${candidates.length})`);
-                    const candidate = candidates[i];
-                    try {
-                        const { checked, record } = await checkOneAgreement(workerFrame, candidate);
-                        if (checked) checkedCount++;
-                        if (record) results.push(record);
-                    } catch (err) {
-                        /* تجاهل هذا العقد فقط، نكمل الباقي */
-                    }
-                }
+            // نرجّع القائمة لأول صفحة من جديد - جمع المرشّحين تنقّل بين
+            // الصفحات كلها فمرّ آخر صفحة، ولازم نبدأ الفحص الفعلي من البداية
+            frame.src = LIST_URL;
+            let listDoc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null));
+            if (!listDoc) {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
+                showReport([], 0, monthsLabel);
+                return;
             }
 
-            await Promise.all(Array.from({ length: workerCount }, (_, i) => worker(i)));
-            workerFrames.forEach(f => { try { f.remove(); } catch (err) { /* تجاهل */ } });
+            const visited = {};
+            let visitedCount = 0;
+            let pageIndex = 0;
+            const maxIterations = 80;
 
-            showReport(results, checkedCount, monthsLabel);
+            while (pageIndex < maxIterations && visitedCount < totalToVisit) {
+                pageIndex++;
+
+                // نعيد استعلام مستند الـframe وصفوف الصفحة طازة قبل كل
+                // ضغطة، بدل ما نعتمد على مرجع document/مصفوفة عناصر ثابتة
+                // نلقطها مرة وحدة - بعض صفحات يقين تعيد جلب/رسم الجدول
+                // بالكامل لما نرجع للقائمة من تفاصيل عقد سابق
+                let progressedOnThisPage = true;
+                while (progressedOnThisPage && visitedCount < totalToVisit) {
+                    progressedOnThisPage = false;
+                    const currentDoc = getDoc(frame);
+                    if (!currentDoc) break;
+                    const currentRowEls = Array.from(currentDoc.querySelectorAll('table tbody tr'));
+
+                    for (let i = 0; i < currentRowEls.length; i++) {
+                        const rowEl = currentRowEls[i];
+                        const rowData = readListRow(rowEl);
+                        if (!rowData || !targetSignatures.has(rowData.__signature) || visited[rowData.__signature]) continue;
+                        visited[rowData.__signature] = true;
+                        progressedOnThisPage = true;
+
+                        visitedCount++;
+                        showProgress(`جارٍ فحص العقود... (${visitedCount} من ${totalToVisit})`);
+
+                        const detail = await visitRowDetail(frame, rowEl);
+                        if (detail) {
+                            results.push({
+                                agreementNo: rowData.agreementNo,
+                                name: detail.driverName || rowData.driverName,
+                                phone: detail.phone,
+                                idNumber: detail.idNumber,
+                                elapsedText: detail.elapsedTotalHours !== null ? formatElapsed(detail.elapsedTotalHours) : "-",
+                                remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
+                                remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
+                            });
+                        }
+
+                        // دائماً نرجع لنفس صفحة القائمة عبر تحميل رابطها مباشرة
+                        await returnToListPage(frame, pageIndex);
+
+                        // نخرج ونعيد استعلام الصفوف من جديد بدل ما نكمل على
+                        // نفس المصفوفة (احتمال انفصلت عن الـDOM الحي)
+                        break;
+                    }
+                }
+
+                if (visitedCount >= totalToVisit) break;
+
+                const pageDoc = getDoc(frame);
+                if (!pageDoc) break;
+                const nextControl = findNextPageControl(pageDoc);
+                if (!nextControl || isControlDisabled(nextControl)) break;
+                const beforeSig = lastRowSignature(frame);
+                try {
+                    nextControl.click();
+                } catch (err) {
+                    break;
+                }
+                await waitForListRefresh(frame, beforeSig);
+            }
+
+            try { frame.remove(); } catch (err) { /* تجاهل */ }
+
+            showReport(results, visitedCount, monthsLabel);
 
         } catch (err) {
             try { frame.remove(); } catch (err2) { /* تجاهل */ }
