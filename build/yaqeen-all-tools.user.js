@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.0049
+// @version      2026.0806.1250
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7593,8 +7593,6 @@ ${text}
     };
 
     const LIST_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings/needs-action?pendingActions=TAJEER_SUSPENDED&pageSize=500';
-    // أي عقد تعدّت مدة تسليمه هذا العدد من الأيام لا يظهر بالتقرير إطلاقاً
-    const EXCLUDE_AFTER_DAYS = 30;
     // سقف أمان لعدد صفحات التفاصيل اللي نفتحها فعلياً بجلسة واحدة
     const MAX_VISITS = 300;
     // عدد الإطارات المتوازية اللي تفحص العقود بنفس الوقت (نفس رقم أداة
@@ -7761,20 +7759,44 @@ ${text}
     // قراءة صف القائمة
     // ==========================================================
 
+    const ARABIC_MONTHS = {
+        'يناير': 1, 'فبراير': 2, 'مارس': 3, 'أبريل': 4, 'ابريل': 4, 'مايو': 5, 'يونيو': 6,
+        'يوليو': 7, 'أغسطس': 8, 'اغسطس': 8, 'سبتمبر': 9, 'أكتوبر': 10, 'اكتوبر': 10,
+        'نوفمبر': 11, 'ديسمبر': 12,
+    };
+
+    /**
+     * يحوّل "17, يناير 2026" (صيغة عمود "وقت التسليم" بالقائمة) لشهر/سنة -
+     * نستخدمه فقط لتجميع العقود حسب الشهر عشان المستخدم يختار أي شهر يبيه
+     * (لا علاقة له بأي استبعاد تلقائي - الاستبعاد بالتاريخ انشال نهائياً،
+     * المستخدم هو اللي يحدد الشهور يدوياً).
+     */
+    function parseListMonth(dateText) {
+        if (!dateText) return null;
+        const m = dateText.match(/(\d{1,2}),?\s*([؀-ۿ]+)\s*(\d{4})/);
+        if (!m) return null;
+        const monthNum = ARABIC_MONTHS[m[2].trim()];
+        const year = parseInt(m[3], 10);
+        if (!monthNum) return null;
+        return {
+            key: year + '-' + String(monthNum).padStart(2, '0'),
+            label: m[2].trim() + ' ' + year,
+        };
+    }
+
     /**
      * يقرأ بيانات صف واحد بجدول "تتطلب إجراء" - ترتيب الأعمدة ثابت (مأخوذ
      * من الـHTML الفعلي للجدول): 0=رقم الحجز، 1=رقم الاتفاقية، 2=وقت
-     * التسليم، 3=السائق، 4=اسم المدين، البقية غير مستخدمة هنا. تاريخ
-     * التسليم لا نقرأه من هذا العمود - نقرأه من داخل صفحة تفاصيل العقد
-     * نفسها (راجع parseDetailDropOffDate) بناءً على طلب صريح: لا نحسب
-     * الاستبعاد (تعدّي الشهر) من عمود القائمة قبل ما ندخل العقد، فقط بعد
-     * ما نفتحه فعلياً.
+     * التسليم، 3=السائق، 4=اسم المدين، البقية غير مستخدمة هنا.
      */
     function readListRow(rowEl) {
         const cells = rowEl.querySelectorAll('td');
         if (cells.length < 9) return null;
         const bookingNo = cells[0].textContent.trim();
         const agreementNo = cells[1].textContent.trim();
+        const dateSpans = cells[2].querySelectorAll('span');
+        const dateText = dateSpans[0] ? dateSpans[0].textContent.trim() : '';
+        const monthInfo = parseListMonth(dateText);
         const driverName = cells[3].textContent.trim();
         const debtorName = cells[4].textContent.trim();
         if (!bookingNo && !agreementNo) return null;
@@ -7783,6 +7805,8 @@ ${text}
             agreementNo,
             driverName,
             debtorName,
+            monthKey: monthInfo ? monthInfo.key : null,
+            monthLabel: monthInfo ? monthInfo.label : null,
             __signature: bookingNo || agreementNo,
         };
     }
@@ -7885,22 +7909,28 @@ ${text}
         return candidates;
     }
 
+    /** يجمع الشهور المتوفّرة فعلياً بين كل العقود (بدون تكرار)، مرتّبة زمنياً */
+    function getAvailableMonths(candidates) {
+        const map = {};
+        candidates.forEach(c => {
+            if (c.monthKey && !map[c.monthKey]) map[c.monthKey] = c.monthLabel;
+        });
+        return Object.keys(map).sort().map(key => ({ key, label: map[key] }));
+    }
+
     /**
      * يفتح رابط تفاصيل عقد واحد مباشرة (frame.src) بدل الضغط على صفّه
      * بجدول القائمة - آمن تماماً للتوازي لأنه ما يعتمد على أي حالة مشتركة
-     * بين الإطارات (كل إطار يفتح رابطه الخاص باستقلالية كاملة).
+     * بين الإطارات (كل إطار يفتح رابطه الخاص باستقلالية كاملة). ما فيه أي
+     * استبعاد هنا (لا بالتاريخ ولا بالمبلغ المتبقي) - المستخدم اختار
+     * الشهور مسبقاً، وكل عقد بهذي الشهور يظهر بالتقرير سواء عليه مبلغ
+     * متبقي أو لا.
      */
     async function checkOneAgreement(frame, candidate) {
         frame.src = buildDetailUrl(candidate.agreementNo);
         const detailDoc = await waitFor(frame, d => (d.querySelector('[data-testid="remaining-balance-value"]') ? d : null), 20000);
-        if (!detailDoc) return { checked: false, record: null, excludedOld: false };
+        if (!detailDoc) return { checked: false, record: null };
 
-        // كنا نتحقق هنا إن اسم السائق بالصفحة يطابق اللي بالقائمة كطبقة أمان
-        // ضد فتح عقد غلط، لكن تبيّن إنه دايماً ما يتطابق (على الأغلب صيغة
-        // "driver-name" بصفحة التفاصيل تختلف شكلياً عن عمود "السائق"
-        // بالقائمة، مسافات أو ترتيب أو حروف زايدة) فكان يستبعد كل النتائج
-        // بالخطأ. شلناه - agreementNo نفسه (اللي بنينا الرابط بناءً عليه)
-        // هو التحقق الحقيقي إننا بالعقد الصحيح
         const loadedDriverName = detailDoc.querySelector('[data-testid="driver-name"]')?.textContent.trim() || "";
 
         // نفس زر "توسيع بيانات العميل" المستخدم بأداة العقود المتأخرة (نفس أيقونة SVG)
@@ -7930,15 +7960,9 @@ ${text}
 
         const dropOffDate = parseDetailDropOffDate(detailDoc);
         const elapsedTotalHours = dropOffDate ? Math.floor((new Date() - dropOffDate) / 3600000) : null;
-        const elapsedDays = elapsedTotalHours !== null ? Math.floor(elapsedTotalHours / 24) : null;
-
-        if (elapsedDays !== null && elapsedDays > EXCLUDE_AFTER_DAYS) {
-            return { checked: true, record: null, excludedOld: true };
-        }
 
         return {
             checked: true,
-            excludedOld: false,
             record: {
                 agreementNo: candidate.agreementNo,
                 name: loadedDriverName || candidate.driverName,
@@ -7956,36 +7980,44 @@ ${text}
         const frame = openHiddenFrame(LIST_URL);
         const results = [];
 
-        showProgress(
-            'ملاحظة: لن يتم عرض أي عقد تعدّت مدة تسليمه شهر كامل (30 يوم) من وقت التسليم.' +
-            '<br><br>جارٍ تحميل قائمة العقود...'
-        );
+        showProgress('جارٍ تحميل قائمة العقود...');
 
         try {
 
             const doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null));
             if (!doc) {
                 try { frame.remove(); } catch (err) { /* تجاهل */ }
-                showReport([], 0, 0);
+                showReport([], 0, '');
                 return;
             }
 
-            showProgress(
-                'ملاحظة: لن يتم عرض أي عقد تعدّت مدة تسليمه شهر كامل (30 يوم) من وقت التسليم.' +
-                '<br><br>جارٍ جمع كل أرقام العقود عبر كل الصفحات...'
-            );
+            showProgress('جارٍ جمع كل العقود عبر كل الصفحات...');
             const allCandidates = await collectAllCandidates(frame);
             try { frame.remove(); } catch (err) { /* تجاهل */ }
 
-            const candidates = allCandidates.slice(0, MAX_VISITS);
-
-            if (candidates.length === 0) {
-                showReport([], 0, 0);
+            const months = getAvailableMonths(allCandidates);
+            if (months.length === 0) {
+                showReport([], 0, '');
                 return;
             }
 
+            const selectedMonthKeys = await showMonthPrompt(months);
+            if (!selectedMonthKeys || selectedMonthKeys.length === 0) return;
+
+            const selectedSet = new Set(selectedMonthKeys);
+            const monthsLabel = months.filter(m => selectedSet.has(m.key)).map(m => m.label).join('، ');
+            const candidates = allCandidates
+                .filter(c => c.monthKey && selectedSet.has(c.monthKey))
+                .slice(0, MAX_VISITS);
+
+            if (candidates.length === 0) {
+                showReport([], 0, monthsLabel);
+                return;
+            }
+
+            showProgress(`جارٍ فحص العقود... (0 من ${candidates.length})`);
+
             let checkedCount = 0;
-            let excludedOldCount = 0;
             let processedCount = 0;
 
             const workerCount = Math.min(CHECK_CONCURRENCY, candidates.length);
@@ -7999,9 +8031,8 @@ ${text}
                     showProgress(`جارٍ فحص العقود... (${processedCount} من ${candidates.length})`);
                     const candidate = candidates[i];
                     try {
-                        const { checked, record, excludedOld } = await checkOneAgreement(workerFrame, candidate);
+                        const { checked, record } = await checkOneAgreement(workerFrame, candidate);
                         if (checked) checkedCount++;
-                        if (excludedOld) excludedOldCount++;
                         if (record) results.push(record);
                     } catch (err) {
                         /* تجاهل هذا العقد فقط، نكمل الباقي */
@@ -8012,7 +8043,7 @@ ${text}
             await Promise.all(Array.from({ length: workerCount }, (_, i) => worker(i)));
             workerFrames.forEach(f => { try { f.remove(); } catch (err) { /* تجاهل */ } });
 
-            showReport(results, checkedCount, excludedOldCount);
+            showReport(results, checkedCount, monthsLabel);
 
         } catch (err) {
             try { frame.remove(); } catch (err2) { /* تجاهل */ }
@@ -8050,6 +8081,61 @@ ${text}
         document.getElementById('closed-debt-close').onclick = () => {
             document.getElementById('closed-debt-box')?.remove();
         };
+    }
+
+    /**
+     * يعرض قائمة الشهور المتوفّرة (مبنية من عمود "وقت التسليم" بالقائمة)
+     * كـcheckboxes يختار منها المستخدم شهر أو أكثر - يرجّع مصفوفة مفاتيح
+     * الشهور المختارة، أو null لو ألغى.
+     */
+    function showMonthPrompt(months) {
+        return new Promise(resolve => {
+            document.getElementById('closed-debt-box')?.remove();
+
+            const checkboxesHtml = months.map(m => (
+                '<label style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #eee;cursor:pointer;">' +
+                '<input type="checkbox" class="closed-debt-month-cb" value="' + m.key + '" checked style="width:18px;height:18px;">' +
+                '<span>' + m.label + '</span>' +
+                '</label>'
+            )).join('');
+
+            const html =
+                '<div style="font-size:16px;font-weight:bold;margin-bottom:6px;">📕 عقود أغلقت كمديونية</div>' +
+                '<div style="font-size:13px;color:#555;margin-bottom:10px;">اختر الشهر/الأشهر اللي تبي تطلع عقودها (حسب تاريخ التسليم بالقائمة):</div>' +
+                '<div style="text-align:left;margin-bottom:8px;font-size:13px;">' +
+                '<a href="#" id="closed-debt-select-all" style="color:#166534;text-decoration:underline;margin-left:12px;">تحديد الكل</a>' +
+                '<a href="#" id="closed-debt-select-none" style="color:#dc2626;text-decoration:underline;">إلغاء الكل</a>' +
+                '</div>' +
+                '<div style="max-height:280px;overflow:auto;border:1px solid #eee;border-radius:8px;margin-bottom:14px;text-align:right;">' +
+                checkboxesHtml +
+                '</div>' +
+                '<div style="display:flex;gap:8px;">' +
+                '<button id="closed-debt-month-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;' +
+                'cursor:pointer;background:#eee;color:#333;font-size:14px;">إلغاء</button>' +
+                '<button id="closed-debt-month-go" style="flex:1;padding:12px;border:none;border-radius:8px;' +
+                'cursor:pointer;background:#A3E635;font-size:14px;">عرض العقود</button>' +
+                '</div>';
+
+            document.body.insertAdjacentHTML('beforeend', overlayShell(html, 380));
+
+            document.getElementById('closed-debt-select-all').onclick = e => {
+                e.preventDefault();
+                document.querySelectorAll('.closed-debt-month-cb').forEach(cb => { cb.checked = true; });
+            };
+            document.getElementById('closed-debt-select-none').onclick = e => {
+                e.preventDefault();
+                document.querySelectorAll('.closed-debt-month-cb').forEach(cb => { cb.checked = false; });
+            };
+            document.getElementById('closed-debt-month-cancel').onclick = () => {
+                document.getElementById('closed-debt-box')?.remove();
+                resolve(null);
+            };
+            document.getElementById('closed-debt-month-go').onclick = () => {
+                const selected = Array.from(document.querySelectorAll('.closed-debt-month-cb:checked')).map(cb => cb.value);
+                document.getElementById('closed-debt-box')?.remove();
+                resolve(selected);
+            };
+        });
     }
 
     /** أحمر = مبلغ متبقي على العميل، أخضر = مبلغ زائد له (استرداد)، رمادي = مسدّد بالضبط */
@@ -8095,7 +8181,7 @@ ${text}
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + ' | لا تشمل عقود تعدّت شهر كامل من وقت التسليم</div>' +
+            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>المدة منذ التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
@@ -8134,7 +8220,7 @@ ${text}
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + ' | لا تشمل عقود تعدّت شهر كامل من وقت التسليم</div>' +
+            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>المدة منذ التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
         );
@@ -8306,7 +8392,7 @@ ${text}
 
     const sortState = { key: null, dir: 1 };
     let lastVisitedCount = 0;
-    let lastExcludedOldCount = 0;
+    let lastMonthsLabel = '';
 
     function sortIndicator(key) {
         if (sortState.key !== key) return '';
@@ -8324,13 +8410,13 @@ ${text}
     function handleSortClick(records, key) {
         if (sortState.key === key) sortState.dir *= -1;
         else { sortState.key = key; sortState.dir = 1; }
-        showReport(sortRecords(records, key), lastVisitedCount, lastExcludedOldCount);
+        showReport(sortRecords(records, key), lastVisitedCount, lastMonthsLabel);
     }
 
-    function showReport(records, visitedCount, excludedOldCount) {
+    function showReport(records, visitedCount, monthsLabel) {
         document.getElementById('closed-debt-box')?.remove();
         lastVisitedCount = visitedCount;
-        lastExcludedOldCount = excludedOldCount;
+        lastMonthsLabel = monthsLabel;
 
         const rowsHtml = records.map(r => (
             '<tr>' +
@@ -8355,11 +8441,13 @@ ${text}
             'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
             '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
             '<div style="font-size:16px;font-weight:bold;">📕 عقود أغلقت كمديونية</div>' +
-            '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">' +
-            'لا يشمل التقرير أي عقد تعدّت مدة تسليمه شهر كامل (30 يوم) من وقت التسليم' +
-            '</div>' +
+            (monthsLabel ? (
+                '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">' +
+                'الشهور المحددة: ' + monthsLabel +
+                '</div>'
+            ) : '') +
             '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
-            'تم فحص ' + visitedCount + ' عقد (استُبعد ' + excludedOldCount + ' عقد تعدّى الشهر) | عدد العقود المطابقة: ' + records.length +
+            'تم فحص ' + visitedCount + ' عقد | عدد العقود المطابقة: ' + records.length +
             '</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;">' +
