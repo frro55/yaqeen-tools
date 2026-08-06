@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1320
+// @version      2026.0806.1328
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7940,18 +7940,40 @@ ${text}
         }
         const beforeHref = startDoc.location.href;
 
+        // بعض المرات الضغطة الأولى تُتجاهل بصمت (الصف لسا ما خلص React ربط
+        // مستمع الضغط عليه - hydration - رغم مهلة الاستقرار قبلها). بدل
+        // انتظار 20 ثانية كاملة على أمل ضغطة وحدة، نعيد الضغط كل 2.5 ثانية
+        // (على نفس الصف، نعيد استعلامه طازة كل مرة) لين ينجح التنقّل أو
+        // تخلص المهلة الكلية - هذا يصحّح نفسه تلقائياً لو الضغطة الأولى ضاعت
+        const totalBudgetMs = 20000;
+        const retryEveryMs = 2500;
+        const overallStart = Date.now();
+        let detailDoc = null;
+
         dispatchFullClick(rowEl);
 
-        const detailDoc = await waitFor(frame, d => {
-            if (!d || !d.location || d.location.href === beforeHref) return null;
-            return d.querySelector('[data-testid="remaining-balance-value"]') ? d : null;
-        }, 20000);
+        while (!detailDoc && Date.now() - overallStart < totalBudgetMs) {
+            detailDoc = await waitFor(frame, d => {
+                if (!d || !d.location || d.location.href === beforeHref) return null;
+                return d.querySelector('[data-testid="remaining-balance-value"]') ? d : null;
+            }, retryEveryMs);
+
+            if (!detailDoc && Date.now() - overallStart < totalBudgetMs) {
+                try {
+                    const currentDoc = getDoc(frame);
+                    if (currentDoc && currentDoc.location && currentDoc.location.href === beforeHref) {
+                        const freshRow = currentDoc.querySelector('table tbody tr');
+                        if (freshRow) dispatchFullClick(freshRow);
+                    }
+                } catch (err) { /* تجاهل */ }
+            }
+        }
 
         if (!detailDoc) {
             let currentHref = '';
             try { currentHref = getDoc(frame)?.location?.href || ''; } catch (err) { /* تجاهل */ }
             console.warn(
-                '[عقود أغلقت كمديونية] انتهت مهلة فتح تفاصيل العقد (20 ثانية):', label,
+                '[عقود أغلقت كمديونية] انتهت مهلة فتح تفاصيل العقد (20 ثانية) رغم إعادة الضغط:', label,
                 '| الرابط قبل الضغط:', beforeHref,
                 '| الرابط الحالي:', currentHref
             );
