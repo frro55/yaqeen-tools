@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1328
+// @version      2026.0806.1335
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7985,6 +7985,8 @@ ${text}
             .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));
         if (expandBtn) {
             try { expandBtn.click(); } catch (err) { /* تجاهل */ }
+        } else {
+            console.warn('[عقود أغلقت كمديونية] ما لقينا زر توسيع بيانات العميل بصفحة التفاصيل:', label);
         }
         // بدل انتظار ثابت 1200ms دايماً، نستنى فعلياً لين تترسم لوحة بيانات
         // العميل (رقم الهوية) - أسرع لو الشبكة سريعة، وسقف 2500ms احتياطي
@@ -8001,6 +8003,15 @@ ${text}
         const phoneEl = Array.from(dialog.querySelectorAll('span'))
             .find(el => /^\+?\d[\d\s]{7,}$/.test(el.textContent.trim()));
         const phone = phoneEl ? phoneEl.textContent.trim() : "";
+
+        if (!idNumber || !phone) {
+            console.warn(
+                '[عقود أغلقت كمديونية] بيانات العميل ناقصة بعد المحاولة:', label,
+                '| رقم الهوية:', idNumber || '(فاضي)',
+                '| الجوال:', phone || '(فاضي)',
+                '| وُجد زر التوسيع:', !!expandBtn
+            );
+        }
 
         const remainingText = detailDoc.querySelector('[data-testid="remaining-balance-value"]')?.textContent.trim();
         const remaining = parseAmount(remainingText);
@@ -8021,7 +8032,10 @@ ${text}
     async function checkOneAgreement(frame, candidate) {
         frame.src = buildMiniListUrl(candidate.agreementNo);
         const listDoc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null), 20000);
-        if (!listDoc) return null;
+        if (!listDoc) {
+            console.warn('[عقود أغلقت كمديونية] انتهت مهلة تحميل القائمة المصغّرة (20 ثانية):', candidate.agreementNo);
+            return null;
+        }
 
         // الصف يترسم بالـDOM قبل ما React يخلّص ربط مستمع الضغط عليه
         // (hydration) - ضغطة فورية ممكن تُتجاهل بصمت، فنستنى شوي إضافي
@@ -8029,7 +8043,10 @@ ${text}
 
         const currentDoc = getDoc(frame);
         const rowEl = currentDoc && currentDoc.querySelector('table tbody tr');
-        if (!rowEl) return null;
+        if (!rowEl) {
+            console.warn('[عقود أغلقت كمديونية] القائمة المصغّرة ما رجّعت أي صف:', candidate.agreementNo);
+            return null;
+        }
 
         return await visitRowDetail(frame, rowEl, candidate.agreementNo);
     }
