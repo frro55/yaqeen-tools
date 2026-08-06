@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1335
+// @version      2026.0806.1343
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7980,9 +7980,12 @@ ${text}
             return null;
         }
 
-        // نفس زر "توسيع بيانات العميل" المستخدم بأداة العقود المتأخرة (نفس أيقونة SVG)
+        // هذي الصفحة فيها زرّين بنفس أيقونة السهم (M181.66,133.66): "عرض
+        // التفاصيل" (نص ظاهر، لأكورديون ثاني ما له علاقة ببيانات العميل)
+        // وزر توسيع بيانات العميل الحقيقي (أيقونة بس، بدون أي نص). نفلتر
+        // على عدم وجود نص عشان نضمن نضغط الزر الصحيح
         const expandBtn = Array.from(detailDoc.querySelectorAll('button'))
-            .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));
+            .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66') && x.textContent.trim() === '');
         if (expandBtn) {
             try { expandBtn.click(); } catch (err) { /* تجاهل */ }
         } else {
@@ -8037,14 +8040,19 @@ ${text}
             return null;
         }
 
-        // الصف يترسم بالـDOM قبل ما React يخلّص ربط مستمع الضغط عليه
-        // (hydration) - ضغطة فورية ممكن تُتجاهل بصمت، فنستنى شوي إضافي
-        await new Promise(r => setTimeout(r, 700));
+        // الصف قد يظهر لحظياً ثم يُعاد رسمه (يختفي مؤقتاً) قبل ما يستقر -
+        // فحص وحيد بتوقيت ثابت ممكن يقع بالضبط بفجوة إعادة الرسم هذي.
+        // نتأكد من وجوده بشكل متكرر لين يثبت (أو تنتهي المهلة)
+        let rowEl = null;
+        const rowWaitStart = Date.now();
+        while (!rowEl && Date.now() - rowWaitStart < 5000) {
+            await new Promise(r => setTimeout(r, 300));
+            const currentDoc = getDoc(frame);
+            rowEl = currentDoc && currentDoc.querySelector('table tbody tr');
+        }
 
-        const currentDoc = getDoc(frame);
-        const rowEl = currentDoc && currentDoc.querySelector('table tbody tr');
         if (!rowEl) {
-            console.warn('[عقود أغلقت كمديونية] القائمة المصغّرة ما رجّعت أي صف:', candidate.agreementNo);
+            console.warn('[عقود أغلقت كمديونية] القائمة المصغّرة ما رجّعت أي صف مستقر:', candidate.agreementNo);
             return null;
         }
 
