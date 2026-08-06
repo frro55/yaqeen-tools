@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1356
+// @version      2026.0806.1408
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7847,41 +7847,6 @@ ${text}
         }
     }
 
-    function formatElapsed(totalHours) {
-        const days = Math.floor(totalHours / 24);
-        const hours = totalHours % 24;
-        return days + ' أيام : ' + hours + ' ساعات';
-    }
-
-    /**
-     * يقرأ تاريخ ووقت التسليم الفعلي من داخل صفحة تفاصيل العقد نفسها -
-     * قسم "التسليم" فيه data-testid="drop-off-date" (مثل "سبت, 04:16 م" -
-     * اسم اليوم + وقت 12 ساعة + ص/م) و data-testid="drop-off-date-secondary"
-     * (مثل "17/01/2026" - يوم/شهر/سنة). هذا المصدر الوحيد المعتمد لحساب
-     * "المدة من وقت التسليم" - لا نحسبها من عمود القائمة قبل فتح العقد.
-     */
-    function parseDetailDropOffDate(detailDoc) {
-        const dateText = detailDoc.querySelector('[data-testid="drop-off-date-secondary"]')?.textContent.trim();
-        const timeText = detailDoc.querySelector('[data-testid="drop-off-date"]')?.textContent.trim();
-        if (!dateText || !timeText) return null;
-
-        const dateMatch = dateText.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-        if (!dateMatch) return null;
-        const day = parseInt(dateMatch[1], 10);
-        const month = parseInt(dateMatch[2], 10);
-        const year = parseInt(dateMatch[3], 10);
-
-        const timeMatch = timeText.match(/(\d{1,2}):(\d{2})\s*(ص|م)/);
-        if (!timeMatch) return null;
-        let hour = parseInt(timeMatch[1], 10);
-        const minute = parseInt(timeMatch[2], 10);
-        const isPm = timeMatch[3] === 'م';
-        if (isPm && hour !== 12) hour += 12;
-        if (!isPm && hour === 12) hour = 0;
-
-        return new Date(year, month - 1, day, hour, minute);
-    }
-
     // ==========================================================
     // التنفيذ الرئيسي
     // ==========================================================
@@ -8028,10 +7993,7 @@ ${text}
         const remaining = parseAmount(remainingText);
         const driverName = detailDoc.querySelector('[data-testid="driver-name"]')?.textContent.trim() || "";
 
-        const dropOffDate = parseDetailDropOffDate(detailDoc);
-        const elapsedTotalHours = dropOffDate ? Math.floor((new Date() - dropOffDate) / 3600000) : null;
-
-        return { idNumber, phone, remaining, driverName, elapsedTotalHours };
+        return { idNumber, phone, remaining, driverName };
     }
 
     /**
@@ -8145,7 +8107,8 @@ ${text}
                                 name: detail.driverName || candidate.driverName,
                                 phone: detail.phone,
                                 idNumber: detail.idNumber,
-                                elapsedText: detail.elapsedTotalHours !== null ? formatElapsed(detail.elapsedTotalHours) : "-",
+                                monthKey: candidate.monthKey || "",
+                                monthLabel: candidate.monthLabel || "-",
                                 remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
                                 remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
                             });
@@ -8264,10 +8227,10 @@ ${text}
     }
 
     function tableToTsv(records) {
-        const header = ['رقم العقد', 'الاسم', 'الجوال', 'رقم الهوية', 'المدة منذ التسليم', 'المتبقي'];
+        const header = ['رقم العقد', 'الاسم', 'الجوال', 'رقم الهوية', 'شهر التسليم', 'المتبقي'];
         const lines = [header.join('\t')];
         records.forEach(r => {
-            lines.push([r.agreementNo, r.name, r.phone, r.idNumber, r.elapsedText, r.remaining].join('\t'));
+            lines.push([r.agreementNo, r.name, r.phone, r.idNumber, r.monthLabel, r.remaining].join('\t'));
         });
         return lines.join('\n');
     }
@@ -8281,7 +8244,7 @@ ${text}
 
         const rowsHtml = records.map(r => (
             '<tr><td>' + r.agreementNo + '</td><td>' + r.name + '</td><td>' + r.phone + '</td>' +
-            '<td>' + r.idNumber + '</td><td>' + r.elapsedText + '</td>' +
+            '<td>' + r.idNumber + '</td><td>' + r.monthLabel + '</td>' +
             '<td style="font-weight:bold;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td></tr>'
         )).join('') || '<tr><td colspan="6">لا توجد عقود مطابقة</td></tr>';
 
@@ -8301,7 +8264,7 @@ ${text}
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
-            '<th>المدة منذ التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
+            '<th>شهر التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
         );
         printWindow.document.close();
@@ -8329,7 +8292,7 @@ ${text}
     function buildReportImageInnerHtml(records) {
         const rowsHtml = records.map(r => (
             '<tr><td>' + r.agreementNo + '</td><td>' + r.name + '</td><td dir="ltr">' + r.phone + '</td>' +
-            '<td>' + r.idNumber + '</td><td>' + r.elapsedText + '</td>' +
+            '<td>' + r.idNumber + '</td><td>' + r.monthLabel + '</td>' +
             '<td style="font-weight:bold;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td></tr>'
         )).join('') || '<tr><td colspan="6">لا توجد عقود مطابقة</td></tr>';
 
@@ -8340,7 +8303,7 @@ ${text}
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
             '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
-            '<th>المدة منذ التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
+            '<th>شهر التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
         );
     }
 
@@ -8521,6 +8484,9 @@ ${text}
         const sorted = records.slice();
         if (key === 'remaining') {
             sorted.sort((a, b) => (a.remainingRaw - b.remainingRaw) * sortState.dir);
+        } else if (key === 'month') {
+            // monthKey بصيغة "YYYY-MM" فيترتب زمنياً بالمقارنة النصية العادية
+            sorted.sort((a, b) => (a.monthKey || '').localeCompare(b.monthKey || '') * sortState.dir);
         }
         return sorted;
     }
@@ -8542,7 +8508,7 @@ ${text}
             '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
             '<td style="border-top:1px solid #eee;" dir="ltr">' + r.phone + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.idNumber + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.elapsedText + '</td>' +
+            '<td style="border-top:1px solid #eee;">' + r.monthLabel + '</td>' +
             '<td style="border-top:1px solid #eee;font-weight:bold;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td>' +
             '</tr>'
         )).join('');
@@ -8572,7 +8538,7 @@ ${text}
             '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
             '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
             '<th style="padding:10px">رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
-            '<th>المدة منذ التسليم</th>' +
+            '<th id="closed-debt-sort-month" style="cursor:pointer;user-select:none;">شهر التسليم' + sortIndicator('month') + '</th>' +
             '<th id="closed-debt-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
@@ -8601,6 +8567,9 @@ ${text}
         };
         document.getElementById('closed-debt-sort-remaining').onclick = () => {
             handleSortClick(records, 'remaining');
+        };
+        document.getElementById('closed-debt-sort-month').onclick = () => {
+            handleSortClick(records, 'month');
         };
         document.getElementById('closed-debt-print').onclick = () => {
             printReport(records);
