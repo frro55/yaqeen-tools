@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1348
+// @version      2026.0806.1356
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7595,6 +7595,14 @@ ${text}
     const LIST_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings/needs-action?pendingActions=TAJEER_SUSPENDED&pageSize=500';
     // سقف أمان لعدد صفحات التفاصيل اللي نفتحها فعلياً بجلسة واحدة
     const MAX_VISITS = 300;
+    // عدد الإطارات المتوازية اللي تفحص العقود بنفس الوقت. جرّبنا التوازي
+    // سابقاً بس بمنطق الضغط على صفوف القائمة الكبيرة المشتركة، وفشل (توقف
+    // بالضبط عند عدد الإطارات). اتضح لاحقاً إن السبب الحقيقي كان خللين
+    // بالتوقيت (hydration الصف + سباق تحديث الرابط) مو تعارض جلسات - وصرنا
+    // نصلحهم الاثنين. بما إن كل عامل الحين يفتح رابط قائمته المصغّرة
+    // الخاصة به (مستقل تماماً عن بقية العمّال)، التوازي المفروض يصير آمن.
+    // نبدأ برقم متحفّظ (3) بدل 4 المستخدمة بأدوات ثانية.
+    const CHECK_CONCURRENCY = 3;
 
     /**
      * قائمة مفلترة برقم اتفاقية واحد بالضبط - ترجّع صف واحد بس (نفس رقم
@@ -8115,33 +8123,43 @@ ${text}
                 return;
             }
 
+            try { frame.remove(); } catch (err) { /* تجاهل */ }
+
             const totalToVisit = candidates.length;
             let visitedCount = 0;
             showProgress(`جارٍ فحص العقود... (0 من ${totalToVisit})`);
 
-            for (const candidate of candidates) {
-                visitedCount++;
-                showProgress(`جارٍ فحص العقود... (${visitedCount} من ${totalToVisit})`);
+            const workerCount = Math.min(CHECK_CONCURRENCY, candidates.length);
+            const workerFrames = [];
 
-                try {
-                    const detail = await checkOneAgreement(frame, candidate);
-                    if (detail) {
-                        results.push({
-                            agreementNo: candidate.agreementNo,
-                            name: detail.driverName || candidate.driverName,
-                            phone: detail.phone,
-                            idNumber: detail.idNumber,
-                            elapsedText: detail.elapsedTotalHours !== null ? formatElapsed(detail.elapsedTotalHours) : "-",
-                            remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
-                            remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
-                        });
+            async function worker(workerIndex) {
+                const workerFrame = openHiddenFrame('about:blank');
+                workerFrames.push(workerFrame);
+                for (let i = workerIndex; i < candidates.length; i += workerCount) {
+                    const candidate = candidates[i];
+                    try {
+                        const detail = await checkOneAgreement(workerFrame, candidate);
+                        if (detail) {
+                            results.push({
+                                agreementNo: candidate.agreementNo,
+                                name: detail.driverName || candidate.driverName,
+                                phone: detail.phone,
+                                idNumber: detail.idNumber,
+                                elapsedText: detail.elapsedTotalHours !== null ? formatElapsed(detail.elapsedTotalHours) : "-",
+                                remaining: isNaN(detail.remaining) ? "" : detail.remaining.toFixed(2),
+                                remainingRaw: isNaN(detail.remaining) ? 0 : detail.remaining,
+                            });
+                        }
+                    } catch (err) {
+                        /* تجاهل هذا العقد فقط، نكمل الباقي */
                     }
-                } catch (err) {
-                    /* تجاهل هذا العقد فقط، نكمل الباقي */
+                    visitedCount++;
+                    showProgress(`جارٍ فحص العقود... (${visitedCount} من ${totalToVisit})`);
                 }
             }
 
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
+            await Promise.all(Array.from({ length: workerCount }, (_, i) => worker(i)));
+            workerFrames.forEach(f => { try { f.remove(); } catch (err) { /* تجاهل */ } });
 
             showReport(results, visitedCount, monthsLabel);
 
