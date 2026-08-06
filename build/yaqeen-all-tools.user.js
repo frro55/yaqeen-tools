@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1343
+// @version      2026.0806.1348
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -8033,10 +8033,22 @@ ${text}
      * لأي قائمة بعدها - العقد التالي يروح لرابطه الخاص مباشرة.
      */
     async function checkOneAgreement(frame, candidate) {
+        // مهم: نتحقق إن رابط الإطار فعلاً تحوّل لرابط هذا العقد بالذات
+        // (مو بس "فيه صف بجدول") - لو التنقّل لسا ما خلص، ممكن نلقط صفحة
+        // العقد السابق (لسا مرسومة) ونظن إننا وصلنا للعقد الجديد
+        const expectedUrlFragment = 'agreementNo=' + encodeURIComponent(candidate.agreementNo);
         frame.src = buildMiniListUrl(candidate.agreementNo);
-        const listDoc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null), 20000);
+        const listDoc = await waitFor(frame, d => {
+            if (!d || !d.location || d.location.href.indexOf(expectedUrlFragment) === -1) return null;
+            return d.querySelectorAll('table tbody tr').length > 0 ? d : null;
+        }, 20000);
         if (!listDoc) {
-            console.warn('[عقود أغلقت كمديونية] انتهت مهلة تحميل القائمة المصغّرة (20 ثانية):', candidate.agreementNo);
+            let currentHref = '';
+            try { currentHref = getDoc(frame)?.location?.href || ''; } catch (err) { /* تجاهل */ }
+            console.warn(
+                '[عقود أغلقت كمديونية] انتهت مهلة تحميل القائمة المصغّرة (20 ثانية):', candidate.agreementNo,
+                '| الرابط الحالي:', currentHref
+            );
             return null;
         }
 
