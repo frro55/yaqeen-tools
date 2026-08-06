@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0806.1307
+// @version      2026.0806.1312
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -7988,6 +7988,10 @@ ${text}
         frame.src = LIST_URL;
         let doc = await waitFor(frame, d => (d.querySelectorAll('table tbody tr').length > 0 ? d : null), 20000);
         if (!doc) return null;
+        // الصفوف تترسم بالـDOM قبل ما React يخلّص ربط مستمعات الضغط عليها
+        // (hydration) - ضغطة فورية بعد ظهور الصفوف مباشرة ممكن ما تسوي
+        // أي شي (تُتجاهل بصمت) لأن المستمع لسا ما ارتبط، فنستنى شوي إضافي
+        await new Promise(r => setTimeout(r, 700));
         for (let i = 1; i < pageIndex; i++) {
             const nextControl = findNextPageControl(doc);
             if (!nextControl || isControlDisabled(nextControl)) break;
@@ -8062,6 +8066,9 @@ ${text}
                 showReport([], 0, monthsLabel);
                 return;
             }
+            // نفس مهلة الاستقرار المستخدمة بـreturnToListPage - نستنى ريأكت
+            // يخلّص ربط مستمعات الضغط على الصفوف قبل أول ضغطة
+            await new Promise(r => setTimeout(r, 700));
 
             const visited = {};
             let visitedCount = 0;
