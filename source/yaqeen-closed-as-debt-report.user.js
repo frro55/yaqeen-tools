@@ -40,20 +40,12 @@
     // مشترك، فما فيه أي اعتماد على حالة مشتركة بين الإطارات تسبب تعارض
     const CHECK_CONCURRENCY = 4;
 
-    // رابط صفحة تفاصيل العقد - رقم الحجز الداخلي بالمسار (763213) ورقم
-    // dropOffTimestamp ثابتين هنا (مأخوذين من عقد واحد حقيقي بس)، وبس
-    // agreementNo هو اللي يتغيّر لكل عقد. تجربة فعلية أثبتت إن يقين يفتح
-    // صفحة العقد الصحيح بناءً على agreementNo بالضبط، بغض النظر عن كون
-    // رقم الحجز بالمسار أو dropOffTimestamp يخصان عقد آخر تماماً. كطبقة
-    // أمان إضافية (راجع checkOneAgreement) نتحقق بعد الفتح إن اسم السائق
-    // المعروض يطابق اللي كنا نتوقعه من القائمة، عشان نضمن ما ندخل عقد غلط.
-    const DETAIL_URL_BOOKING_ID = '763213';
-    const DETAIL_URL_DROP_OFF_TIMESTAMP = '1768467600';
-
+    // رابط صفحة تفاصيل العقد - رقم الاتفاقية نفسه جزء من المسار مباشرة
+    // (بدون أي رقم حجز/توقيت مخمّن أو ثابت من عقد ثاني)، فهذا الرابط أدق
+    // وأوثق من صيغة bookings/:id?agreementNo= القديمة
     function buildDetailUrl(agreementNo) {
-        return 'https://yaqeen.lumirental.com/rental/branches/29/bookings/' + DETAIL_URL_BOOKING_ID +
-            '?tabName=needs-action&agreementNo=' + encodeURIComponent(agreementNo) +
-            '&dropOffBranchId=29&dropOffTimestamp=' + DETAIL_URL_DROP_OFF_TIMESTAMP;
+        return 'https://yaqeen.lumirental.com/rental/branches/29/close-agreements/' +
+            encodeURIComponent(agreementNo) + '/inspection-details';
     }
 
     function waitCore() {
