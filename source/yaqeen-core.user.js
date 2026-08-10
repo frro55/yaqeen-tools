@@ -47,6 +47,7 @@
         "company-extension",
         "company-extension-branches",
         "closed-as-debt",
+        "closed-as-debt-branches",
         "customer-whatsapp-messages",
         "booking-report",
         "vip-booking-add",
