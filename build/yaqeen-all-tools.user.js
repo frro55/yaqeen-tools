@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0810.1255
+// @version      2026.0810.2127
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -5063,6 +5063,9 @@ ${text}
         { id: 25, name: 'مطار الأمير عبدالمحسن - ينبع' },
         { id: 36, name: 'المدينة المنورة' },
         { id: 59, name: 'مطار الأمير محمد بن عبدالعزيز الدولي - المدينة' },
+        { id: 70, name: 'مدينة العلا' },
+        { id: 217, name: 'الطائف' },
+        { id: 218, name: 'طريق الأمير سلطان' },
     ];
 
     function lateReturnUrlForBranch(branchId) {
@@ -6747,6 +6750,9 @@ ${text}
         { id: 25, name: 'مطار الأمير عبدالمحسن - ينبع' },
         { id: 36, name: 'المدينة المنورة' },
         { id: 59, name: 'مطار الأمير محمد بن عبدالعزيز الدولي - المدينة' },
+        { id: 70, name: 'مدينة العلا' },
+        { id: 217, name: 'الطائف' },
+        { id: 218, name: 'طريق الأمير سلطان' },
     ];
 
     function lateReturnUrlForBranch(branchId) {
