@@ -49,6 +49,7 @@
         "closed-as-debt",
         "customer-whatsapp-messages",
         "booking-report",
+        "vip-booking-add",
     ];
 
     // اختصارات لوحة المفاتيح: كل عنصر يفتح أداة معيّنة (بالـid تبعها) مباشرة

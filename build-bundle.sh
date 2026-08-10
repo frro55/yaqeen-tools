@@ -30,6 +30,7 @@ cat > "$BUNDLE" << HDREOF
 // @connect      api.yaqeen-vip.space
 // @connect      cdn.lumirental.com
 // @connect      mpos.geidea.net
+// @connect      ycguqfilerlkrukiykiy.supabase.co
 // @run-at       document-end
 // @updateURL    https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
 // @downloadURL  https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
@@ -60,6 +61,7 @@ FILES=(
   yaqeen-closed-as-debt-report.user.js
   yaqeen-customer-messages.user.js
   yaqeen-booking-report.user.js
+  yaqeen-vip-booking.user.js
 )
 
 for f in "${FILES[@]}"; do
