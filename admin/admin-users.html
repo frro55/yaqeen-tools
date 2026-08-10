@@ -233,6 +233,17 @@
     </div>
 
     <div class="panel">
+      <h2>🤖 تعليمات شات AI</h2>
+      <textarea id="aiPromptInput" rows="5" style="width:100%;box-sizing:border-box;padding:10px 12px;
+        border:1px solid #ccc;border-radius:8px;font-size:13.5px;text-align:right;direction:rtl;
+        font-family:inherit;resize:vertical;" placeholder="النص اللي يوجّه رد الذكاء الاصطناعي..."></textarea>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
+        <button class="btn small" id="aiPromptSaveBtn">💾 حفظ التعليمات</button>
+        <span class="add-msg" id="aiPromptMsg"></span>
+      </div>
+    </div>
+
+    <div class="panel">
       <div class="toolbar">
         <input type="text" id="searchInput" placeholder="بحث بالإيميل...">
         <button class="btn secondary small" id="refreshBtn">🔄 تحديث</button>
@@ -314,9 +325,40 @@
       document.getElementById("whoLabel").textContent = "مسجّل الدخول: " + email;
       allUsers = data.users || [];
       renderUsers();
+      loadAiPrompt();
       return true;
     });
   }
+
+  // ===== تعليمات شات AI =====
+  function loadAiPrompt() {
+    return getJson("/api/admin/ai-settings?admin_email=" + encodeURIComponent(adminEmail)).then(data => {
+      if (!data || data.success !== true) return;
+      document.getElementById("aiPromptInput").value = data.prompt || "";
+    });
+  }
+
+  document.getElementById("aiPromptSaveBtn").addEventListener("click", () => {
+    const btn = document.getElementById("aiPromptSaveBtn");
+    const msg = document.getElementById("aiPromptMsg");
+    const prompt = document.getElementById("aiPromptInput").value;
+
+    btn.disabled = true;
+    msg.textContent = "";
+    msg.className = "add-msg";
+
+    postJson("/api/admin/ai-settings", { admin_email: adminEmail, prompt: prompt }).then(res => {
+      btn.disabled = false;
+      if (!res || !res.success) {
+        msg.textContent = res && res.message ? res.message : "فشل الحفظ";
+        msg.className = "add-msg err";
+        return;
+      }
+      msg.textContent = "تم الحفظ ✓";
+      msg.className = "add-msg ok";
+      setTimeout(() => { msg.textContent = ""; }, 2500);
+    });
+  });
 
   document.getElementById("loginBtn").addEventListener("click", () => {
     const email = loginEmailInput.value.trim().toLowerCase();

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0810.1140
+// @version      2026.0810.1223
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -11001,8 +11001,11 @@ ${text}
     };
 
     const MAX_PAGE_CONTEXT_CHARS = 12000;
+    const MAX_IMAGE_DIM = 1600; // أطول ضلع بالبكسل بعد إعادة الحجم
+    const IMAGE_QUALITY = 0.7;  // جودة ضغط JPEG - توازن بين الوضوح وحجم الطلب
 
-    let chatMessages = []; // [{role:'user'|'assistant', content:string}]
+    let chatMessages = []; // [{role:'user'|'assistant', content:string, image?:string(dataURL)}]
+    let pendingImage = null; // dataURL للصورة المرفقة قبل الإرسال
 
     function waitCore() {
         if (!HOST_WINDOW.YAQEEN_TOOLS) {
@@ -11019,9 +11022,7 @@ ${text}
     }
 
     // ==========================================================
-    // قراءة محتوى الصفحة المفتوحة حالياً كنص - نص العنصر main لو موجود
-    // (أدق - يتجاهل القوائم الجانبية/الهيدر)، وإلا نص الصفحة كاملة، مع تحديد
-    // طول أقصى حتى ما يكبر الطلب بلا داعي (وتزيد تكلفة كل رسالة)
+    // قراءة محتوى الصفحة المفتوحة حالياً كنص
     // ==========================================================
     function readPageContext() {
         const scope = document.querySelector('main') || document.body;
@@ -11029,7 +11030,53 @@ ${text}
         return text.slice(0, MAX_PAGE_CONTEXT_CHARS);
     }
 
+    // ==========================================================
+    // إعادة حجم/ضغط الصورة قبل الإرسال - الصور مباشرة من الجوال/screenshot
+    // ممكن توصل لعدة ميجابايت، وبصيغة base64 يكبر حجمها أكثر، فنصغّرها
+    // ونحوّلها JPEG بجودة معقولة حتى ما يتضخم حجم الطلب أو تكلفة كل رسالة
+    // ==========================================================
+    function resizeImageFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    let width = img.width, height = img.height;
+                    if (width > MAX_IMAGE_DIM || height > MAX_IMAGE_DIM) {
+                        const scale = MAX_IMAGE_DIM / Math.max(width, height);
+                        width = Math.round(width * scale);
+                        height = Math.round(height * scale);
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', IMAGE_QUALITY));
+                };
+                img.onerror = () => reject(new Error('تعذّر قراءة الصورة'));
+                img.src = reader.result;
+            };
+            reader.onerror = () => reject(new Error('تعذّر قراءة الملف'));
+            reader.readAsDataURL(file);
+        });
+    }
+
     function askAi(pageContext, messages) {
+        // نحوّل رسائل المستخدم اللي فيها صورة لصيغة OpenAI (content كمصفوفة
+        // نص+صورة) - رسائل المساعد ورسائل المستخدم بدون صورة تبقى نص عادي
+        const apiMessages = messages.map(m => {
+            if (m.role === 'user' && m.image) {
+                return {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: m.content || '(صورة بدون نص)' },
+                        { type: 'image_url', image_url: { url: m.image } },
+                    ],
+                };
+            }
+            return { role: m.role, content: m.content };
+        });
+
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'POST',
@@ -11038,7 +11085,7 @@ ${text}
                     Authorization: AI_CHAT_CONFIG.apiKey,
                     'Content-Type': 'application/json',
                 },
-                data: JSON.stringify({ pageContext: pageContext, messages: messages }),
+                data: JSON.stringify({ pageContext: pageContext, messages: apiMessages }),
                 onload: response => {
                     if (response.status < 200 || response.status >= 300) {
                         console.error('[شات AI] فشل الطلب:', response.status, response.responseText);
@@ -11075,20 +11122,23 @@ ${text}
         document.getElementById('ai-chat-box')?.remove();
     }
 
-    function bubbleHtml(role, content) {
-        const isUser = role === 'user';
+    function bubbleHtml(m) {
+        const isUser = m.role === 'user';
+        const imageHtml = m.image
+            ? '<img src="' + m.image + '" style="max-width:100%;border-radius:8px;margin-bottom:6px;display:block;" />'
+            : '';
         return (
             '<div style="display:flex;' + (isUser ? 'justify-content:flex-start;' : 'justify-content:flex-end;') + 'margin-bottom:10px;">' +
             '<div style="max-width:80%;padding:10px 13px;border-radius:12px;font-size:13.5px;line-height:1.7;white-space:pre-wrap;text-align:right;' +
             (isUser ? 'background:#f0f0f0;color:#111;' : 'background:#A3E635;color:#1a1a1a;') +
-            '">' + escapeHtml(content) + '</div></div>'
+            '">' + imageHtml + escapeHtml(m.content) + '</div></div>'
         );
     }
 
     function renderMessages() {
         const box = document.getElementById('ai-chat-messages');
         if (!box) return;
-        box.innerHTML = chatMessages.map(m => bubbleHtml(m.role, m.content)).join('');
+        box.innerHTML = chatMessages.map(bubbleHtml).join('');
         box.scrollTop = box.scrollHeight;
     }
 
@@ -11099,9 +11149,28 @@ ${text}
         if (btn) btn.disabled = show;
     }
 
+    function renderPreview() {
+        const box = document.getElementById('ai-chat-preview');
+        if (!box) return;
+        if (!pendingImage) {
+            box.style.display = 'none';
+            box.innerHTML = '';
+            return;
+        }
+        box.style.display = 'flex';
+        box.innerHTML =
+            '<img src="' + pendingImage + '" style="height:44px;border-radius:6px;" />' +
+            '<span id="ai-chat-remove-image" style="cursor:pointer;font-size:13px;color:#dc2626;margin-inline-start:8px;">✕ إزالة</span>';
+        document.getElementById('ai-chat-remove-image').onclick = () => {
+            pendingImage = null;
+            renderPreview();
+        };
+    }
+
     function showChatBox() {
         closeBox();
         chatMessages = [];
+        pendingImage = null;
 
         const html =
             '<div style="background:#A3E635;padding:14px 18px;text-align:center;font-weight:bold;font-size:16px;' +
@@ -11109,14 +11178,17 @@ ${text}
             '<span id="ai-chat-close" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;">✕</span>' +
             '</div>' +
             '<div style="padding:10px 14px 0;font-size:11.5px;color:#777;text-align:center;">' +
-            'يقرأ الصفحة المفتوحة حالياً - اسأل عنها أو أي سؤال عام يخص التأجير' +
+            'يقرأ الصفحة المفتوحة حالياً - اسأل عنها أو أي سؤال عام يخص التأجير، وممكن ترفقين صورة' +
             '</div>' +
             '<div id="ai-chat-messages" style="height:340px;overflow-y:auto;padding:14px;"></div>' +
             '<div id="ai-chat-typing" style="display:none;padding:0 14px 8px;font-size:12px;color:#999;text-align:right;">... يكتب</div>' +
-            '<div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid #eee;">' +
-            '<button id="ai-chat-send" style="padding:0 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;font-size:14px;">إرسال</button>' +
+            '<div id="ai-chat-preview" style="display:none;align-items:center;padding:0 14px 10px;"></div>' +
+            '<div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid #eee;align-items:center;">' +
+            '<button id="ai-chat-send" style="padding:0 18px;height:38px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;font-size:14px;">إرسال</button>' +
             '<input id="ai-chat-input" type="text" placeholder="اكتب سؤالك..." style="' +
             'flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:13.5px;text-align:right;direction:rtl;" />' +
+            '<button id="ai-chat-attach" title="إرفاق صورة" style="width:38px;height:38px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:16px;">📎</button>' +
+            '<input id="ai-chat-file" type="file" accept="image/*" style="display:none;" />' +
             '</div>';
 
         document.body.insertAdjacentHTML('beforeend',
@@ -11131,9 +11203,26 @@ ${text}
         const input = document.getElementById('ai-chat-input');
         input.focus();
 
+        document.getElementById('ai-chat-attach').onclick = () => {
+            document.getElementById('ai-chat-file').click();
+        };
+        document.getElementById('ai-chat-file').addEventListener('change', async e => {
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+            try {
+                pendingImage = await resizeImageFile(file);
+                renderPreview();
+            } catch (err) {
+                showTyping(false);
+                chatMessages.push({ role: 'assistant', content: '⚠️ ' + err.message });
+                renderMessages();
+            }
+        });
+
         function submit() {
             const text = input.value.trim();
-            if (!text) return;
+            if (!text && !pendingImage) return;
             input.value = '';
             sendMessage(text);
         }
@@ -11143,7 +11232,11 @@ ${text}
     }
 
     async function sendMessage(text) {
-        chatMessages.push({ role: 'user', content: text });
+        const image = pendingImage;
+        pendingImage = null;
+        renderPreview();
+
+        chatMessages.push({ role: 'user', content: text, image: image });
         renderMessages();
         showTyping(true);
 
