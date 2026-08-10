@@ -114,21 +114,19 @@
                 },
                 data: JSON.stringify({ pageContext: pageContext, messages: apiMessages }),
                 onload: response => {
+                    let data = null;
+                    try { data = JSON.parse(response.responseText); } catch (err) { /* رد مو JSON */ }
+
                     if (response.status < 200 || response.status >= 300) {
                         console.error('[شات AI] فشل الطلب:', response.status, response.responseText);
-                        reject(new Error('فشل الاتصال بالسيرفر (رمز الحالة: ' + response.status + ')'));
+                        reject(new Error((data && data.message) || 'فشل الاتصال بالسيرفر (رمز الحالة: ' + response.status + ')'));
                         return;
                     }
-                    try {
-                        const data = JSON.parse(response.responseText);
-                        if (!data || data.success !== true) {
-                            reject(new Error((data && data.message) || 'رد غير متوقع من السيرفر'));
-                            return;
-                        }
-                        resolve(data.answer || '');
-                    } catch (err) {
-                        reject(new Error('تعذّر قراءة رد السيرفر'));
+                    if (!data || data.success !== true) {
+                        reject(new Error((data && data.message) || 'رد غير متوقع من السيرفر'));
+                        return;
                     }
+                    resolve(data.answer || '');
                 },
                 onerror: () => reject(new Error('تعذّر الاتصال بالسيرفر')),
             });
