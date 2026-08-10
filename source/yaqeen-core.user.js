@@ -50,6 +50,7 @@
         "customer-whatsapp-messages",
         "booking-report",
         "vip-booking-add",
+        "ai-chat",
     ];
 
     // اختصارات لوحة المفاتيح: كل عنصر يفتح أداة معيّنة (بالـid تبعها) مباشرة
