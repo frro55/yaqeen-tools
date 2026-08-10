@@ -192,20 +192,65 @@
         };
     }
 
+    /**
+     * نافذة عائمة (مو حوار كامل الشاشة) - بدون أي خلفية معتمة تغطي الصفحة،
+     * حتى يقدر المستخدم يشتغل بيقين وهي مفتوحة بنفس الوقت. تُسحب من الهيدر
+     * لأي مكان بالشاشة (نفس فكرة نوافذ الدردشة العائمة العادية)، وما تُغلق
+     * إلا بالضغط الصريح على ✕ - تبقى مفتوحة طول ما يشتغل المستخدم بالصفحة.
+     */
+    function makeDraggable(panel, handle) {
+        let dragging = false;
+        let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+        handle.addEventListener('pointerdown', e => {
+            if (e.target.closest('#ai-chat-close')) return;
+            dragging = true;
+            const rect = panel.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+            // نحوّل من التموضع الأصلي (right/bottom) لـleft/top ثابتة أول
+            // سحبة، حتى تصير حسابات السحب بعدها بسيطة (فرق مباشر من نقطة البداية)
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            panel.style.left = startLeft + 'px';
+            panel.style.top = startTop + 'px';
+            handle.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+
+        handle.addEventListener('pointermove', e => {
+            if (!dragging) return;
+            let newLeft = startLeft + (e.clientX - startX);
+            let newTop = startTop + (e.clientY - startY);
+            // نحصر الموضع داخل حدود الشاشة حتى ما تنسحب النافذة برة الرؤية بالكامل
+            newLeft = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, newLeft));
+            newTop = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, newTop));
+            panel.style.left = newLeft + 'px';
+            panel.style.top = newTop + 'px';
+        });
+
+        handle.addEventListener('pointerup', e => {
+            dragging = false;
+            try { handle.releasePointerCapture(e.pointerId); } catch (err) { /* تجاهل */ }
+        });
+    }
+
     function showChatBox() {
         closeBox();
         chatMessages = [];
         pendingImage = null;
 
         const html =
-            '<div style="background:#A3E635;padding:14px 18px;text-align:center;font-weight:bold;font-size:16px;' +
-            'border-radius:14px 14px 0 0;position:relative;">🤖 شات AI' +
+            '<div id="ai-chat-header" style="background:#A3E635;padding:14px 18px;text-align:center;font-weight:bold;' +
+            'font-size:16px;border-radius:14px 14px 0 0;position:relative;cursor:move;user-select:none;">🤖 شات AI' +
             '<span id="ai-chat-close" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;">✕</span>' +
             '</div>' +
             '<div style="padding:10px 14px 0;font-size:11.5px;color:#777;text-align:center;">' +
             'يقرأ الصفحة المفتوحة حالياً - اسأل عنها أو أي سؤال عام يخص التأجير، وممكن ترفقين صورة' +
             '</div>' +
-            '<div id="ai-chat-messages" style="height:340px;overflow-y:auto;padding:14px;"></div>' +
+            '<div id="ai-chat-messages" style="height:320px;overflow-y:auto;padding:14px;"></div>' +
             '<div id="ai-chat-typing" style="display:none;padding:0 14px 8px;font-size:12px;color:#999;text-align:right;">... يكتب</div>' +
             '<div id="ai-chat-preview" style="display:none;align-items:center;padding:0 14px 10px;"></div>' +
             '<div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid #eee;align-items:center;">' +
@@ -216,12 +261,19 @@
             '<input id="ai-chat-file" type="file" accept="image/*" style="display:none;" />' +
             '</div>';
 
+        // ما فيه أي غلاف كامل الشاشة (لا inset:0 ولا خلفية معتمة) - النافذة
+        // نفسها بس عنصر position:fixed بحجمها الطبيعي، فباقي الصفحة (يقين)
+        // تفضل قابلة للتفاعل الكامل حواليها وتحتها
         document.body.insertAdjacentHTML('beforeend',
             '<div id="ai-chat-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:380px;background:#fff;border-radius:14px;overflow:hidden;direction:rtl;">' + html + '</div></div>'
+            'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:14px;' +
+            'overflow:hidden;direction:rtl;font-family:Arial;box-shadow:0 10px 30px rgba(0,0,0,.35);' +
+            'z-index:999999999;">' + html + '</div>'
         );
+
+        const panel = document.getElementById('ai-chat-box');
+        const header = document.getElementById('ai-chat-header');
+        makeDraggable(panel, header);
 
         document.getElementById('ai-chat-close').onclick = closeBox;
 
@@ -278,6 +330,14 @@
     }
 
     async function runAiChatTool() {
+        // لو النافذة مفتوحة أصلاً، ما نعيد إنشاءها (بيمسح المحادثة الحالية) -
+        // بس نرجّعها للواجهة ونركّز حقل الكتابة
+        const existing = document.getElementById('ai-chat-box');
+        if (existing) {
+            existing.style.display = '';
+            document.getElementById('ai-chat-input')?.focus();
+            return;
+        }
         showChatBox();
     }
 
