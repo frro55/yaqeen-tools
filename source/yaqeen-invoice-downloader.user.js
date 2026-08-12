@@ -2,7 +2,7 @@
 // @name         Yaqeen Tool - تحميل فواتير العقود المكتملة
 // @namespace    https://yaqeen.lumirental.com/
 // @version      1.0
-// @description  يمر على كل عقود العميل بالقائمة المفتوحة (مثلاً بحث برقم هوية السائق)، يفتح كل عقد مكتمل، يضغط "عرض الفواتير"، ويحمّل كل فاتورة فيها تلقائياً
+// @description  يمر على كل عقود العميل بالقائمة المفتوحة (مثلاً بحث برقم هوية السائق)، يفتح كل عقد مكتمل، ويحمّل فاتورته الضريبية المبسطة تلقائياً (فاتورة واحدة فقط لكل عقد)
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
 // @grant        unsafeWindow
@@ -25,6 +25,10 @@
     const VIEW_INVOICES_LABEL = 'عرض الفواتير';
     const VIEW_INVOICE_LABEL = 'عرض الفاتورة';
     const CLOSE_LABEL = 'إغلاق';
+    // نافذة "فواتير الحجز" تقسّم الفواتير لأقسام بعنوان (h3) - عقد فيه أكثر
+    // من فاتورة ممكن يشمل قسم "فاتورة المرور" مثلاً، وما نبيه. نحمّل بس أول
+    // فاتورة ضمن القسم اللي عنوانه بالضبط "فاتورة ضريبية مبسطة"
+    const SIMPLIFIED_INVOICE_HEADING = 'فاتورة ضريبية مبسطة';
 
     // مهلة الانتظار بعد كل ضغطة "عرض الفاتورة" - التحميل يبدأ تلقائياً
     // بالمتصفح فور الضغط، فنعطيه وقت كافي يبدأ فعلياً قبل لا ننتقل للفاتورة
@@ -113,8 +117,18 @@
         return Array.from(root.querySelectorAll('button')).find(b => b.textContent.trim() === text);
     }
 
-    function findButtonsByText(root, text) {
-        return Array.from(root.querySelectorAll('button')).filter(b => b.textContent.trim() === text);
+    /**
+     * يلقط زر "عرض الفاتورة" لأول فاتورة بس ضمن القسم اللي عنوانه (h3)
+     * بالضبط "فاتورة ضريبية مبسطة" - يتجاهل أي قسم ثاني (زي "فاتورة
+     * المرور") وأي فاتورة إضافية بنفس القسم لو وُجدت
+     */
+    function findSimplifiedInvoiceButton(dialog) {
+        const heading = Array.from(dialog.querySelectorAll('h3'))
+            .find(h => h.textContent.trim() === SIMPLIFIED_INVOICE_HEADING);
+        if (!heading) return null;
+        const group = heading.closest('div');
+        if (!group) return null;
+        return findButtonByText(group, VIEW_INVOICE_LABEL);
     }
 
     // ==========================================================
@@ -314,13 +328,15 @@
         // نستنى شوي حتى تستقر قائمة الفواتير جوا النافذة
         await new Promise(r => setTimeout(r, 500));
 
-        const invoiceButtons = findButtonsByText(dialog, VIEW_INVOICE_LABEL);
+        const invoiceBtn = findSimplifiedInvoiceButton(dialog);
         let downloaded = 0;
 
-        for (const btn of invoiceButtons) {
-            dispatchFullClick(btn);
+        if (invoiceBtn) {
+            dispatchFullClick(invoiceBtn);
             await new Promise(r => setTimeout(r, WAIT_AFTER_INVOICE_CLICK_MS));
-            downloaded++;
+            downloaded = 1;
+        } else {
+            console.warn('[تحميل الفواتير] ما فيه قسم "' + SIMPLIFIED_INVOICE_HEADING + '" بنافذة فواتير العقد:', label);
         }
 
         const closeBtn = findButtonByText(dialog, CLOSE_LABEL) || dialog.querySelector('button.absolute');
@@ -328,10 +344,6 @@
 
         await waitFor(frame, d => (d && !d.body.contains(dialog) ? true : null), DIALOG_CLOSE_TIMEOUT_MS);
         await new Promise(r => setTimeout(r, 300));
-
-        if (invoiceButtons.length === 0) {
-            console.warn('[تحميل الفواتير] نافذة الفواتير فتحت بدون أي فاتورة داخلها:', label);
-        }
 
         return downloaded;
     }
