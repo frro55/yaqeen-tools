@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0812.0159
+// @version      2026.0812.1841
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -45,6 +45,38 @@
 
 
     const THEME = "#A3E635";
+
+    // ============================================================
+    // تجاوز شخصي محلي: يورّي كل الأدوات المسجّلة فوراً بدون انتظار API
+    // الصلاحيات إطلاقاً. مفيد لما زر/إيميل المستخدم ما يظهر أصلاً بتخطيط
+    // الجوال، فيتعذّر قراءة الإيميل ولا تُحمّل الصلاحيات أبداً وتضل القائمة
+    // فاضية. التفعيل محلي فقط (localStorage بنفس المتصفح/الجهاز) - ما يأثر
+    // على أي موظف ثاني إلا لو هو نفسه زار نفس الرابط بجهازه، وبما إنه تجاوز
+    // كامل لفحص الصلاحيات لازم يبقى سر ما يُشارك. للتفعيل زوري أي رابط بيقين
+    // وضيفي ?yt_show_all=1 بآخره مرة وحدة (يبقى مفعّل بعدها بنفس المتصفح)،
+    // ولإلغائه ?yt_show_all=0
+    // ============================================================
+    const LOCAL_SHOW_ALL_KEY = "yaqeen_show_all_tools";
+
+    (function applyShowAllUrlFlag() {
+        try {
+            const params = new URLSearchParams(location.search);
+            if (!params.has("yt_show_all")) return;
+            if (params.get("yt_show_all") === "0") {
+                localStorage.removeItem(LOCAL_SHOW_ALL_KEY);
+            } else {
+                localStorage.setItem(LOCAL_SHOW_ALL_KEY, "1");
+            }
+        } catch (err) { /* تجاهل */ }
+    })();
+
+    function isShowAllEnabled() {
+        try {
+            return localStorage.getItem(LOCAL_SHOW_ALL_KEY) === "1";
+        } catch (err) {
+            return false;
+        }
+    }
 
     // ترتيب ظهور الأدوات بالقائمة - ثابت دايماً بغض النظر عن ترتيب تحميل
     // Tampermonkey للسكربتات الفعلي (اللي ما يُضمن يبقى ثابت بين إعادة
@@ -328,12 +360,17 @@
             box.innerHTML = "";
 
 
+            const showAll = isShowAllEnabled();
+
             // ما نعرض أي أداة قبل ما نتأكد فعلياً من صلاحيات المستخدم -
             // سواء لسا نستنى رد الـAPI، أو فشل الاتصال، أو رجع success:false
-            if (!this.permissionsLoaded) return;
+            // - إلا لو التجاوز المحلي مفعّل (showAll)، وقتها نعرض كل شي فوراً
+            if (!showAll && !this.permissionsLoaded) return;
 
             const allowed = this.allowedTools || [];
-            const visibleTools = this.tools.filter(t => allowed.indexOf(t.id) !== -1);
+            const visibleTools = showAll
+                ? this.tools.slice()
+                : this.tools.filter(t => allowed.indexOf(t.id) !== -1);
 
             // نرتّب نسخة مستقلة عن ترتيب التسجيل حسب TOOL_ORDER - أي أداة
             // غير موجودة بالقائمة تُلحق بالآخر (بترتيب تسجيلها هي بينها)
@@ -627,8 +664,9 @@
         if (!match) return;
 
         // نفس شرط الصلاحيات المستخدم بعرض القائمة - الاختصار ما يشتغل لأداة
-        // المستخدم غير مصرّح له فيها، حتى لو مسجّلة بالـCore
-        if (HOST_WINDOW.YAQEEN_TOOLS.allowedTools.indexOf(match.toolId) === -1) return;
+        // المستخدم غير مصرّح له فيها، حتى لو مسجّلة بالـCore (إلا لو التجاوز
+        // المحلي مفعّل)
+        if (!isShowAllEnabled() && HOST_WINDOW.YAQEEN_TOOLS.allowedTools.indexOf(match.toolId) === -1) return;
 
         const tool = HOST_WINDOW.YAQEEN_TOOLS.tools.find(function (t) { return t.id === match.toolId; });
         if (!tool) return;
