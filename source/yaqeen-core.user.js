@@ -52,6 +52,7 @@
         "booking-report",
         "vip-booking-add",
         "ai-chat",
+        "invoice-downloader",
     ];
 
     // اختصارات لوحة المفاتيح: كل عنصر يفتح أداة معيّنة (بالـid تبعها) مباشرة
