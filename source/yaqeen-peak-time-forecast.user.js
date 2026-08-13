@@ -26,17 +26,41 @@
         { key: 'night', label: 'ليلي (12ص - 8ص)', startHour: 0, endHour: 8 },
     ];
 
-    // سلّم تصنيف التسليم (مجموع اليوم كامل - وقت التسليم المحدد مو موثوق
-    // بذاته، فما نقسّمه لمستويات لكل شفت، بس نصنّف إجمالي اليوم فقط)
-    const DROPOFF_LEVELS = [
-        { max: 50, label: 'قليل', color: '#16a34a' },
-        { max: 100, label: 'متوسط', color: '#eab308' },
-        { max: 150, label: 'كثير', color: '#f97316' },
-        { max: Infinity, label: 'كثير جدًا', color: '#dc2626' },
-    ];
+    // عتبات تصنيف كل شفت لكل نوع (استلام/تسليم) - محسوبة من متوسط تقارير
+    // شفتات فعلية أعطانا إياها المستخدم (أسبوع تقريباً، أيام عادية لا
+    // ويكند). [حد "هادئ"، حد "متوسط"] - أي قيمة أقل من الأول = هادئ، بين
+    // الاثنين = متوسط، وفوق الثاني = مزدحم. تقريبية بالبداية وتُضبط لاحقاً
+    // بعد ما نبدأ نسجّل الأرقام الفعلية باستمرار
+    const SHIFT_THRESHOLDS = {
+        night: { pickup: [30, 50], dropoff: [25, 32] },
+        evening: { pickup: [48, 58], dropoff: [48, 54] },
+        morning: { pickup: [46, 58], dropoff: [48, 60] },
+    };
 
-    function dropoffLevel(total) {
-        return DROPOFF_LEVELS.find(l => total < l.max) || DROPOFF_LEVELS[DROPOFF_LEVELS.length - 1];
+    const LEVELS = {
+        calm: { label: 'هادئ', color: '#16a34a', rank: 0 },
+        medium: { label: 'متوسط', color: '#eab308', rank: 1 },
+        busy: { label: 'مزدحم', color: '#dc2626', rank: 2 },
+    };
+
+    function classify(shiftKey, type, value) {
+        const thresholds = SHIFT_THRESHOLDS[shiftKey][type];
+        if (value < thresholds[0]) return LEVELS.calm;
+        if (value <= thresholds[1]) return LEVELS.medium;
+        return LEVELS.busy;
+    }
+
+    /** أشد شفت زحمة لنوع معيّن (استلام أو تسليم) - حسب مستوى التصنيف، وعند التعادل حسب العدد الخام */
+    function findBusiestShift(forecast, type) {
+        let best = null;
+        SHIFTS.forEach(s => {
+            const value = forecast.byShift[s.key][type];
+            const level = classify(s.key, type, value);
+            if (!best || level.rank > best.level.rank || (level.rank === best.level.rank && value > best.value)) {
+                best = { shift: s, level, value };
+            }
+        });
+        return best;
     }
 
     function waitCore() {
@@ -371,23 +395,34 @@
         return (
             '<div style="flex:1;background:#f8f8f8;border-radius:12px;padding:14px;border-top:4px solid ' + color + ';">' +
             '<div style="font-size:12.5px;color:#666;margin-bottom:6px;">' + label + '</div>' +
-            '<div style="font-size:18px;font-weight:bold;color:' + color + ';">' + valueText + '</div>' +
+            '<div style="font-size:16px;font-weight:bold;color:' + color + ';">' + valueText + '</div>' +
             '</div>'
+        );
+    }
+
+    function levelChip(level, value) {
+        return (
+            '<span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:12.5px;' +
+            'font-weight:bold;background:' + level.color + '22;color:' + level.color + ';">' +
+            level.label + ' (' + value + ')</span>'
         );
     }
 
     function showReport(forecast, totalScanned) {
         document.getElementById('peak-forecast-box')?.remove();
 
-        const level = dropoffLevel(forecast.totalDropoffToday);
+        const busiestPickup = findBusiestShift(forecast, 'pickup');
+        const busiestDropoff = findBusiestShift(forecast, 'dropoff');
 
         const rowsHtml = SHIFTS.map(s => {
             const counts = forecast.byShift[s.key];
+            const pickupLevel = classify(s.key, 'pickup', counts.pickup);
+            const dropoffLevel = classify(s.key, 'dropoff', counts.dropoff);
             return (
                 '<tr>' +
                 '<td style="padding:9px;border-top:1px solid #eee;">' + s.label + '</td>' +
-                '<td style="border-top:1px solid #eee;font-weight:bold;">' + counts.pickup + '</td>' +
-                '<td style="border-top:1px solid #eee;font-weight:bold;">' + counts.dropoff + '</td>' +
+                '<td style="border-top:1px solid #eee;">' + levelChip(pickupLevel, counts.pickup) + '</td>' +
+                '<td style="border-top:1px solid #eee;">' + levelChip(dropoffLevel, counts.dropoff) + '</td>' +
                 '</tr>'
             );
         }).join('');
@@ -402,8 +437,8 @@
             '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">بُني على ' + totalScanned + ' حجز بالقائمة القادمة</div>' +
             '</div>' +
             '<div style="padding:18px;display:flex;gap:10px;">' +
-            badgeHtml('الاستلام اليوم', forecast.totalPickupToday + ' حجز', '#555') +
-            badgeHtml('التسليم اليوم', level.label + ' (' + forecast.totalDropoffToday + ')', level.color) +
+            badgeHtml('أكثر وقت ازدحام - استلام', busiestPickup.shift.label + '<br>' + busiestPickup.level.label + ' (' + busiestPickup.value + ')', busiestPickup.level.color) +
+            badgeHtml('أكثر وقت ازدحام - تسليم', busiestDropoff.shift.label + '<br>' + busiestDropoff.level.label + ' (' + busiestDropoff.value + ')', busiestDropoff.level.color) +
             '</div>' +
             '<div style="padding:0 18px 18px;">' +
             '<table style="width:100%;border-collapse:collapse;font-size:13.5px;">' +
@@ -412,7 +447,7 @@
             '</table>' +
             '</div>' +
             '<div style="padding:0 18px 18px;font-size:11.5px;color:#999;text-align:right;">' +
-            'ملاحظة: أرقام الاستلام مبنية على الحجوزات المجدولة فقط (ما تشمل عملاء بدون حجز مسبق)، وتصنيف التسليم لسا أولي وبيتحسّن مع الوقت.' +
+            'ملاحظة: أرقام الاستلام مبنية على الحجوزات المجدولة فقط (ما تشمل عملاء بدون حجز مسبق)، والتصنيف لسا أولي وبيتحسّن مع الوقت لما نبدأ نسجّل الأرقام الفعلية.' +
             '</div>' +
             '<div style="padding:0 18px 18px;text-align:center;display:flex;gap:8px;">' +
             '<button id="peak-forecast-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
