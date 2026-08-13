@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0813.1025
+// @version      2026.0813.1037
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -12737,6 +12737,27 @@ ${text}
     // حساب التوقع
     // ==========================================================
 
+    /** تشخيص مؤقت (Console) - يطلع شكل البيانات الخام الفعلي حتى نتأكد الأعمدة والصيغة صح */
+    function logDiagnostics(doc, rawRows) {
+        const table = findBookingsTable(doc);
+        const headerCells = table
+            ? Array.from(table.querySelectorAll('thead tr th, thead tr td')).map(c => c.textContent.trim())
+            : [];
+        console.log('[توقع أوقات الذروة] رؤوس الأعمدة المكتشفة بالجدول:', headerCells);
+        console.log('[توقع أوقات الذروة] عيّنة من أول 10 صفوف (pickup/dropoff):',
+            rawRows.slice(0, 10).map(r => ({ pickup: r.pickup, dropoff: r.dropoff })));
+
+        const pickupDayCounts = {};
+        rawRows.forEach(r => {
+            const d = extractDayLabel(r.pickup) || '(فاضي)';
+            pickupDayCounts[d] = (pickupDayCounts[d] || 0) + 1;
+        });
+        console.log('[توقع أوقات الذروة] توزيع أيام الاستلام لكل الصفوف المجمّعة:', pickupDayCounts);
+
+        const dropoffEmptyCount = rawRows.filter(r => !r.dropoff).length;
+        console.log('[توقع أوقات الذروة] عدد الصفوف اللي عمود التسليم فيها فاضي:', dropoffEmptyCount, '/', rawRows.length);
+    }
+
     function computeForecast(bookings) {
         const byShift = {};
         SHIFTS.forEach(s => { byShift[s.key] = { pickup: 0, dropoff: 0 }; });
@@ -12782,6 +12803,7 @@ ${text}
 
             showProgress('جارٍ جمع كل الحجوزات عبر كل الصفحات...');
             const rawRows = await collectAllPages(frame, doc);
+            logDiagnostics(doc, rawRows);
             try { frame.remove(); } catch (err) { /* تجاهل */ }
 
             const forecast = computeForecast(rawRows);
