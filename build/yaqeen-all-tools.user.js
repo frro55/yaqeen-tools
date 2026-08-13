@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0813.1037
+// @version      2026.0813.1044
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -12533,9 +12533,16 @@ ${text}
         return iframe;
     }
 
-    const BOOKING_COLUMNS_MAP = {
+    // "الحجوزات القادمة" (upcoming) عندها عمود "وقت الاستلام" بس (مو
+    // تسليم - العقد لسا ما بدأ)، و"العقود الجارية" (ongoing) عندها عمود
+    // "وقت التسليم" (موعد الإرجاع المتوقع للعقود الشغالة حالياً) - فلازم
+    // نجيب الاستلام والتسليم من صفحتين مختلفتين، كل وحدة بعمودها الخاص
+    const PICKUP_COLUMNS_MAP = {
         id: ['رقم الحجز'],
         pickup: ['وقت الاستلام'],
+    };
+    const DROPOFF_COLUMNS_MAP = {
+        id: ['رقم الحجز'],
         dropoff: ['وقت التسليم'],
     };
 
@@ -12548,23 +12555,23 @@ ${text}
         return -1;
     }
 
-    /** جدول الحجوزات الحقيقي هو الوحيد اللي فيه عمود "وقت الاستلام" - يميّزه عن أي جدول آخر بالصفحة */
-    function findBookingsTable(doc) {
+    /** يميّز جدول الحجوزات الحقيقي عن أي جدول آخر بالصفحة عبر وجود عمود التعريف المطلوب (استلام أو تسليم حسب الصفحة) */
+    function findDataTable(doc, identifyingVariants) {
         const tables = Array.from(doc.querySelectorAll('table'));
         return tables.find(t => {
             const headerCells = Array.from(t.querySelectorAll('thead tr th, thead tr td'));
-            return findColumnIndex(headerCells, BOOKING_COLUMNS_MAP.pickup) !== -1;
+            return findColumnIndex(headerCells, identifyingVariants) !== -1;
         }) || null;
     }
 
-    function readCurrentPageRows(doc) {
-        const table = findBookingsTable(doc);
+    function readCurrentPageRows(doc, columnsMap, identifyingVariants) {
+        const table = findDataTable(doc, identifyingVariants);
         if (!table) return [];
 
         const headerCells = Array.from(table.querySelectorAll('thead tr th, thead tr td'));
         const indices = {};
-        Object.keys(BOOKING_COLUMNS_MAP).forEach(key => {
-            indices[key] = findColumnIndex(headerCells, BOOKING_COLUMNS_MAP[key]);
+        Object.keys(columnsMap).forEach(key => {
+            indices[key] = findColumnIndex(headerCells, columnsMap[key]);
         });
 
         const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
@@ -12617,7 +12624,7 @@ ${text}
         return false;
     }
 
-    function waitForFirstFrame(iframe, timeoutMs) {
+    function waitForFirstFrame(iframe, identifyingVariants, timeoutMs) {
         timeoutMs = timeoutMs || 20000;
         return new Promise(resolve => {
             const start = Date.now();
@@ -12635,14 +12642,15 @@ ${text}
                     setTimeout(check, 300);
                     return;
                 }
-                const hasRows = findBookingsTable(doc) && findBookingsTable(doc).querySelectorAll('tbody tr').length > 0;
+                const table = findDataTable(doc, identifyingVariants);
+                const hasRows = table && table.querySelectorAll('tbody tr').length > 0;
                 if (hasRows || Date.now() - start > timeoutMs) { resolve(doc); return; }
                 setTimeout(check, 300);
             })();
         });
     }
 
-    function collectAllPages(iframe, doc) {
+    function collectAllPages(iframe, doc, columnsMap, identifyingVariants) {
         return new Promise(resolve => {
             const allRows = [];
             const seen = {};
@@ -12659,7 +12667,7 @@ ${text}
             }
 
             function readRowsSafely() {
-                try { return readCurrentPageRows(doc); } catch (err) { return []; }
+                try { return readCurrentPageRows(doc, columnsMap, identifyingVariants); } catch (err) { return []; }
             }
 
             function waitForPageChange(beforeSignature) {
@@ -12738,39 +12746,42 @@ ${text}
     // ==========================================================
 
     /** تشخيص مؤقت (Console) - يطلع شكل البيانات الخام الفعلي حتى نتأكد الأعمدة والصيغة صح */
-    function logDiagnostics(doc, rawRows) {
-        const table = findBookingsTable(doc);
+    function logDiagnostics(label, doc, rows, field, identifyingVariants) {
+        const table = findDataTable(doc, identifyingVariants);
         const headerCells = table
             ? Array.from(table.querySelectorAll('thead tr th, thead tr td')).map(c => c.textContent.trim())
             : [];
-        console.log('[توقع أوقات الذروة] رؤوس الأعمدة المكتشفة بالجدول:', headerCells);
-        console.log('[توقع أوقات الذروة] عيّنة من أول 10 صفوف (pickup/dropoff):',
-            rawRows.slice(0, 10).map(r => ({ pickup: r.pickup, dropoff: r.dropoff })));
+        console.log('[توقع أوقات الذروة][' + label + '] رؤوس الأعمدة المكتشفة بالجدول:', headerCells);
+        console.log('[توقع أوقات الذروة][' + label + '] عيّنة من أول 10 صفوف:',
+            rows.slice(0, 10).map(r => r[field]));
 
-        const pickupDayCounts = {};
-        rawRows.forEach(r => {
-            const d = extractDayLabel(r.pickup) || '(فاضي)';
-            pickupDayCounts[d] = (pickupDayCounts[d] || 0) + 1;
+        const dayCounts = {};
+        rows.forEach(r => {
+            const d = extractDayLabel(r[field]) || '(فاضي)';
+            dayCounts[d] = (dayCounts[d] || 0) + 1;
         });
-        console.log('[توقع أوقات الذروة] توزيع أيام الاستلام لكل الصفوف المجمّعة:', pickupDayCounts);
+        console.log('[توقع أوقات الذروة][' + label + '] توزيع الأيام لكل الصفوف المجمّعة:', dayCounts);
 
-        const dropoffEmptyCount = rawRows.filter(r => !r.dropoff).length;
-        console.log('[توقع أوقات الذروة] عدد الصفوف اللي عمود التسليم فيها فاضي:', dropoffEmptyCount, '/', rawRows.length);
+        const emptyCount = rows.filter(r => !r[field]).length;
+        console.log('[توقع أوقات الذروة][' + label + '] عدد الصفوف اللي العمود فيها فاضي:', emptyCount, '/', rows.length);
     }
 
-    function computeForecast(bookings) {
+    function computeForecast(pickupRows, dropoffRows) {
         const byShift = {};
         SHIFTS.forEach(s => { byShift[s.key] = { pickup: 0, dropoff: 0 }; });
 
         let totalPickupToday = 0;
         let totalDropoffToday = 0;
 
-        bookings.forEach(b => {
+        pickupRows.forEach(b => {
             if (extractDayLabel(b.pickup) === 'اليوم') {
                 totalPickupToday++;
                 const shift = shiftForHour(extractHour(b.pickup));
                 if (shift) byShift[shift].pickup++;
             }
+        });
+
+        dropoffRows.forEach(b => {
             if (extractDayLabel(b.dropoff) === 'اليوم') {
                 totalDropoffToday++;
                 const shift = shiftForHour(extractHour(b.dropoff));
@@ -12785,32 +12796,48 @@ ${text}
     // التنفيذ الرئيسي
     // ==========================================================
 
+    /** يجيب كل صفوف قائمة معيّنة (استلام من upcoming أو تسليم من ongoing) */
+    async function fetchListRows(label, url, columnsMap, identifyingVariants, field) {
+        const frame = openHiddenFrame(url);
+        try {
+            const doc = await waitForFirstFrame(frame, identifyingVariants);
+            if (!doc) {
+                try { frame.remove(); } catch (err) { /* تجاهل */ }
+                return null;
+            }
+            const rows = await collectAllPages(frame, doc, columnsMap, identifyingVariants);
+            logDiagnostics(label, doc, rows, field, identifyingVariants);
+            try { frame.remove(); } catch (err) { /* تجاهل */ }
+            return rows;
+        } catch (err) {
+            try { frame.remove(); } catch (err2) { /* تجاهل */ }
+            return null;
+        }
+    }
+
     async function runForecastTool() {
         const branchMatch = location.pathname.match(/\/rental\/branches\/(\d+)\//);
         const branchId = branchMatch ? branchMatch[1] : '29';
-        const listUrl = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings/upcoming?pageSize=' + PAGE_SIZE;
+        const pickupUrl = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings/upcoming?pageSize=' + PAGE_SIZE;
+        const dropoffUrl = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings/ongoing?pageSize=' + PAGE_SIZE;
 
-        showProgress('جارٍ تحميل قائمة الحجوزات القادمة...');
+        showProgress('جارٍ تحميل قوائم الحجوزات القادمة والعقود الجارية...');
 
-        const frame = openHiddenFrame(listUrl);
         try {
-            const doc = await waitForFirstFrame(frame);
-            if (!doc) {
-                try { frame.remove(); } catch (err) { /* تجاهل */ }
-                showMessage('تعذّر تحميل قائمة الحجوزات.');
+            const [pickupRows, dropoffRows] = await Promise.all([
+                fetchListRows('استلام - upcoming', pickupUrl, PICKUP_COLUMNS_MAP, PICKUP_COLUMNS_MAP.pickup, 'pickup'),
+                fetchListRows('تسليم - ongoing', dropoffUrl, DROPOFF_COLUMNS_MAP, DROPOFF_COLUMNS_MAP.dropoff, 'dropoff'),
+            ]);
+
+            if (!pickupRows && !dropoffRows) {
+                showMessage('تعذّر تحميل قوائم الحجوزات.');
                 return;
             }
 
-            showProgress('جارٍ جمع كل الحجوزات عبر كل الصفحات...');
-            const rawRows = await collectAllPages(frame, doc);
-            logDiagnostics(doc, rawRows);
-            try { frame.remove(); } catch (err) { /* تجاهل */ }
-
-            const forecast = computeForecast(rawRows);
-            showReport(forecast, rawRows.length);
+            const forecast = computeForecast(pickupRows || [], dropoffRows || []);
+            showReport(forecast, (pickupRows || []).length, (dropoffRows || []).length);
 
         } catch (err) {
-            try { frame.remove(); } catch (err2) { /* تجاهل */ }
             showMessage('تعذّر إتمام الحساب: ' + err.message);
         }
     }
@@ -12864,7 +12891,7 @@ ${text}
         );
     }
 
-    function showReport(forecast, totalScanned) {
+    function showReport(forecast, pickupScanned, dropoffScanned) {
         document.getElementById('peak-forecast-box')?.remove();
 
         const busiestPickup = findBusiestShift(forecast, 'pickup');
@@ -12890,7 +12917,7 @@ ${text}
             '<div style="width:min(480px,95vw);background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
             '<div style="background:#A3E635;padding:18px;text-align:center;">' +
             '<div style="font-size:16px;font-weight:bold;">🔮 توقع أوقات الذروة</div>' +
-            '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">بُني على ' + totalScanned + ' حجز بالقائمة القادمة</div>' +
+            '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">بُني على ' + pickupScanned + ' حجز قادم و' + dropoffScanned + ' عقد جارٍ</div>' +
             '</div>' +
             '<div style="padding:18px;display:flex;gap:10px;">' +
             badgeHtml('أكثر وقت ازدحام - استلام', busiestPickup.shift.label + '<br>' + busiestPickup.level.label + ' (' + busiestPickup.value + ')', busiestPickup.level.color) +
