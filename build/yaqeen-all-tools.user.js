@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0813.1044
+// @version      2026.0817.2150
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -4248,7 +4248,8 @@ ${text}
         target: '120363021290047142@g.us',
     };
 
-    const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings?status=LATE_RETURN&pageSize=500';
+    const BRANCH_ID = 29;
+    const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/' + BRANCH_ID + '/bookings?status=LATE_RETURN&pageSize=500';
     const MAX_AGREEMENTS = 300;
     // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع
     // تماماً بنفس منطق الفحص الأصلي، بس موزّعين على عدة إطارات بدل واحد
@@ -4517,6 +4518,142 @@ ${text}
 
             step();
         });
+    }
+
+    // ==========================================================
+    // إرسال رابط السداد عبر واتساب (زر لكل عقد بالتقرير)
+    // ==========================================================
+
+    function dispatchFullClick(el) {
+        try {
+            el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+            el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+        } catch (err) { /* تجاهل */ }
+        el.click();
+    }
+
+    function findButtonByText(root, text) {
+        const candidates = Array.from(root.querySelectorAll('button, a'));
+        return candidates.find(el => (el.textContent || '').trim() === text) || null;
+    }
+
+    /**
+     * يحوّل رقم جوال معروض بأي صيغة شائعة (05xxxxxxxx، +9665xxxxxxxx،
+     * 9665xxxxxxxx، 5xxxxxxxx) إلى JID واتساب لرقم فردي بصيغة Baileys
+     */
+    function normalizePhoneToJid(rawPhone) {
+        let digits = (rawPhone || '').replace(/\D/g, '');
+        if (digits.startsWith('00')) digits = digits.slice(2);
+        if (digits.startsWith('0')) digits = '966' + digits.slice(1);
+        if (digits.length === 9 && digits.startsWith('5')) digits = '966' + digits;
+        return digits + '@s.whatsapp.net';
+    }
+
+    function sendWhatsAppText(phoneJid, message) {
+        return new Promise((resolve, reject) => {
+            if (typeof GM_xmlhttpRequest === 'undefined') {
+                reject(new Error('صلاحية GM_xmlhttpRequest غير مفعّلة - تأكد من تحديث السكربت في Tampermonkey'));
+                return;
+            }
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: WHATSAPP_CONFIG.apiUrl,
+                headers: {
+                    Authorization: WHATSAPP_CONFIG.apiKey,
+                    'Content-Type': 'application/json',
+                },
+                data: JSON.stringify({ target: phoneJid, type: 'text', message: message }),
+                onload: response => {
+                    if (response.status >= 200 && response.status < 300) resolve();
+                    else {
+                        console.error('[العقود المتأخرة] فشل إرسال رابط الدفع:', response.status, response.responseText);
+                        reject(new Error('فشل الإرسال (رمز الحالة: ' + response.status + ')'));
+                    }
+                },
+                onerror: () => reject(new Error('تعذّر الاتصال بخادم بوت واتساب')),
+            });
+        });
+    }
+
+    /**
+     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة
+     * بالعقد، يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع"، يضغط "إنشاء
+     * رابط الدفع"، وينتظر ظهور الرابط الفعلي بالنتيجة. المبلغ بالنموذج
+     * يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
+     */
+    async function generatePaymentLink(branchId, agreementNo) {
+        const url = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/close-agreements/' + agreementNo + '//payment';
+        const frame = openHiddenFrame(url);
+        try {
+            const doc1 = await waitFor(frame, d => (findButtonByText(d, 'تحصيل الدفع') ? d : null), 20000);
+            if (!doc1) throw new Error('تعذّر فتح صفحة الدفع الخاصة بالعقد');
+            dispatchFullClick(findButtonByText(doc1, 'تحصيل الدفع'));
+
+            const doc2 = await waitFor(frame, d => {
+                const dialog = d.querySelector('[role="dialog"]');
+                return (dialog && findButtonByText(dialog, 'رابط الدفع')) ? d : null;
+            }, 10000);
+            if (!doc2) throw new Error('تعذّر فتح نافذة تحصيل الدفع');
+            dispatchFullClick(findButtonByText(doc2.querySelector('[role="dialog"]'), 'رابط الدفع'));
+
+            const doc3 = await waitFor(frame, d => {
+                const dialog = d.querySelector('[role="dialog"]');
+                return (dialog && findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
+            }, 10000);
+            if (!doc3) throw new Error('تعذّر تحميل نموذج إنشاء رابط الدفع');
+            dispatchFullClick(findButtonByText(doc3.querySelector('[role="dialog"]'), 'إنشاء رابط الدفع'));
+
+            const doc4 = await waitFor(frame, d => {
+                const dialog = d.querySelector('[role="dialog"]');
+                if (!dialog) return null;
+                const a = Array.from(dialog.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/'));
+                return a ? d : null;
+            }, 20000);
+            if (!doc4) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
+
+            const linkEl = Array.from(doc4.querySelector('[role="dialog"]').querySelectorAll('a'))
+                .find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/'));
+            return linkEl.getAttribute('href');
+        } finally {
+            try { frame.remove(); } catch (err) { /* تجاهل */ }
+        }
+    }
+
+    function buildPaymentLinkMessage(record, paymentLink) {
+        const name = record.name || 'عميلنا العزيز';
+        return (
+            'مرحباً ' + name + '،\n\n' +
+            'يوجد مبلغ متأخر بقيمة ' + record.remaining + ' ريال على العقد رقم ' + record.agreementNo + ' الخاص فيكم.\n' +
+            'الرجاء السداد عن طريق الرابط التالي:\n' + paymentLink + '\n\n' +
+            'شاكرين لكم تعاونكم 🌹'
+        );
+    }
+
+    async function handleSendPaymentLink(record, branchId, btn) {
+        if (!record.phone) {
+            alert('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة');
+            return;
+        }
+        if (!confirm('سيتم إنشاء رابط دفع جديد للعقد ' + record.agreementNo + ' وإرساله للعميل (' + record.name + ') عبر واتساب.\nمتابعة؟')) {
+            return;
+        }
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '... جارٍ الإنشاء';
+        try {
+            const paymentLink = await generatePaymentLink(branchId, record.agreementNo);
+            btn.textContent = '... جارٍ الإرسال';
+            const message = buildPaymentLinkMessage(record, paymentLink);
+            await sendWhatsAppText(normalizePhoneToJid(record.phone), message);
+            btn.textContent = '✅ تم الإرسال';
+            btn.style.background = '#16a34a';
+            btn.style.color = '#fff';
+        } catch (err) {
+            console.error('[العقود المتأخرة] فشل إرسال رابط الدفع:', err);
+            btn.disabled = false;
+            btn.textContent = originalText;
+            alert('تعذّر إرسال رابط الدفع: ' + err.message);
+        }
     }
 
     // ==========================================================
@@ -4987,7 +5124,7 @@ ${text}
     function showReport(records, threshold, checkedCount, totalCandidates) {
         document.getElementById('late-payments-box')?.remove();
 
-        const rowsHtml = records.map(r => (
+        const rowsHtml = records.map((r, idx) => (
             '<tr>' +
             '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
@@ -4996,12 +5133,17 @@ ${text}
             '<td style="border-top:1px solid #eee;">' + r.total + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.paid + '</td>' +
             '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.remaining + '</td>' +
+            '<td style="border-top:1px solid #eee;">' +
+            '<button class="late-payments-send-link-btn" data-idx="' + idx + '" style="' +
+            'padding:6px 10px;border:none;border-radius:6px;background:#25D366;color:#fff;' +
+            'cursor:pointer;font-size:12px;white-space:nowrap;">📤 رابط السداد</button>' +
+            '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
+            : '<tr><td colspan="8" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
 
         const html =
             '<div id="late-payments-box" style="' +
@@ -5023,6 +5165,7 @@ ${text}
             '<th style="padding:10px">رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th>' +
             '<th id="late-payments-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
+            '<th>رابط السداد</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
@@ -5065,6 +5208,10 @@ ${text}
                 alert('تعذّر النسخ: ' + err.message);
             }
         };
+        document.querySelectorAll('.late-payments-send-link-btn').forEach(btn => {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            btn.onclick = () => handleSendPaymentLink(records[idx], BRANCH_ID, btn);
+        });
     }
 
     waitCore();
@@ -5402,7 +5549,7 @@ ${text}
                 const doc1 = await waitFor(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
                 if (doc1) {
                     const rows = await collectAllPages(frame, doc1);
-                    rows.forEach(r => { r.branchName = branchName; });
+                    rows.forEach(r => { r.branchName = branchName; r.branchId = branchId; });
                     allRows = allRows.concat(rows);
                 }
             } catch (err) {
@@ -5412,6 +5559,142 @@ ${text}
             }
         }
         return allRows;
+    }
+
+    // ==========================================================
+    // إرسال رابط السداد عبر واتساب (زر لكل عقد بالتقرير)
+    // ==========================================================
+
+    function dispatchFullClick(el) {
+        try {
+            el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+            el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+        } catch (err) { /* تجاهل */ }
+        el.click();
+    }
+
+    function findButtonByText(root, text) {
+        const candidates = Array.from(root.querySelectorAll('button, a'));
+        return candidates.find(el => (el.textContent || '').trim() === text) || null;
+    }
+
+    /**
+     * يحوّل رقم جوال معروض بأي صيغة شائعة (05xxxxxxxx، +9665xxxxxxxx،
+     * 9665xxxxxxxx، 5xxxxxxxx) إلى JID واتساب لرقم فردي بصيغة Baileys
+     */
+    function normalizePhoneToJid(rawPhone) {
+        let digits = (rawPhone || '').replace(/\D/g, '');
+        if (digits.startsWith('00')) digits = digits.slice(2);
+        if (digits.startsWith('0')) digits = '966' + digits.slice(1);
+        if (digits.length === 9 && digits.startsWith('5')) digits = '966' + digits;
+        return digits + '@s.whatsapp.net';
+    }
+
+    function sendWhatsAppText(phoneJid, message) {
+        return new Promise((resolve, reject) => {
+            if (typeof GM_xmlhttpRequest === 'undefined') {
+                reject(new Error('صلاحية GM_xmlhttpRequest غير مفعّلة - تأكد من تحديث السكربت في Tampermonkey'));
+                return;
+            }
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: WHATSAPP_CONFIG.apiUrl,
+                headers: {
+                    Authorization: WHATSAPP_CONFIG.apiKey,
+                    'Content-Type': 'application/json',
+                },
+                data: JSON.stringify({ target: phoneJid, type: 'text', message: message }),
+                onload: response => {
+                    if (response.status >= 200 && response.status < 300) resolve();
+                    else {
+                        console.error('[العقود المتأخرة] فشل إرسال رابط الدفع:', response.status, response.responseText);
+                        reject(new Error('فشل الإرسال (رمز الحالة: ' + response.status + ')'));
+                    }
+                },
+                onerror: () => reject(new Error('تعذّر الاتصال بخادم بوت واتساب')),
+            });
+        });
+    }
+
+    /**
+     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة
+     * بالعقد، يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع"، يضغط "إنشاء
+     * رابط الدفع"، وينتظر ظهور الرابط الفعلي بالنتيجة. المبلغ بالنموذج
+     * يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
+     */
+    async function generatePaymentLink(branchId, agreementNo) {
+        const url = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/close-agreements/' + agreementNo + '//payment';
+        const frame = openHiddenFrame(url);
+        try {
+            const doc1 = await waitFor(frame, d => (findButtonByText(d, 'تحصيل الدفع') ? d : null), 20000);
+            if (!doc1) throw new Error('تعذّر فتح صفحة الدفع الخاصة بالعقد');
+            dispatchFullClick(findButtonByText(doc1, 'تحصيل الدفع'));
+
+            const doc2 = await waitFor(frame, d => {
+                const dialog = d.querySelector('[role="dialog"]');
+                return (dialog && findButtonByText(dialog, 'رابط الدفع')) ? d : null;
+            }, 10000);
+            if (!doc2) throw new Error('تعذّر فتح نافذة تحصيل الدفع');
+            dispatchFullClick(findButtonByText(doc2.querySelector('[role="dialog"]'), 'رابط الدفع'));
+
+            const doc3 = await waitFor(frame, d => {
+                const dialog = d.querySelector('[role="dialog"]');
+                return (dialog && findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
+            }, 10000);
+            if (!doc3) throw new Error('تعذّر تحميل نموذج إنشاء رابط الدفع');
+            dispatchFullClick(findButtonByText(doc3.querySelector('[role="dialog"]'), 'إنشاء رابط الدفع'));
+
+            const doc4 = await waitFor(frame, d => {
+                const dialog = d.querySelector('[role="dialog"]');
+                if (!dialog) return null;
+                const a = Array.from(dialog.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/'));
+                return a ? d : null;
+            }, 20000);
+            if (!doc4) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
+
+            const linkEl = Array.from(doc4.querySelector('[role="dialog"]').querySelectorAll('a'))
+                .find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/'));
+            return linkEl.getAttribute('href');
+        } finally {
+            try { frame.remove(); } catch (err) { /* تجاهل */ }
+        }
+    }
+
+    function buildPaymentLinkMessage(record, paymentLink) {
+        const name = record.name || 'عميلنا العزيز';
+        return (
+            'مرحباً ' + name + '،\n\n' +
+            'يوجد مبلغ متأخر بقيمة ' + record.remaining + ' ريال على العقد رقم ' + record.agreementNo + ' الخاص فيكم.\n' +
+            'الرجاء السداد عن طريق الرابط التالي:\n' + paymentLink + '\n\n' +
+            'شاكرين لكم تعاونكم 🌹'
+        );
+    }
+
+    async function handleSendPaymentLink(record, btn) {
+        if (!record.phone) {
+            alert('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة');
+            return;
+        }
+        if (!confirm('سيتم إنشاء رابط دفع جديد للعقد ' + record.agreementNo + ' (' + record.branchName + ') وإرساله للعميل (' + record.name + ') عبر واتساب.\nمتابعة؟')) {
+            return;
+        }
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '... جارٍ الإنشاء';
+        try {
+            const paymentLink = await generatePaymentLink(record.branchId, record.agreementNo);
+            btn.textContent = '... جارٍ الإرسال';
+            const message = buildPaymentLinkMessage(record, paymentLink);
+            await sendWhatsAppText(normalizePhoneToJid(record.phone), message);
+            btn.textContent = '✅ تم الإرسال';
+            btn.style.background = '#16a34a';
+            btn.style.color = '#fff';
+        } catch (err) {
+            console.error('[العقود المتأخرة] فشل إرسال رابط الدفع:', err);
+            btn.disabled = false;
+            btn.textContent = originalText;
+            alert('تعذّر إرسال رابط الدفع: ' + err.message);
+        }
     }
 
     // ==========================================================
@@ -5460,6 +5743,7 @@ ${text}
             record: {
                 agreementNo: c.agreementNo,
                 branchName: c.branchName,
+                branchId: c.branchId,
                 name: c.name,
                 phone,
                 idNumber,
@@ -5907,7 +6191,7 @@ ${text}
         document.getElementById('late-payments-box')?.remove();
         const branchesLabel = branchIds.map(branchNameById).join('، ');
 
-        const rowsHtml = records.map(r => (
+        const rowsHtml = records.map((r, idx) => (
             '<tr>' +
             '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.branchName + '</td>' +
@@ -5917,12 +6201,17 @@ ${text}
             '<td style="border-top:1px solid #eee;">' + r.total + '</td>' +
             '<td style="border-top:1px solid #eee;">' + r.paid + '</td>' +
             '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.remaining + '</td>' +
+            '<td style="border-top:1px solid #eee;">' +
+            '<button class="late-payments-send-link-btn" data-idx="' + idx + '" style="' +
+            'padding:6px 10px;border:none;border-radius:6px;background:#25D366;color:#fff;' +
+            'cursor:pointer;font-size:12px;white-space:nowrap;">📤 رابط السداد</button>' +
+            '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="8" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
+            : '<tr><td colspan="9" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
 
         const html =
             '<div id="late-payments-box" style="' +
@@ -5947,6 +6236,7 @@ ${text}
             '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th>' +
             '<th id="late-payments-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
+            '<th>رابط السداد</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
@@ -5994,6 +6284,10 @@ ${text}
                 alert('تعذّر النسخ: ' + err.message);
             }
         };
+        document.querySelectorAll('.late-payments-send-link-btn').forEach(btn => {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            btn.onclick = () => handleSendPaymentLink(records[idx], btn);
+        });
     }
 
     waitCore();
