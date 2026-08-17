@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0817.2150
+// @version      2026.0817.2157
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -4575,13 +4575,22 @@ ${text}
         });
     }
 
+    function findQuickpayLink(root) {
+        if (!root) return null;
+        return Array.from(root.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/')) || null;
+    }
+
     /**
-     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة
-     * بالعقد، يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع"، يضغط "إنشاء
-     * رابط الدفع"، وينتظر ظهور الرابط الفعلي بالنتيجة. المبلغ بالنموذج
-     * يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
+     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة بالعقد،
+     * يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع". من هذي النقطة احتمالين:
+     * - ما فيه رابط نشط: يطلع زر "إنشاء رابط الدفع" - نضغطه وننتظر الرابط
+     *   الجديد (يقين نفسه يرسله تلقائياً على واتساب العميل من رقمه فور إنشائه).
+     * - فيه رابط نشط من قبل (تنبيه "يوجد رابط دفع نشط"): نرجّع نفس الرابط
+     *   الموجود بدون إنشاء رابط جديد ولا أي إرسال إضافي - يقين يسمح برابط
+     *   نشط واحد بس، وهذا يمنع تكرار الرسائل للعميل.
+     * المبلغ بالنموذج يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
      */
-    async function generatePaymentLink(branchId, agreementNo) {
+    async function locateOrCreatePaymentLink(branchId, agreementNo) {
         const url = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/close-agreements/' + agreementNo + '//payment';
         const frame = openHiddenFrame(url);
         try {
@@ -4598,22 +4607,26 @@ ${text}
 
             const doc3 = await waitFor(frame, d => {
                 const dialog = d.querySelector('[role="dialog"]');
-                return (dialog && findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
+                if (!dialog) return null;
+                return (findButtonByText(dialog, 'إنشاء رابط الدفع') || findQuickpayLink(dialog)) ? d : null;
             }, 10000);
-            if (!doc3) throw new Error('تعذّر تحميل نموذج إنشاء رابط الدفع');
-            dispatchFullClick(findButtonByText(doc3.querySelector('[role="dialog"]'), 'إنشاء رابط الدفع'));
+            if (!doc3) throw new Error('تعذّر تحميل خيار رابط الدفع');
 
+            const dialog3 = doc3.querySelector('[role="dialog"]');
+            const existingLink = findQuickpayLink(dialog3);
+            if (existingLink) {
+                return { status: 'existing', link: existingLink.getAttribute('href') };
+            }
+
+            dispatchFullClick(findButtonByText(dialog3, 'إنشاء رابط الدفع'));
             const doc4 = await waitFor(frame, d => {
                 const dialog = d.querySelector('[role="dialog"]');
-                if (!dialog) return null;
-                const a = Array.from(dialog.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/'));
-                return a ? d : null;
+                return (dialog && findQuickpayLink(dialog)) ? d : null;
             }, 20000);
             if (!doc4) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
 
-            const linkEl = Array.from(doc4.querySelector('[role="dialog"]').querySelectorAll('a'))
-                .find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/'));
-            return linkEl.getAttribute('href');
+            const linkEl = findQuickpayLink(doc4.querySelector('[role="dialog"]'));
+            return { status: 'created', link: linkEl.getAttribute('href') };
         } finally {
             try { frame.remove(); } catch (err) { /* تجاهل */ }
         }
@@ -4629,30 +4642,71 @@ ${text}
         );
     }
 
-    async function handleSendPaymentLink(record, branchId, btn) {
+    function setRowStatus(idx, text, color) {
+        const el = document.getElementById('late-payments-status-' + idx);
+        if (el) { el.textContent = text; el.style.color = color; }
+    }
+
+    function rowButtons(idx) {
+        return {
+            yaqeenBtn: document.querySelector('.late-payments-send-yaqeen-btn[data-idx="' + idx + '"]'),
+            branchBtn: document.querySelector('.late-payments-send-branch-btn[data-idx="' + idx + '"]'),
+        };
+    }
+
+    /** الزر الأول: يكتفي بإنشاء/تحديد الرابط - يقين نفسه يرسله تلقائياً من رقمه لما ينشئه فعلياً */
+    async function handleSendFromYaqeen(record, branchId, idx) {
+        if (!confirm('سيتم إنشاء رابط دفع (إن لم يوجد رابط نشط) للعقد ' + record.agreementNo + '.\nيقين يرسله تلقائياً على واتساب العميل من رقمه الخاص فور إنشائه.\nمتابعة؟')) {
+            return;
+        }
+        const { yaqeenBtn, branchBtn } = rowButtons(idx);
+        if (yaqeenBtn) yaqeenBtn.disabled = true;
+        if (branchBtn) branchBtn.disabled = true;
+        setRowStatus(idx, '⏳ جارٍ التنفيذ...', '#777');
+        try {
+            const result = await locateOrCreatePaymentLink(branchId, record.agreementNo);
+            if (result.status === 'existing') {
+                setRowStatus(idx, 'ℹ️ يوجد رابط مرسل بالفعل', '#2563eb');
+            } else {
+                setRowStatus(idx, '✅ تم الإرسال (رقم يقين)', '#16a34a');
+            }
+        } catch (err) {
+            console.error('[العقود المتأخرة] فشل إرسال رابط الدفع (رقم يقين):', err);
+            setRowStatus(idx, '❌ فشل الإرسال', '#dc2626');
+        } finally {
+            if (yaqeenBtn) yaqeenBtn.disabled = false;
+            if (branchBtn) branchBtn.disabled = false;
+        }
+    }
+
+    /** الزر الثاني: نفس تحديد/إنشاء الرابط، بعدها إرسال رسالة مخصّصة عبر بوت واتساب الفرع */
+    async function handleSendFromBranch(record, branchId, idx) {
         if (!record.phone) {
             alert('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة');
             return;
         }
-        if (!confirm('سيتم إنشاء رابط دفع جديد للعقد ' + record.agreementNo + ' وإرساله للعميل (' + record.name + ') عبر واتساب.\nمتابعة؟')) {
+        if (!confirm('سيتم إنشاء رابط دفع (إن لم يوجد رابط نشط) للعقد ' + record.agreementNo + ' وإرساله للعميل (' + record.name + ') من رقم واتساب الفرع.\nمتابعة؟')) {
             return;
         }
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = '... جارٍ الإنشاء';
+        const { yaqeenBtn, branchBtn } = rowButtons(idx);
+        if (yaqeenBtn) yaqeenBtn.disabled = true;
+        if (branchBtn) branchBtn.disabled = true;
+        setRowStatus(idx, '⏳ جارٍ التنفيذ...', '#777');
         try {
-            const paymentLink = await generatePaymentLink(branchId, record.agreementNo);
-            btn.textContent = '... جارٍ الإرسال';
-            const message = buildPaymentLinkMessage(record, paymentLink);
-            await sendWhatsAppText(normalizePhoneToJid(record.phone), message);
-            btn.textContent = '✅ تم الإرسال';
-            btn.style.background = '#16a34a';
-            btn.style.color = '#fff';
+            const result = await locateOrCreatePaymentLink(branchId, record.agreementNo);
+            if (result.status === 'existing') {
+                setRowStatus(idx, 'ℹ️ يوجد رابط مرسل بالفعل', '#2563eb');
+            } else {
+                const message = buildPaymentLinkMessage(record, result.link);
+                await sendWhatsAppText(normalizePhoneToJid(record.phone), message);
+                setRowStatus(idx, '✅ تم الإرسال (رقم الفرع)', '#16a34a');
+            }
         } catch (err) {
-            console.error('[العقود المتأخرة] فشل إرسال رابط الدفع:', err);
-            btn.disabled = false;
-            btn.textContent = originalText;
-            alert('تعذّر إرسال رابط الدفع: ' + err.message);
+            console.error('[العقود المتأخرة] فشل إرسال رابط الدفع (رقم الفرع):', err);
+            setRowStatus(idx, '❌ فشل الإرسال', '#dc2626');
+        } finally {
+            if (yaqeenBtn) yaqeenBtn.disabled = false;
+            if (branchBtn) branchBtn.disabled = false;
         }
     }
 
@@ -5134,16 +5188,24 @@ ${text}
             '<td style="border-top:1px solid #eee;">' + r.paid + '</td>' +
             '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.remaining + '</td>' +
             '<td style="border-top:1px solid #eee;">' +
-            '<button class="late-payments-send-link-btn" data-idx="' + idx + '" style="' +
-            'padding:6px 10px;border:none;border-radius:6px;background:#25D366;color:#fff;' +
-            'cursor:pointer;font-size:12px;white-space:nowrap;">📤 رابط السداد</button>' +
+            '<div style="display:flex;flex-direction:column;gap:4px;">' +
+            '<button class="late-payments-send-yaqeen-btn" data-idx="' + idx + '" style="' +
+            'padding:5px 8px;border:none;border-radius:6px;background:#0ea5e9;color:#fff;' +
+            'cursor:pointer;font-size:11.5px;white-space:nowrap;">📨 من رقم يقين</button>' +
+            '<button class="late-payments-send-branch-btn" data-idx="' + idx + '" style="' +
+            'padding:5px 8px;border:none;border-radius:6px;background:#25D366;color:#fff;' +
+            'cursor:pointer;font-size:11.5px;white-space:nowrap;">📤 من رقم الفرع</button>' +
+            '</div>' +
+            '</td>' +
+            '<td style="border-top:1px solid #eee;">' +
+            '<span id="late-payments-status-' + idx + '" style="font-size:12px;color:#999;">—</span>' +
             '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="8" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
+            : '<tr><td colspan="9" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
 
         const html =
             '<div id="late-payments-box" style="' +
@@ -5165,7 +5227,7 @@ ${text}
             '<th style="padding:10px">رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th>' +
             '<th id="late-payments-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
-            '<th>رابط السداد</th>' +
+            '<th>إرسال رابط الدفع</th><th>الحالة</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
@@ -5208,9 +5270,13 @@ ${text}
                 alert('تعذّر النسخ: ' + err.message);
             }
         };
-        document.querySelectorAll('.late-payments-send-link-btn').forEach(btn => {
+        document.querySelectorAll('.late-payments-send-yaqeen-btn').forEach(btn => {
             const idx = parseInt(btn.getAttribute('data-idx'), 10);
-            btn.onclick = () => handleSendPaymentLink(records[idx], BRANCH_ID, btn);
+            btn.onclick = () => handleSendFromYaqeen(records[idx], BRANCH_ID, idx);
+        });
+        document.querySelectorAll('.late-payments-send-branch-btn').forEach(btn => {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            btn.onclick = () => handleSendFromBranch(records[idx], BRANCH_ID, idx);
         });
     }
 
@@ -5616,13 +5682,22 @@ ${text}
         });
     }
 
+    function findQuickpayLink(root) {
+        if (!root) return null;
+        return Array.from(root.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/')) || null;
+    }
+
     /**
-     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة
-     * بالعقد، يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع"، يضغط "إنشاء
-     * رابط الدفع"، وينتظر ظهور الرابط الفعلي بالنتيجة. المبلغ بالنموذج
-     * يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
+     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة بالعقد،
+     * يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع". من هذي النقطة احتمالين:
+     * - ما فيه رابط نشط: يطلع زر "إنشاء رابط الدفع" - نضغطه وننتظر الرابط
+     *   الجديد (يقين نفسه يرسله تلقائياً على واتساب العميل من رقمه فور إنشائه).
+     * - فيه رابط نشط من قبل (تنبيه "يوجد رابط دفع نشط"): نرجّع نفس الرابط
+     *   الموجود بدون إنشاء رابط جديد ولا أي إرسال إضافي - يقين يسمح برابط
+     *   نشط واحد بس، وهذا يمنع تكرار الرسائل للعميل.
+     * المبلغ بالنموذج يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
      */
-    async function generatePaymentLink(branchId, agreementNo) {
+    async function locateOrCreatePaymentLink(branchId, agreementNo) {
         const url = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/close-agreements/' + agreementNo + '//payment';
         const frame = openHiddenFrame(url);
         try {
@@ -5639,22 +5714,26 @@ ${text}
 
             const doc3 = await waitFor(frame, d => {
                 const dialog = d.querySelector('[role="dialog"]');
-                return (dialog && findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
+                if (!dialog) return null;
+                return (findButtonByText(dialog, 'إنشاء رابط الدفع') || findQuickpayLink(dialog)) ? d : null;
             }, 10000);
-            if (!doc3) throw new Error('تعذّر تحميل نموذج إنشاء رابط الدفع');
-            dispatchFullClick(findButtonByText(doc3.querySelector('[role="dialog"]'), 'إنشاء رابط الدفع'));
+            if (!doc3) throw new Error('تعذّر تحميل خيار رابط الدفع');
 
+            const dialog3 = doc3.querySelector('[role="dialog"]');
+            const existingLink = findQuickpayLink(dialog3);
+            if (existingLink) {
+                return { status: 'existing', link: existingLink.getAttribute('href') };
+            }
+
+            dispatchFullClick(findButtonByText(dialog3, 'إنشاء رابط الدفع'));
             const doc4 = await waitFor(frame, d => {
                 const dialog = d.querySelector('[role="dialog"]');
-                if (!dialog) return null;
-                const a = Array.from(dialog.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/'));
-                return a ? d : null;
+                return (dialog && findQuickpayLink(dialog)) ? d : null;
             }, 20000);
             if (!doc4) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
 
-            const linkEl = Array.from(doc4.querySelector('[role="dialog"]').querySelectorAll('a'))
-                .find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/'));
-            return linkEl.getAttribute('href');
+            const linkEl = findQuickpayLink(doc4.querySelector('[role="dialog"]'));
+            return { status: 'created', link: linkEl.getAttribute('href') };
         } finally {
             try { frame.remove(); } catch (err) { /* تجاهل */ }
         }
@@ -5670,30 +5749,71 @@ ${text}
         );
     }
 
-    async function handleSendPaymentLink(record, btn) {
+    function setRowStatus(idx, text, color) {
+        const el = document.getElementById('late-payments-status-' + idx);
+        if (el) { el.textContent = text; el.style.color = color; }
+    }
+
+    function rowButtons(idx) {
+        return {
+            yaqeenBtn: document.querySelector('.late-payments-send-yaqeen-btn[data-idx="' + idx + '"]'),
+            branchBtn: document.querySelector('.late-payments-send-branch-btn[data-idx="' + idx + '"]'),
+        };
+    }
+
+    /** الزر الأول: يكتفي بإنشاء/تحديد الرابط - يقين نفسه يرسله تلقائياً من رقمه لما ينشئه فعلياً */
+    async function handleSendFromYaqeen(record, idx) {
+        if (!confirm('سيتم إنشاء رابط دفع (إن لم يوجد رابط نشط) للعقد ' + record.agreementNo + ' (' + record.branchName + ').\nيقين يرسله تلقائياً على واتساب العميل من رقمه الخاص فور إنشائه.\nمتابعة؟')) {
+            return;
+        }
+        const { yaqeenBtn, branchBtn } = rowButtons(idx);
+        if (yaqeenBtn) yaqeenBtn.disabled = true;
+        if (branchBtn) branchBtn.disabled = true;
+        setRowStatus(idx, '⏳ جارٍ التنفيذ...', '#777');
+        try {
+            const result = await locateOrCreatePaymentLink(record.branchId, record.agreementNo);
+            if (result.status === 'existing') {
+                setRowStatus(idx, 'ℹ️ يوجد رابط مرسل بالفعل', '#2563eb');
+            } else {
+                setRowStatus(idx, '✅ تم الإرسال (رقم يقين)', '#16a34a');
+            }
+        } catch (err) {
+            console.error('[العقود المتأخرة] فشل إرسال رابط الدفع (رقم يقين):', err);
+            setRowStatus(idx, '❌ فشل الإرسال', '#dc2626');
+        } finally {
+            if (yaqeenBtn) yaqeenBtn.disabled = false;
+            if (branchBtn) branchBtn.disabled = false;
+        }
+    }
+
+    /** الزر الثاني: نفس تحديد/إنشاء الرابط، بعدها إرسال رسالة مخصّصة عبر بوت واتساب الفرع */
+    async function handleSendFromBranch(record, idx) {
         if (!record.phone) {
             alert('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة');
             return;
         }
-        if (!confirm('سيتم إنشاء رابط دفع جديد للعقد ' + record.agreementNo + ' (' + record.branchName + ') وإرساله للعميل (' + record.name + ') عبر واتساب.\nمتابعة؟')) {
+        if (!confirm('سيتم إنشاء رابط دفع (إن لم يوجد رابط نشط) للعقد ' + record.agreementNo + ' (' + record.branchName + ') وإرساله للعميل (' + record.name + ') من رقم واتساب الفرع.\nمتابعة؟')) {
             return;
         }
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = '... جارٍ الإنشاء';
+        const { yaqeenBtn, branchBtn } = rowButtons(idx);
+        if (yaqeenBtn) yaqeenBtn.disabled = true;
+        if (branchBtn) branchBtn.disabled = true;
+        setRowStatus(idx, '⏳ جارٍ التنفيذ...', '#777');
         try {
-            const paymentLink = await generatePaymentLink(record.branchId, record.agreementNo);
-            btn.textContent = '... جارٍ الإرسال';
-            const message = buildPaymentLinkMessage(record, paymentLink);
-            await sendWhatsAppText(normalizePhoneToJid(record.phone), message);
-            btn.textContent = '✅ تم الإرسال';
-            btn.style.background = '#16a34a';
-            btn.style.color = '#fff';
+            const result = await locateOrCreatePaymentLink(record.branchId, record.agreementNo);
+            if (result.status === 'existing') {
+                setRowStatus(idx, 'ℹ️ يوجد رابط مرسل بالفعل', '#2563eb');
+            } else {
+                const message = buildPaymentLinkMessage(record, result.link);
+                await sendWhatsAppText(normalizePhoneToJid(record.phone), message);
+                setRowStatus(idx, '✅ تم الإرسال (رقم الفرع)', '#16a34a');
+            }
         } catch (err) {
-            console.error('[العقود المتأخرة] فشل إرسال رابط الدفع:', err);
-            btn.disabled = false;
-            btn.textContent = originalText;
-            alert('تعذّر إرسال رابط الدفع: ' + err.message);
+            console.error('[العقود المتأخرة] فشل إرسال رابط الدفع (رقم الفرع):', err);
+            setRowStatus(idx, '❌ فشل الإرسال', '#dc2626');
+        } finally {
+            if (yaqeenBtn) yaqeenBtn.disabled = false;
+            if (branchBtn) branchBtn.disabled = false;
         }
     }
 
@@ -6202,16 +6322,24 @@ ${text}
             '<td style="border-top:1px solid #eee;">' + r.paid + '</td>' +
             '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.remaining + '</td>' +
             '<td style="border-top:1px solid #eee;">' +
-            '<button class="late-payments-send-link-btn" data-idx="' + idx + '" style="' +
-            'padding:6px 10px;border:none;border-radius:6px;background:#25D366;color:#fff;' +
-            'cursor:pointer;font-size:12px;white-space:nowrap;">📤 رابط السداد</button>' +
+            '<div style="display:flex;flex-direction:column;gap:4px;">' +
+            '<button class="late-payments-send-yaqeen-btn" data-idx="' + idx + '" style="' +
+            'padding:5px 8px;border:none;border-radius:6px;background:#0ea5e9;color:#fff;' +
+            'cursor:pointer;font-size:11.5px;white-space:nowrap;">📨 من رقم يقين</button>' +
+            '<button class="late-payments-send-branch-btn" data-idx="' + idx + '" style="' +
+            'padding:5px 8px;border:none;border-radius:6px;background:#25D366;color:#fff;' +
+            'cursor:pointer;font-size:11.5px;white-space:nowrap;">📤 من رقم الفرع</button>' +
+            '</div>' +
+            '</td>' +
+            '<td style="border-top:1px solid #eee;">' +
+            '<span id="late-payments-status-' + idx + '" style="font-size:12px;color:#999;">—</span>' +
             '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="9" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
+            : '<tr><td colspan="10" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
 
         const html =
             '<div id="late-payments-box" style="' +
@@ -6236,7 +6364,7 @@ ${text}
             '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th>' +
             '<th id="late-payments-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
-            '<th>رابط السداد</th>' +
+            '<th>إرسال رابط الدفع</th><th>الحالة</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
@@ -6284,9 +6412,13 @@ ${text}
                 alert('تعذّر النسخ: ' + err.message);
             }
         };
-        document.querySelectorAll('.late-payments-send-link-btn').forEach(btn => {
+        document.querySelectorAll('.late-payments-send-yaqeen-btn').forEach(btn => {
             const idx = parseInt(btn.getAttribute('data-idx'), 10);
-            btn.onclick = () => handleSendPaymentLink(records[idx], btn);
+            btn.onclick = () => handleSendFromYaqeen(records[idx], idx);
+        });
+        document.querySelectorAll('.late-payments-send-branch-btn').forEach(btn => {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            btn.onclick = () => handleSendFromBranch(records[idx], idx);
         });
     }
 
