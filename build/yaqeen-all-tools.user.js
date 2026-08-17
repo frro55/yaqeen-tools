@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0817.2157
+// @version      2026.0817.2206
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -4737,15 +4737,33 @@ ${text}
         // الرصيد المتبقي الحقيقي (من صفحة العقد نفسها) هو أساس الفلترة، مو أي مؤشر بالقائمة
         if (isNaN(remaining) || remaining < threshold) return { checked: true, record: null };
 
-        // نفس زر توسيع بيانات العميل المستخدم بأدوات الإيميل - يفتح لوحة فيها الجوال ورقم الهوية
-        const expandBtn = Array.from(doc2.querySelectorAll('button.inline-flex'))
-            .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));
+        // نفس زر توسيع بيانات العميل المستخدم بأدوات الإيميل - يفتح لوحة فيها الجوال ورقم الهوية.
+        // نبحث عنه بانتظار فعلي (مو محاولة وحدة) لأن مع 4 إطارات تشتغل بالتوازي
+        // ممكن العنصر يكون لسا ما تركّب لحظة وصولنا هنا رغم ظهور "الرصيد المتبقي"
+        let expandBtn = null;
+        const btnWaitStart = Date.now();
+        while (Date.now() - btnWaitStart < 3000) {
+            expandBtn = Array.from(doc2.querySelectorAll('button.inline-flex'))
+                .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));
+            if (expandBtn) break;
+            await new Promise(r => setTimeout(r, 150));
+        }
         if (expandBtn) {
             try { expandBtn.click(); } catch (err) { /* تجاهل */ }
         }
-        await new Promise(r => setTimeout(r, 1200));
 
-        const dialog = doc2.querySelector('[role="dialog"]') || doc2;
+        // ننتظر فعلياً لين يظهر رقم الجوال بدل انتظار ثابت 1200ms - مع 4
+        // إطارات تشتغل بالتوازي (CHECK_CONCURRENCY) ممكن يتأخر ظهور اللوحة
+        // شوي عن ذلك الوقت الثابت، فيطلع الصف بدون جوال ولا هوية بدون داعي
+        const waitStart = Date.now();
+        let dialog = doc2.querySelector('[role="dialog"]') || doc2;
+        while (Date.now() - waitStart < 4000) {
+            dialog = doc2.querySelector('[role="dialog"]') || doc2;
+            const hasPhone = Array.from(dialog.querySelectorAll('span')).some(el => /^\+?\d[\d\s]{7,}$/.test(el.textContent.trim()));
+            if (hasPhone) break;
+            await new Promise(r => setTimeout(r, 200));
+        }
+
         const idNumber = findValueNearLabel(dialog, "رقم الهوية");
         const phoneEl = Array.from(dialog.querySelectorAll('span'))
             .find(el => /^\+?\d[\d\s]{7,}$/.test(el.textContent.trim()));
@@ -5844,15 +5862,33 @@ ${text}
         // الرصيد المتبقي الحقيقي (من صفحة العقد نفسها) هو أساس الفلترة، مو أي مؤشر بالقائمة
         if (isNaN(remaining) || remaining < threshold) return { checked: true, record: null };
 
-        // نفس زر توسيع بيانات العميل المستخدم بأدوات الإيميل - يفتح لوحة فيها الجوال ورقم الهوية
-        const expandBtn = Array.from(doc2.querySelectorAll('button.inline-flex'))
-            .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));
+        // نفس زر توسيع بيانات العميل المستخدم بأدوات الإيميل - يفتح لوحة فيها الجوال ورقم الهوية.
+        // نبحث عنه بانتظار فعلي (مو محاولة وحدة) لأن مع 4 إطارات تشتغل بالتوازي
+        // ممكن العنصر يكون لسا ما تركّب لحظة وصولنا هنا رغم ظهور "الرصيد المتبقي"
+        let expandBtn = null;
+        const btnWaitStart = Date.now();
+        while (Date.now() - btnWaitStart < 3000) {
+            expandBtn = Array.from(doc2.querySelectorAll('button.inline-flex'))
+                .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));
+            if (expandBtn) break;
+            await new Promise(r => setTimeout(r, 150));
+        }
         if (expandBtn) {
             try { expandBtn.click(); } catch (err) { /* تجاهل */ }
         }
-        await new Promise(r => setTimeout(r, 1200));
 
-        const dialog = doc2.querySelector('[role="dialog"]') || doc2;
+        // ننتظر فعلياً لين يظهر رقم الجوال بدل انتظار ثابت 1200ms - مع 4
+        // إطارات تشتغل بالتوازي (CHECK_CONCURRENCY) ممكن يتأخر ظهور اللوحة
+        // شوي عن ذلك الوقت الثابت، فيطلع الصف بدون جوال ولا هوية بدون داعي
+        const waitStart = Date.now();
+        let dialog = doc2.querySelector('[role="dialog"]') || doc2;
+        while (Date.now() - waitStart < 4000) {
+            dialog = doc2.querySelector('[role="dialog"]') || doc2;
+            const hasPhone = Array.from(dialog.querySelectorAll('span')).some(el => /^\+?\d[\d\s]{7,}$/.test(el.textContent.trim()));
+            if (hasPhone) break;
+            await new Promise(r => setTimeout(r, 200));
+        }
+
         const idNumber = findValueNearLabel(dialog, "رقم الهوية");
         const phoneEl = Array.from(dialog.querySelectorAll('span'))
             .find(el => /^\+?\d[\d\s]{7,}$/.test(el.textContent.trim()));
