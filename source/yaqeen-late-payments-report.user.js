@@ -500,20 +500,21 @@
         };
     }
 
-    /** إنشاء/تحديد رابط الدفع من رقم واتساب الفرع، وإرسال رسالة مخصّصة للعميل */
-    async function handleSendFromBranch(record, branchId, idx) {
-        if (!record.phone) {
-            alert('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة');
-            return;
-        }
-        if (!confirm('سيتم إنشاء رابط دفع (إن لم يوجد رابط نشط) للعقد ' + record.agreementNo + ' وإرساله للعميل (' + record.name + ') من رقم واتساب الفرع.\nمتابعة؟')) {
-            return;
-        }
+    /**
+     * منطق الإرسال الفعلي لصف واحد (بدون أي تأكيد - التأكيد مسؤولية المستدعي).
+     * يحدّث حالة الصف بنفسه: ⏳ جارٍ ← ✅ تم الإرسال / ℹ️ يوجد رابط مرسل بالفعل
+     * / ⚠️ لا يوجد جوال / ❌ فشل الإرسال. تُستخدم من زر الصف نفسه ومن "إرسال للجميع".
+     */
+    async function sendPaymentLinkForRecord(record, idx) {
         const { branchBtn } = rowButtons(idx);
         if (branchBtn) branchBtn.disabled = true;
         setRowStatus(idx, '⏳ جارٍ التنفيذ...', '#777');
         try {
-            const result = await locateOrCreatePaymentLink(branchId, record.agreementNo);
+            if (!record.phone) {
+                setRowStatus(idx, '⚠️ لا يوجد جوال', '#eab308');
+                return;
+            }
+            const result = await locateOrCreatePaymentLink(BRANCH_ID, record.agreementNo);
             if (result.status === 'existing') {
                 setRowStatus(idx, 'ℹ️ يوجد رابط مرسل بالفعل', '#2563eb');
             } else {
@@ -527,6 +528,33 @@
         } finally {
             if (branchBtn) branchBtn.disabled = false;
         }
+    }
+
+    /** زر الصف الواحد - يسأل تأكيد فردي ثم ينفّذ */
+    async function handleSendFromBranch(record, idx) {
+        if (!record.phone) {
+            alert('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة');
+            return;
+        }
+        if (!confirm('سيتم إنشاء رابط دفع (إن لم يوجد رابط نشط) للعقد ' + record.agreementNo + ' وإرساله للعميل (' + record.name + ') من رقم واتساب الفرع.\nمتابعة؟')) {
+            return;
+        }
+        await sendPaymentLinkForRecord(record, idx);
+    }
+
+    /** زر "إرسال للجميع" - تأكيد واحد للدفعة كاملة، ثم يمشي على كل صف بالتتابع (مو بالتوازي) */
+    async function handleSendAll(records) {
+        if (records.length === 0) return;
+        if (!confirm('سيتم إرسال روابط السداد لجميع العملاء بالقائمة (' + records.length + ' عميل) واحداً تلو الآخر عبر رقم واتساب الفرع.\nمتابعة؟')) {
+            return;
+        }
+        const allBtn = document.getElementById('late-payments-send-all');
+        if (allBtn) allBtn.disabled = true;
+        for (let i = 0; i < records.length; i++) {
+            await sendPaymentLinkForRecord(records[i], i);
+        }
+        if (allBtn) allBtn.disabled = false;
+        alert('انتهى إرسال روابط السداد لجميع العملاء.');
     }
 
     // ==========================================================
@@ -1069,6 +1097,8 @@
             'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
             '<button id="late-payments-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
+            '<button id="late-payments-send-all" style="flex:1;padding:10px;border:none;border-radius:8px;' +
+            'background:#25D366;color:#fff;cursor:pointer;">📤 إرسال للجميع</button>' +
             '<button id="late-payments-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
             'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
             '<button id="late-payments-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
@@ -1094,6 +1124,9 @@
         document.getElementById('late-payments-whatsapp').onclick = () => {
             handleSendWhatsApp(records, threshold);
         };
+        document.getElementById('late-payments-send-all').onclick = () => {
+            handleSendAll(records);
+        };
         document.getElementById('late-payments-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
@@ -1104,7 +1137,7 @@
         };
         document.querySelectorAll('.late-payments-send-branch-btn').forEach(btn => {
             const idx = parseInt(btn.getAttribute('data-idx'), 10);
-            btn.onclick = () => handleSendFromBranch(records[idx], BRANCH_ID, idx);
+            btn.onclick = () => handleSendFromBranch(records[idx], idx);
         });
     }
 
