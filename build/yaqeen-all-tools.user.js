@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0817.2325
+// @version      2026.0817.2332
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -4581,6 +4581,25 @@ ${text}
     }
 
     /**
+     * نافذة "رابط الدفع" تطلع فيها حالتين متشابهتين شكلياً (فيهما نفس بلوك
+     * تفاصيل الرابط)، بس بنص مختلف كلياً بتنبيه [role="alert"] بالأعلى:
+     * - "يوجد رابط دفع نشط": رابط قديم من قبل - ما ننشئ ولا نرسل شي جديد.
+     * - "تم إنشاء رابط الدفع وإرساله...": رابط جديد أنشأناه للتو فعلياً.
+     * الاعتماد على نص التنبيه نفسه (مو مجرد وجود رابط بالنافذة، اللي يطلع
+     * بالحالتين) هو الفيصل الموثوق - لون/شكل التنبيه تفصيل ثانوي قابل للتغيّر.
+     */
+    function classifyPaymentDialogState(dialog) {
+        if (!dialog) return null;
+        const alerts = Array.from(dialog.querySelectorAll('[role="alert"]'));
+        for (const alert of alerts) {
+            const text = alert.textContent || '';
+            if (text.indexOf('يوجد رابط دفع نشط') !== -1) return 'active';
+            if (text.indexOf('تم إنشاء رابط الدفع') !== -1) return 'created';
+        }
+        return null;
+    }
+
+    /**
      * يتحقق أول شي إذا الحالة المطلوبة متحققة أصلاً (بدون ضغط أي شي - مفيد
      * لما نكون فعلاً بمرحلة متقدمة ومحتاجين خطوة سابقة). إذا لأ، يدور على
      * عنصر يضغطه وينتظر تحقق الحالة، ويكرر المحاولة (ضغط جديد + انتظار جديد)
@@ -4635,37 +4654,39 @@ ${text}
                 d => {
                     const dialog = d.querySelector('[role="dialog"]');
                     if (!dialog) return null;
-                    return (findButtonByText(dialog, 'رابط الدفع') || findQuickpayLink(dialog) || findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
+                    return (findButtonByText(dialog, 'رابط الدفع') || classifyPaymentDialogState(dialog) || findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
                 },
                 { maxAttempts: 3, perAttemptTimeout: 5000 }
             );
             if (!doc2) throw new Error('تعذّر فتح نافذة تحصيل الدفع');
 
-            const dialog2 = doc2.querySelector('[role="dialog"]');
-            let existingLink = findQuickpayLink(dialog2);
-            if (existingLink) {
-                return { status: 'existing', link: existingLink.getAttribute('href') };
+            let dialog = doc2.querySelector('[role="dialog"]');
+            let state = classifyPaymentDialogState(dialog);
+            if (state) {
+                const link = findQuickpayLink(dialog);
+                return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
             const doc3 = await clickUntil(
                 frame,
                 d => {
-                    const dialog = d.querySelector('[role="dialog"]');
-                    return dialog ? findButtonByText(dialog, 'رابط الدفع') : null;
+                    const dlg = d.querySelector('[role="dialog"]');
+                    return dlg ? findButtonByText(dlg, 'رابط الدفع') : null;
                 },
                 d => {
-                    const dialog = d.querySelector('[role="dialog"]');
-                    if (!dialog) return null;
-                    return (findButtonByText(dialog, 'إنشاء رابط الدفع') || findQuickpayLink(dialog)) ? d : null;
+                    const dlg = d.querySelector('[role="dialog"]');
+                    if (!dlg) return null;
+                    return (findButtonByText(dlg, 'إنشاء رابط الدفع') || classifyPaymentDialogState(dlg)) ? d : null;
                 },
                 { maxAttempts: 3, perAttemptTimeout: 4000 }
             );
             if (!doc3) throw new Error('تعذّر تحميل خيار رابط الدفع');
 
-            const dialog3 = doc3.querySelector('[role="dialog"]');
-            existingLink = findQuickpayLink(dialog3);
-            if (existingLink) {
-                return { status: 'existing', link: existingLink.getAttribute('href') };
+            dialog = doc3.querySelector('[role="dialog"]');
+            state = classifyPaymentDialogState(dialog);
+            if (state) {
+                const link = findQuickpayLink(dialog);
+                return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
             // زر "إنشاء رابط الدفع" أحياناً يطلع أول شي بشكل متفائل (optimistic)
@@ -4673,28 +4694,32 @@ ${text}
             // فجأة لتنبيه "يوجد رابط دفع نشط" - ننتظر شوي ونعيد الفحص قبل ما
             // نضغط "إنشاء رابط الدفع" فعلياً، حتى ما نولّد رابط مكرر ونرسله بالغلط
             await new Promise(r => setTimeout(r, 1200));
-            const dialog3b = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
-            existingLink = findQuickpayLink(dialog3b);
-            if (existingLink) {
-                return { status: 'existing', link: existingLink.getAttribute('href') };
+            dialog = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
+            state = classifyPaymentDialogState(dialog);
+            if (state) {
+                const link = findQuickpayLink(dialog);
+                return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
             const doc4 = await clickUntil(
                 frame,
                 d => {
-                    const dialog = d.querySelector('[role="dialog"]');
-                    return dialog ? findButtonByText(dialog, 'إنشاء رابط الدفع') : null;
+                    const dlg = d.querySelector('[role="dialog"]');
+                    return dlg ? findButtonByText(dlg, 'إنشاء رابط الدفع') : null;
                 },
                 d => {
-                    const dialog = d.querySelector('[role="dialog"]');
-                    return (dialog && findQuickpayLink(dialog)) ? d : null;
+                    const dlg = d.querySelector('[role="dialog"]');
+                    return (dlg && classifyPaymentDialogState(dlg)) ? d : null;
                 },
                 { maxAttempts: 2, perAttemptTimeout: 10000 }
             );
             if (!doc4) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
 
-            const linkEl = findQuickpayLink(doc4.querySelector('[role="dialog"]'));
-            return { status: 'created', link: linkEl.getAttribute('href') };
+            const finalDialog = doc4.querySelector('[role="dialog"]');
+            const finalState = classifyPaymentDialogState(finalDialog);
+            const linkEl = findQuickpayLink(finalDialog);
+            if (!linkEl) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
+            return { status: finalState === 'active' ? 'existing' : 'created', link: linkEl.getAttribute('href') };
         } catch (err) {
             // تشخيص: نطبع محتوى نافذة الدفع وقت الفشل بالـconsole عشان لو
             // تكرر الفشل نقدر نشوف بالضبط أي حالة DOM ما كنا نتوقعها
@@ -5780,6 +5805,25 @@ ${text}
     }
 
     /**
+     * نافذة "رابط الدفع" تطلع فيها حالتين متشابهتين شكلياً (فيهما نفس بلوك
+     * تفاصيل الرابط)، بس بنص مختلف كلياً بتنبيه [role="alert"] بالأعلى:
+     * - "يوجد رابط دفع نشط": رابط قديم من قبل - ما ننشئ ولا نرسل شي جديد.
+     * - "تم إنشاء رابط الدفع وإرساله...": رابط جديد أنشأناه للتو فعلياً.
+     * الاعتماد على نص التنبيه نفسه (مو مجرد وجود رابط بالنافذة، اللي يطلع
+     * بالحالتين) هو الفيصل الموثوق - لون/شكل التنبيه تفصيل ثانوي قابل للتغيّر.
+     */
+    function classifyPaymentDialogState(dialog) {
+        if (!dialog) return null;
+        const alerts = Array.from(dialog.querySelectorAll('[role="alert"]'));
+        for (const alert of alerts) {
+            const text = alert.textContent || '';
+            if (text.indexOf('يوجد رابط دفع نشط') !== -1) return 'active';
+            if (text.indexOf('تم إنشاء رابط الدفع') !== -1) return 'created';
+        }
+        return null;
+    }
+
+    /**
      * يتحقق أول شي إذا الحالة المطلوبة متحققة أصلاً (بدون ضغط أي شي - مفيد
      * لما نكون فعلاً بمرحلة متقدمة ومحتاجين خطوة سابقة). إذا لأ، يدور على
      * عنصر يضغطه وينتظر تحقق الحالة، ويكرر المحاولة (ضغط جديد + انتظار جديد)
@@ -5834,37 +5878,39 @@ ${text}
                 d => {
                     const dialog = d.querySelector('[role="dialog"]');
                     if (!dialog) return null;
-                    return (findButtonByText(dialog, 'رابط الدفع') || findQuickpayLink(dialog) || findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
+                    return (findButtonByText(dialog, 'رابط الدفع') || classifyPaymentDialogState(dialog) || findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
                 },
                 { maxAttempts: 3, perAttemptTimeout: 5000 }
             );
             if (!doc2) throw new Error('تعذّر فتح نافذة تحصيل الدفع');
 
-            const dialog2 = doc2.querySelector('[role="dialog"]');
-            let existingLink = findQuickpayLink(dialog2);
-            if (existingLink) {
-                return { status: 'existing', link: existingLink.getAttribute('href') };
+            let dialog = doc2.querySelector('[role="dialog"]');
+            let state = classifyPaymentDialogState(dialog);
+            if (state) {
+                const link = findQuickpayLink(dialog);
+                return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
             const doc3 = await clickUntil(
                 frame,
                 d => {
-                    const dialog = d.querySelector('[role="dialog"]');
-                    return dialog ? findButtonByText(dialog, 'رابط الدفع') : null;
+                    const dlg = d.querySelector('[role="dialog"]');
+                    return dlg ? findButtonByText(dlg, 'رابط الدفع') : null;
                 },
                 d => {
-                    const dialog = d.querySelector('[role="dialog"]');
-                    if (!dialog) return null;
-                    return (findButtonByText(dialog, 'إنشاء رابط الدفع') || findQuickpayLink(dialog)) ? d : null;
+                    const dlg = d.querySelector('[role="dialog"]');
+                    if (!dlg) return null;
+                    return (findButtonByText(dlg, 'إنشاء رابط الدفع') || classifyPaymentDialogState(dlg)) ? d : null;
                 },
                 { maxAttempts: 3, perAttemptTimeout: 4000 }
             );
             if (!doc3) throw new Error('تعذّر تحميل خيار رابط الدفع');
 
-            const dialog3 = doc3.querySelector('[role="dialog"]');
-            existingLink = findQuickpayLink(dialog3);
-            if (existingLink) {
-                return { status: 'existing', link: existingLink.getAttribute('href') };
+            dialog = doc3.querySelector('[role="dialog"]');
+            state = classifyPaymentDialogState(dialog);
+            if (state) {
+                const link = findQuickpayLink(dialog);
+                return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
             // زر "إنشاء رابط الدفع" أحياناً يطلع أول شي بشكل متفائل (optimistic)
@@ -5872,28 +5918,32 @@ ${text}
             // فجأة لتنبيه "يوجد رابط دفع نشط" - ننتظر شوي ونعيد الفحص قبل ما
             // نضغط "إنشاء رابط الدفع" فعلياً، حتى ما نولّد رابط مكرر ونرسله بالغلط
             await new Promise(r => setTimeout(r, 1200));
-            const dialog3b = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
-            existingLink = findQuickpayLink(dialog3b);
-            if (existingLink) {
-                return { status: 'existing', link: existingLink.getAttribute('href') };
+            dialog = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
+            state = classifyPaymentDialogState(dialog);
+            if (state) {
+                const link = findQuickpayLink(dialog);
+                return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
             const doc4 = await clickUntil(
                 frame,
                 d => {
-                    const dialog = d.querySelector('[role="dialog"]');
-                    return dialog ? findButtonByText(dialog, 'إنشاء رابط الدفع') : null;
+                    const dlg = d.querySelector('[role="dialog"]');
+                    return dlg ? findButtonByText(dlg, 'إنشاء رابط الدفع') : null;
                 },
                 d => {
-                    const dialog = d.querySelector('[role="dialog"]');
-                    return (dialog && findQuickpayLink(dialog)) ? d : null;
+                    const dlg = d.querySelector('[role="dialog"]');
+                    return (dlg && classifyPaymentDialogState(dlg)) ? d : null;
                 },
                 { maxAttempts: 2, perAttemptTimeout: 10000 }
             );
             if (!doc4) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
 
-            const linkEl = findQuickpayLink(doc4.querySelector('[role="dialog"]'));
-            return { status: 'created', link: linkEl.getAttribute('href') };
+            const finalDialog = doc4.querySelector('[role="dialog"]');
+            const finalState = classifyPaymentDialogState(finalDialog);
+            const linkEl = findQuickpayLink(finalDialog);
+            if (!linkEl) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
+            return { status: finalState === 'active' ? 'existing' : 'created', link: linkEl.getAttribute('href') };
         } catch (err) {
             // تشخيص: نطبع محتوى نافذة الدفع وقت الفشل بالـconsole عشان لو
             // تكرر الفشل نقدر نشوف بالضبط أي حالة DOM ما كنا نتوقعها
