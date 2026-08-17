@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0817.2318
+// @version      2026.0817.2325
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -4668,6 +4668,17 @@ ${text}
                 return { status: 'existing', link: existingLink.getAttribute('href') };
             }
 
+            // زر "إنشاء رابط الدفع" أحياناً يطلع أول شي بشكل متفائل (optimistic)
+            // قبل ما يوصل رد فحص "هل فيه رابط نشط؟" من السيرفر، وبعدها يتحوّل
+            // فجأة لتنبيه "يوجد رابط دفع نشط" - ننتظر شوي ونعيد الفحص قبل ما
+            // نضغط "إنشاء رابط الدفع" فعلياً، حتى ما نولّد رابط مكرر ونرسله بالغلط
+            await new Promise(r => setTimeout(r, 1200));
+            const dialog3b = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
+            existingLink = findQuickpayLink(dialog3b);
+            if (existingLink) {
+                return { status: 'existing', link: existingLink.getAttribute('href') };
+            }
+
             const doc4 = await clickUntil(
                 frame,
                 d => {
@@ -4734,6 +4745,7 @@ ${text}
                 return;
             }
             const result = await locateOrCreatePaymentLink(BRANCH_ID, record.agreementNo);
+            console.log('[العقود المتأخرة] نتيجة رابط الدفع للعقد ' + record.agreementNo + ':', result.status, result.link);
             if (result.status === 'existing') {
                 setRowStatus(idx, 'ℹ️ يوجد رابط مرسل بالفعل', '#2563eb');
             } else {
@@ -5855,6 +5867,17 @@ ${text}
                 return { status: 'existing', link: existingLink.getAttribute('href') };
             }
 
+            // زر "إنشاء رابط الدفع" أحياناً يطلع أول شي بشكل متفائل (optimistic)
+            // قبل ما يوصل رد فحص "هل فيه رابط نشط؟" من السيرفر، وبعدها يتحوّل
+            // فجأة لتنبيه "يوجد رابط دفع نشط" - ننتظر شوي ونعيد الفحص قبل ما
+            // نضغط "إنشاء رابط الدفع" فعلياً، حتى ما نولّد رابط مكرر ونرسله بالغلط
+            await new Promise(r => setTimeout(r, 1200));
+            const dialog3b = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
+            existingLink = findQuickpayLink(dialog3b);
+            if (existingLink) {
+                return { status: 'existing', link: existingLink.getAttribute('href') };
+            }
+
             const doc4 = await clickUntil(
                 frame,
                 d => {
@@ -5921,6 +5944,7 @@ ${text}
                 return;
             }
             const result = await locateOrCreatePaymentLink(record.branchId, record.agreementNo);
+            console.log('[العقود المتأخرة] نتيجة رابط الدفع للعقد ' + record.agreementNo + ':', result.status, result.link);
             if (result.status === 'existing') {
                 setRowStatus(idx, 'ℹ️ يوجد رابط مرسل بالفعل', '#2563eb');
             } else {
