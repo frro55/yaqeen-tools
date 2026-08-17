@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0817.2211
+// @version      2026.0817.2314
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -4581,6 +4581,34 @@ ${text}
     }
 
     /**
+     * يتحقق أول شي إذا الحالة المطلوبة متحققة أصلاً (بدون ضغط أي شي - مفيد
+     * لما نكون فعلاً بمرحلة متقدمة ومحتاجين خطوة سابقة). إذا لأ، يدور على
+     * عنصر يضغطه وينتظر تحقق الحالة، ويكرر المحاولة (ضغط جديد + انتظار جديد)
+     * لأكثر من مرة - لأن أحياناً العنصر يكون موجود بالـDOM بس لسا ما تركّبت
+     * معالجات الأحداث عليه فعلياً (سباق تحميل الصفحة)، فالضغطة الأولى تُفقد.
+     */
+    async function clickUntil(frame, findClickTarget, checkFn, opts) {
+        const maxAttempts = (opts && opts.maxAttempts) || 3;
+        const perAttemptTimeout = (opts && opts.perAttemptTimeout) || 5000;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+            if (!doc) return null;
+            const already = checkFn(doc);
+            if (already) return already;
+            const target = findClickTarget(doc);
+            if (!target) {
+                await new Promise(r => setTimeout(r, 400));
+                continue;
+            }
+            dispatchFullClick(target);
+            const result = await waitFor(frame, checkFn, perAttemptTimeout);
+            if (result) return result;
+        }
+        const lastDoc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+        return lastDoc ? checkFn(lastDoc) : null;
+    }
+
+    /**
      * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة بالعقد،
      * يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع". من هذي النقطة احتمالين:
      * - ما فيه رابط نشط: يطلع زر "إنشاء رابط الدفع" - نضغطه وننتظر الرابط
@@ -4596,17 +4624,21 @@ ${text}
         try {
             const doc1 = await waitFor(frame, d => (findButtonByText(d, 'تحصيل الدفع') ? d : null), 20000);
             if (!doc1) throw new Error('تعذّر فتح صفحة الدفع الخاصة بالعقد');
-            dispatchFullClick(findButtonByText(doc1, 'تحصيل الدفع'));
 
-            // بعد فتح نافذة "تحصيل الدفع" احتمالين: تطلع طرق الدفع (لازم نختار
+            // بعد الضغط على "تحصيل الدفع" احتمالين: تطلع طرق الدفع (لازم نختار
             // "رابط الدفع")، أو تطلع مباشرة حالة "يوجد رابط دفع نشط" أو زر
             // "إنشاء رابط الدفع" لو كانت آخر طريقة استخدمها الموظف هي رابط
             // الدفع (يقين يتذكر آخر طريقة مختارة) - نتحمّل كل الاحتمالات
-            const doc2 = await waitFor(frame, d => {
-                const dialog = d.querySelector('[role="dialog"]');
-                if (!dialog) return null;
-                return (findButtonByText(dialog, 'رابط الدفع') || findQuickpayLink(dialog) || findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
-            }, 15000);
+            const doc2 = await clickUntil(
+                frame,
+                d => findButtonByText(d, 'تحصيل الدفع'),
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    if (!dialog) return null;
+                    return (findButtonByText(dialog, 'رابط الدفع') || findQuickpayLink(dialog) || findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
+                },
+                { maxAttempts: 3, perAttemptTimeout: 5000 }
+            );
             if (!doc2) throw new Error('تعذّر فتح نافذة تحصيل الدفع');
 
             const dialog2 = doc2.querySelector('[role="dialog"]');
@@ -4615,16 +4647,19 @@ ${text}
                 return { status: 'existing', link: existingLink.getAttribute('href') };
             }
 
-            const linkMethodBtn = findButtonByText(dialog2, 'رابط الدفع');
-            if (linkMethodBtn) {
-                dispatchFullClick(linkMethodBtn);
-            }
-
-            const doc3 = await waitFor(frame, d => {
-                const dialog = d.querySelector('[role="dialog"]');
-                if (!dialog) return null;
-                return (findButtonByText(dialog, 'إنشاء رابط الدفع') || findQuickpayLink(dialog)) ? d : null;
-            }, 10000);
+            const doc3 = await clickUntil(
+                frame,
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    return dialog ? findButtonByText(dialog, 'رابط الدفع') : null;
+                },
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    if (!dialog) return null;
+                    return (findButtonByText(dialog, 'إنشاء رابط الدفع') || findQuickpayLink(dialog)) ? d : null;
+                },
+                { maxAttempts: 3, perAttemptTimeout: 4000 }
+            );
             if (!doc3) throw new Error('تعذّر تحميل خيار رابط الدفع');
 
             const dialog3 = doc3.querySelector('[role="dialog"]');
@@ -4633,11 +4668,18 @@ ${text}
                 return { status: 'existing', link: existingLink.getAttribute('href') };
             }
 
-            dispatchFullClick(findButtonByText(dialog3, 'إنشاء رابط الدفع'));
-            const doc4 = await waitFor(frame, d => {
-                const dialog = d.querySelector('[role="dialog"]');
-                return (dialog && findQuickpayLink(dialog)) ? d : null;
-            }, 20000);
+            const doc4 = await clickUntil(
+                frame,
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    return dialog ? findButtonByText(dialog, 'إنشاء رابط الدفع') : null;
+                },
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    return (dialog && findQuickpayLink(dialog)) ? d : null;
+                },
+                { maxAttempts: 2, perAttemptTimeout: 10000 }
+            );
             if (!doc4) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
 
             const linkEl = findQuickpayLink(doc4.querySelector('[role="dialog"]'));
@@ -5693,6 +5735,34 @@ ${text}
     }
 
     /**
+     * يتحقق أول شي إذا الحالة المطلوبة متحققة أصلاً (بدون ضغط أي شي - مفيد
+     * لما نكون فعلاً بمرحلة متقدمة ومحتاجين خطوة سابقة). إذا لأ، يدور على
+     * عنصر يضغطه وينتظر تحقق الحالة، ويكرر المحاولة (ضغط جديد + انتظار جديد)
+     * لأكثر من مرة - لأن أحياناً العنصر يكون موجود بالـDOM بس لسا ما تركّبت
+     * معالجات الأحداث عليه فعلياً (سباق تحميل الصفحة)، فالضغطة الأولى تُفقد.
+     */
+    async function clickUntil(frame, findClickTarget, checkFn, opts) {
+        const maxAttempts = (opts && opts.maxAttempts) || 3;
+        const perAttemptTimeout = (opts && opts.perAttemptTimeout) || 5000;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+            if (!doc) return null;
+            const already = checkFn(doc);
+            if (already) return already;
+            const target = findClickTarget(doc);
+            if (!target) {
+                await new Promise(r => setTimeout(r, 400));
+                continue;
+            }
+            dispatchFullClick(target);
+            const result = await waitFor(frame, checkFn, perAttemptTimeout);
+            if (result) return result;
+        }
+        const lastDoc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+        return lastDoc ? checkFn(lastDoc) : null;
+    }
+
+    /**
      * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة بالعقد،
      * يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع". من هذي النقطة احتمالين:
      * - ما فيه رابط نشط: يطلع زر "إنشاء رابط الدفع" - نضغطه وننتظر الرابط
@@ -5708,17 +5778,21 @@ ${text}
         try {
             const doc1 = await waitFor(frame, d => (findButtonByText(d, 'تحصيل الدفع') ? d : null), 20000);
             if (!doc1) throw new Error('تعذّر فتح صفحة الدفع الخاصة بالعقد');
-            dispatchFullClick(findButtonByText(doc1, 'تحصيل الدفع'));
 
-            // بعد فتح نافذة "تحصيل الدفع" احتمالين: تطلع طرق الدفع (لازم نختار
+            // بعد الضغط على "تحصيل الدفع" احتمالين: تطلع طرق الدفع (لازم نختار
             // "رابط الدفع")، أو تطلع مباشرة حالة "يوجد رابط دفع نشط" أو زر
             // "إنشاء رابط الدفع" لو كانت آخر طريقة استخدمها الموظف هي رابط
             // الدفع (يقين يتذكر آخر طريقة مختارة) - نتحمّل كل الاحتمالات
-            const doc2 = await waitFor(frame, d => {
-                const dialog = d.querySelector('[role="dialog"]');
-                if (!dialog) return null;
-                return (findButtonByText(dialog, 'رابط الدفع') || findQuickpayLink(dialog) || findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
-            }, 15000);
+            const doc2 = await clickUntil(
+                frame,
+                d => findButtonByText(d, 'تحصيل الدفع'),
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    if (!dialog) return null;
+                    return (findButtonByText(dialog, 'رابط الدفع') || findQuickpayLink(dialog) || findButtonByText(dialog, 'إنشاء رابط الدفع')) ? d : null;
+                },
+                { maxAttempts: 3, perAttemptTimeout: 5000 }
+            );
             if (!doc2) throw new Error('تعذّر فتح نافذة تحصيل الدفع');
 
             const dialog2 = doc2.querySelector('[role="dialog"]');
@@ -5727,16 +5801,19 @@ ${text}
                 return { status: 'existing', link: existingLink.getAttribute('href') };
             }
 
-            const linkMethodBtn = findButtonByText(dialog2, 'رابط الدفع');
-            if (linkMethodBtn) {
-                dispatchFullClick(linkMethodBtn);
-            }
-
-            const doc3 = await waitFor(frame, d => {
-                const dialog = d.querySelector('[role="dialog"]');
-                if (!dialog) return null;
-                return (findButtonByText(dialog, 'إنشاء رابط الدفع') || findQuickpayLink(dialog)) ? d : null;
-            }, 10000);
+            const doc3 = await clickUntil(
+                frame,
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    return dialog ? findButtonByText(dialog, 'رابط الدفع') : null;
+                },
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    if (!dialog) return null;
+                    return (findButtonByText(dialog, 'إنشاء رابط الدفع') || findQuickpayLink(dialog)) ? d : null;
+                },
+                { maxAttempts: 3, perAttemptTimeout: 4000 }
+            );
             if (!doc3) throw new Error('تعذّر تحميل خيار رابط الدفع');
 
             const dialog3 = doc3.querySelector('[role="dialog"]');
@@ -5745,11 +5822,18 @@ ${text}
                 return { status: 'existing', link: existingLink.getAttribute('href') };
             }
 
-            dispatchFullClick(findButtonByText(dialog3, 'إنشاء رابط الدفع'));
-            const doc4 = await waitFor(frame, d => {
-                const dialog = d.querySelector('[role="dialog"]');
-                return (dialog && findQuickpayLink(dialog)) ? d : null;
-            }, 20000);
+            const doc4 = await clickUntil(
+                frame,
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    return dialog ? findButtonByText(dialog, 'إنشاء رابط الدفع') : null;
+                },
+                d => {
+                    const dialog = d.querySelector('[role="dialog"]');
+                    return (dialog && findQuickpayLink(dialog)) ? d : null;
+                },
+                { maxAttempts: 2, perAttemptTimeout: 10000 }
+            );
             if (!doc4) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
 
             const linkEl = findQuickpayLink(doc4.querySelector('[role="dialog"]'));
