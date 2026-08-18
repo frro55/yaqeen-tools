@@ -84,7 +84,6 @@
         "booking-report",
         "vip-booking-add",
         "ai-chat",
-        "peak-time-forecast",
         "shift-report",
     ];
 

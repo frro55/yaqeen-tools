@@ -64,7 +64,6 @@ FILES=(
   yaqeen-booking-report.user.js
   yaqeen-vip-booking.user.js
   yaqeen-ai-chat.user.js
-  yaqeen-peak-time-forecast.user.js
   yaqeen-shift-report.user.js
 )
 
