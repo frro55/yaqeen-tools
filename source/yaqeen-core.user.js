@@ -127,8 +127,8 @@
     // ============================================================
 
     const RADIAL_STATE = { open: false, catIndex: null };
-    const RADIAL_CAT_RADIUS = 126;
-    const RADIAL_TOOL_RADIUS = 196;
+    const RADIAL_CAT_RADIUS = 170;
+    const RADIAL_TOOL_RADIUS = 260;
     const RADIAL_CAT_STEP_DEG = 27;
     const RADIAL_BASE_DEG = 183;
 
@@ -633,12 +633,12 @@
         }
 
         .yt-cat-orb-inner{
-            width:62px;
-            height:62px;
+            width:84px;
+            height:84px;
             border-radius:50%;
             display:grid;
             place-items:center;
-            gap:1px;
+            gap:3px;
             background:#fff;
             color:#1d2610;
             box-shadow:0 5px 14px rgba(20,30,0,.18);
@@ -654,12 +654,12 @@
         }
 
         .yt-cat-orb-glyph{
-            font-size:14px;
+            font-size:22px;
             line-height:1;
         }
 
         .yt-cat-orb-label{
-            font:700 9px Tajawal,Arial,sans-serif;
+            font:700 12px Tajawal,Arial,sans-serif;
             white-space:nowrap;
             line-height:1;
         }
@@ -671,20 +671,20 @@
             cursor:pointer;
             display:flex;
             align-items:center;
-            gap:8px;
+            gap:10px;
             background:#1d2610;
             border-radius:999px;
-            padding:6px 13px 6px 11px;
+            padding:10px 18px 10px 15px;
             box-shadow:0 6px 16px rgba(0,0,0,.28);
             white-space:nowrap;
-            font:500 12px Tajawal,Arial,sans-serif;
+            font:500 15px Tajawal,Arial,sans-serif;
             color:#eef4e2;
             transition:transform .38s cubic-bezier(.2,1.3,.4,1);
         }
 
         .yt-tool-pill .yt-dot{
-            width:6px;
-            height:6px;
+            width:8px;
+            height:8px;
             border-radius:50%;
             background:${THEME};
             flex-shrink:0;
