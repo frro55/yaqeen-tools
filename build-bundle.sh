@@ -65,6 +65,7 @@ FILES=(
   yaqeen-vip-booking.user.js
   yaqeen-ai-chat.user.js
   yaqeen-peak-time-forecast.user.js
+  yaqeen-shift-report.user.js
 )
 
 for f in "${FILES[@]}"; do

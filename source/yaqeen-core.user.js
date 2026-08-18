@@ -85,6 +85,7 @@
         "vip-booking-add",
         "ai-chat",
         "peak-time-forecast",
+        "shift-report",
     ];
 
     // اختصارات لوحة المفاتيح: كل عنصر يفتح أداة معيّنة (بالـid تبعها) مباشرة
