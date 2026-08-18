@@ -220,7 +220,11 @@
         toolsLayer.innerHTML = "";
 
         nodes.forEach((node, i) => {
-            const deg = RADIAL_BASE_DEG + i * RADIAL_CAT_STEP_DEG;
+            // نعكس ترتيب المواقع على القوس (بدون ما نغيّر ترتيب العقد نفسه
+            // ولا catIndex): أول عقدة (الأسطول) تاخذ أبعد زاوية (أعلى نقطة،
+            // أبعد عن الزر)، وآخر عقدة (أدوات أخرى) تاخذ أقرب زاوية للزر
+            const posIndex = nodes.length - 1 - i;
+            const deg = RADIAL_BASE_DEG + posIndex * RADIAL_CAT_STEP_DEG;
             const [dx, dy] = radialPoint(deg, RADIAL_CAT_RADIUS);
 
             const orb = document.createElement("div");

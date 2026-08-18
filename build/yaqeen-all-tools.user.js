@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0818.0518
+// @version      2026.0818.0521
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -234,7 +234,11 @@
         toolsLayer.innerHTML = "";
 
         nodes.forEach((node, i) => {
-            const deg = RADIAL_BASE_DEG + i * RADIAL_CAT_STEP_DEG;
+            // نعكس ترتيب المواقع على القوس (بدون ما نغيّر ترتيب العقد نفسه
+            // ولا catIndex): أول عقدة (الأسطول) تاخذ أبعد زاوية (أعلى نقطة،
+            // أبعد عن الزر)، وآخر عقدة (أدوات أخرى) تاخذ أقرب زاوية للزر
+            const posIndex = nodes.length - 1 - i;
+            const deg = RADIAL_BASE_DEG + posIndex * RADIAL_CAT_STEP_DEG;
             const [dx, dy] = radialPoint(deg, RADIAL_CAT_RADIUS);
 
             const orb = document.createElement("div");
