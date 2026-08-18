@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0818.0747
+// @version      2026.0818.0750
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -270,19 +270,20 @@
         });
 
         if (RADIAL_STATE.catIndex !== null) {
-            // أدوات التصنيف تطلع بنفس اتجاه فقاعة التصنيف نفسها بالضبط (نفس
-            // الزاوية اللي هي واقفة عليها)، بس بأنصاف أقطار أكبر تدريجياً -
-            // يعني تكمل بنفس الخط الممتد من الزر عبر فقاعة التصنيف، بدل ما
-            // تطلع كلها من نقطة ثابتة بغض النظر عن مكان التصنيف المفتوح.
-            // ما فيه تراكب لأن كل أداة أبعد بشعاع أكبر من اللي قبلها على نفس الخط
+            // نقطة الانطلاق = موقع فقاعة التصنيف نفسها بالضبط (نفس زاويتها)،
+            // بس من هناك تطلع الأدوات بعمود عمودي صافي (فوق بعض بالضبط، x
+            // ثابت) بدل ما تكمل بنفس الخط المائل - كذا كل تصنيف يفتح أدواته
+            // من جهته الصحيحة، وبنفس الوقت العمود نفسه مستقيم عمودي مو مايل
             const catNode = nodes[RADIAL_STATE.catIndex];
             const list = catNode.tools;
             const catPosIndex = nodes.length - 1 - RADIAL_STATE.catIndex;
             const catDeg = RADIAL_BASE_DEG + catPosIndex * RADIAL_CAT_STEP_DEG;
+            const [catDx, catDy] = radialPoint(catDeg, RADIAL_CAT_RADIUS);
+            const startDy = catDy - 70;
 
             list.forEach((tool, i) => {
-                const r = RADIAL_CAT_RADIUS + 70 + i * RADIAL_TOOL_ROW_GAP;
-                const [dx, dy] = radialPoint(catDeg, r);
+                const dx = catDx;
+                const dy = startDy - i * RADIAL_TOOL_ROW_GAP;
 
                 const pill = document.createElement("div");
                 pill.className = "yt-tool-pill";
