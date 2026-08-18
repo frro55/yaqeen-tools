@@ -129,7 +129,7 @@
     const RADIAL_STATE = { open: false, catIndex: null };
     const RADIAL_CAT_RADIUS = 170;
     const RADIAL_TOOL_ROW_GAP = 58;
-    const RADIAL_CAT_STEP_DEG = 27;
+    const RADIAL_CAT_STEP_DEG = 32;
     const RADIAL_BASE_DEG = 183;
 
     function radialPoint(deg, r) {

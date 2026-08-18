@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0818.0515
+// @version      2026.0818.0518
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -143,7 +143,7 @@
     const RADIAL_STATE = { open: false, catIndex: null };
     const RADIAL_CAT_RADIUS = 170;
     const RADIAL_TOOL_ROW_GAP = 58;
-    const RADIAL_CAT_STEP_DEG = 27;
+    const RADIAL_CAT_STEP_DEG = 32;
     const RADIAL_BASE_DEG = 183;
 
     function radialPoint(deg, r) {
