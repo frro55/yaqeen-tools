@@ -116,7 +116,7 @@
         fleet: { glyph: "🚗", label: "الأسطول" },
         debt: { glyph: "💰", label: "الدفع والمديونية" },
         reports: { glyph: "📊", label: "التقارير والحجوزات" },
-        other: { glyph: "🔧", label: "أدوات أخرى" },
+        other: { glyph: "🛠️", label: "أدوات أخرى" },
     };
 
     // ============================================================
@@ -127,7 +127,7 @@
     // ============================================================
 
     const RADIAL_STATE = { open: false, catIndex: null };
-    const RADIAL_CAT_RADIUS = 170;
+    const RADIAL_CAT_RADIUS = 185;
     const RADIAL_TOOL_ROW_GAP = 58;
     const RADIAL_CAT_STEP_DEG = 32;
     const RADIAL_BASE_DEG = 183;
@@ -639,16 +639,19 @@
         }
 
         .yt-cat-orb-inner{
-            width:84px;
-            height:84px;
+            width:92px;
+            height:92px;
             border-radius:50%;
-            display:grid;
-            place-items:center;
-            gap:3px;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:5px;
             background:#fff;
             color:#1d2610;
-            box-shadow:0 5px 14px rgba(20,30,0,.18);
-            transition:background .2s,color .2s,box-shadow .2s;
+            border:1.5px solid rgba(140,197,0,.5);
+            box-shadow:0 5px 14px rgba(29,38,16,.10);
+            transition:background .2s,color .2s,box-shadow .2s,border-color .2s;
             font-family:Tajawal,Arial,sans-serif;
             text-align:center;
         }
@@ -656,18 +659,20 @@
         .yt-cat-orb-inner.yt-selected{
             background:${THEME};
             color:#12170c;
+            border-color:${THEME};
             box-shadow:0 8px 20px rgba(140,197,0,.5);
         }
 
         .yt-cat-orb-glyph{
-            font-size:22px;
+            font-size:24px;
             line-height:1;
         }
 
         .yt-cat-orb-label{
-            font:700 12px Tajawal,Arial,sans-serif;
-            white-space:nowrap;
-            line-height:1;
+            font:600 10.5px/1.2 Tajawal,Arial,sans-serif;
+            text-align:center;
+            max-width:74px;
+            white-space:normal;
         }
 
         .yt-tool-pill{
