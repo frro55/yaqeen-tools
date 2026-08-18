@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0818.0753
+// @version      2026.0818.0756
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -278,14 +278,16 @@
             const list = catNode.tools;
             const catPosIndex = nodes.length - 1 - RADIAL_STATE.catIndex;
             const catDeg = RADIAL_BASE_DEG + catPosIndex * RADIAL_CAT_STEP_DEG;
-            const [catDx, catDy] = radialPoint(catDeg, RADIAL_CAT_RADIUS);
+            // نزيح نقطة انطلاق العمود لليسار مرة وحدة بس (مو تدريجياً) حتى
+            // يقف العمود فوق يسار الفقاعة (مو فوقها مباشرة) ويبعد عن فقاعات
+            // التصنيفات الثانية، وبعدها يطلع للأعلى بخط عمودي صافي (x ثابت
+            // لكل الصفوف، مافيه أي ميلان)
+            const [catDxRaw, catDy] = radialPoint(catDeg, RADIAL_CAT_RADIUS);
+            const catDx = catDxRaw - 40;
             const startDy = catDy - 70;
-            // ميلان بسيط لليسار كل ما نطلع صف - يبعد العمود شوي عن فقاعات
-            // التصنيفات الثانية بدل ما يطلع فوق فقاعة التصنيف مباشرة بخط رأسي بحت
-            const colLeanX = -16;
 
             list.forEach((tool, i) => {
-                const dx = catDx + i * colLeanX;
+                const dx = catDx;
                 const dy = startDy - i * RADIAL_TOOL_ROW_GAP;
 
                 const pill = document.createElement("div");
