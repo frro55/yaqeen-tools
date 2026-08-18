@@ -577,7 +577,7 @@
 
         #yt-fab{
             position:fixed;
-            right:22px;
+            right:62px;
             bottom:22px;
             width:74px;
             height:74px;
@@ -619,7 +619,7 @@
 
         #yt-cats, #yt-tools-ring{
             position:fixed;
-            right:59px;
+            right:99px;
             bottom:59px;
             width:0;
             height:0;

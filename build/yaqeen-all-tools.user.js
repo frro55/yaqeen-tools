@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0818.0512
+// @version      2026.0818.0515
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -591,7 +591,7 @@
 
         #yt-fab{
             position:fixed;
-            right:22px;
+            right:62px;
             bottom:22px;
             width:74px;
             height:74px;
@@ -633,7 +633,7 @@
 
         #yt-cats, #yt-tools-ring{
             position:fixed;
-            right:59px;
+            right:99px;
             bottom:59px;
             width:0;
             height:0;
