@@ -71,21 +71,49 @@
     const TOOL_ORDER = [
         "fleet-inventory",
         "available-vehicles",
-        "email-tools",
         "payment-verify",
-        "airport-report",
         "late-payments",
         "late-payments-branches",
         "company-extension",
         "company-extension-branches",
         "closed-as-debt",
         "closed-as-debt-branches",
-        "customer-whatsapp-messages",
+        "airport-report",
         "booking-report",
-        "vip-booking-add",
-        "ai-chat",
         "shift-report",
+        "vip-booking-add",
+        "email-tools",
+        "customer-whatsapp-messages",
+        "ai-chat",
     ];
+
+    // تجميع الأدوات بمجموعات قابلة للطي بالقائمة (Accordion) - شكلي بحت،
+    // ما يأثر على نظام الصلاحيات إطلاقاً (كل أداة تفلتر حسب صلاحية الموظف
+    // الفردية كما هي، والمجموعة تختفي تلقائياً لو ما فيها أي أداة ظاهرة له).
+    // أي أداة مو موجودة هنا تُعرض مستقلة برا أي مجموعة (زي "تحقق من الدفع")
+    const TOOL_GROUPS = {
+        "fleet-inventory": "fleet",
+        "available-vehicles": "fleet",
+        "late-payments": "debt",
+        "late-payments-branches": "debt",
+        "company-extension": "debt",
+        "company-extension-branches": "debt",
+        "closed-as-debt": "debt",
+        "closed-as-debt-branches": "debt",
+        "airport-report": "reports",
+        "booking-report": "reports",
+        "shift-report": "reports",
+        "vip-booking-add": "reports",
+        "email-tools": "other",
+        "customer-whatsapp-messages": "other",
+        "ai-chat": "other",
+    };
+    const GROUP_META = {
+        fleet: { label: "🚗 الأسطول" },
+        debt: { label: "💰 الدفع والمديونية" },
+        reports: { label: "📊 التقارير والحجوزات" },
+        other: { label: "🔧 أدوات أخرى" },
+    };
 
     // اختصارات لوحة المفاتيح: كل عنصر يفتح أداة معيّنة (بالـid تبعها) مباشرة
     // بدل فتح القائمة والبحث عنها يدوياً. نستخدم "code" (يمثّل المفتاح
@@ -370,38 +398,57 @@
             });
 
 
-            orderedTools.forEach(tool=>{
-
-
+            function makeToolButton(tool){
                 const btn = document.createElement("button");
-
-
                 btn.className = "yt-tool";
-
                 btn.innerHTML = tool.name;
-
-
                 btn.onclick = ()=>{
-
                     try{
-
                         tool.run();
-
                     }
                     catch(e){
-
-                        console.error(
-                            "Yaqeen Tool Error:",
-                            e
-                        );
-
+                        console.error("Yaqeen Tool Error:", e);
                     }
-
                 };
+                return btn;
+            }
 
+            // كل أداة إما تُعرض مستقلة (مو مسجّلة بـTOOL_GROUPS)، أو تنضم
+            // لمجموعة قابلة للطي - المجموعة تُبنى مرة وحدة عند أول أداة
+            // تابعة لها بترتيب TOOL_ORDER، وتحتوي كل أدواتها المرئية له
+            const renderedGroups = {};
 
-                box.appendChild(btn);
+            orderedTools.forEach(tool=>{
 
+                const groupKey = TOOL_GROUPS[tool.id];
+
+                if(!groupKey){
+                    box.appendChild(makeToolButton(tool));
+                    return;
+                }
+
+                if(renderedGroups[groupKey]) return;
+                renderedGroups[groupKey] = true;
+
+                const meta = GROUP_META[groupKey];
+                const groupTools = orderedTools.filter(t => TOOL_GROUPS[t.id] === groupKey);
+
+                const wrapper = document.createElement("div");
+                wrapper.className = "yt-group";
+
+                const header = document.createElement("button");
+                header.type = "button";
+                header.className = "yt-group-header";
+                header.innerHTML = meta.label + '<span class="yt-group-chevron">▾</span>';
+
+                const body = document.createElement("div");
+                body.className = "yt-group-body";
+                body.style.display = "none";
+                groupTools.forEach(t => body.appendChild(makeToolButton(t)));
+
+                wrapper.appendChild(header);
+                wrapper.appendChild(body);
+                box.appendChild(wrapper);
 
             });
 
@@ -546,6 +593,61 @@
 
         }
 
+
+        .yt-group{
+
+            margin-bottom:10px;
+
+        }
+
+
+        .yt-group-header{
+
+            width:100%;
+            padding:12px;
+            border:0;
+            border-radius:8px;
+            background:#eef7d8;
+            cursor:pointer;
+            text-align:right;
+            font-size:15px;
+            font-weight:bold;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+
+        }
+
+
+        .yt-group-header:hover{
+
+            background:${THEME};
+
+        }
+
+
+        .yt-group-chevron{
+
+            transition:.2s;
+            font-size:13px;
+
+        }
+
+
+        .yt-group-header.yt-group-open .yt-group-chevron{
+
+            transform:rotate(180deg);
+
+        }
+
+
+        .yt-group-body{
+
+            padding-top:8px;
+            padding-right:10px;
+
+        }
+
         `;
 
 
@@ -568,6 +670,27 @@
 
 
 
+        // فتح/طي المجموعات - كل مجموعة تنفتح لحالها بدون ما تسكّر البقية
+        // (مو أكورديون). مفوَّض على المستند لأن box.innerHTML ينمسح ويتبنى
+        // من جديد بكل refresh()، فلازم المستمع يكون ثابت مو مرتبط بعناصر تنمسح
+
+
+        document.addEventListener("click",e=>{
+
+            const header = e.target.closest(".yt-group-header");
+            if(!header) return;
+
+            const body = header.parentElement.querySelector(".yt-group-body");
+            if(!body) return;
+
+            const willOpen = body.style.display === "none";
+            body.style.display = willOpen ? "block" : "none";
+            header.classList.toggle("yt-group-open", willOpen);
+
+        });
+
+
+
         // البحث
 
 
@@ -578,6 +701,7 @@
 
 
                 const value=e.target.value.toLowerCase();
+                const searching = value.length > 0;
 
 
                 document.querySelectorAll(".yt-tool")
@@ -590,6 +714,32 @@
                     ? "block"
                     :"none";
 
+
+                });
+
+
+                // أثناء البحث نفتح تلقائياً أي مجموعة فيها أداة مطابقة (وإلا
+                // ما راح تظهر أصلاً وهي مطوية)، ونطويها مرة ثانية لما يُمسح البحث
+                document.querySelectorAll(".yt-group")
+                .forEach(group=>{
+
+                    const header = group.querySelector(".yt-group-header");
+                    const body = group.querySelector(".yt-group-body");
+                    if(!header || !body) return;
+
+                    if(!searching){
+                        body.style.display = "none";
+                        header.classList.remove("yt-group-open");
+                        return;
+                    }
+
+                    const hasMatch = Array.prototype.some.call(
+                        body.querySelectorAll(".yt-tool"),
+                        b => b.style.display !== "none"
+                    );
+
+                    body.style.display = hasMatch ? "block" : "none";
+                    header.classList.toggle("yt-group-open", hasMatch);
 
                 });
 
