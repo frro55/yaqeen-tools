@@ -266,9 +266,12 @@
             const catDeg = RADIAL_BASE_DEG + catPosIndex * RADIAL_CAT_STEP_DEG;
             const [catDx, catDy] = radialPoint(catDeg, RADIAL_CAT_RADIUS);
             const startDy = catDy - 70;
+            // ميلان بسيط لليسار كل ما نطلع صف - يبعد العمود شوي عن فقاعات
+            // التصنيفات الثانية بدل ما يطلع فوق فقاعة التصنيف مباشرة بخط رأسي بحت
+            const colLeanX = -16;
 
             list.forEach((tool, i) => {
-                const dx = catDx;
+                const dx = catDx + i * colLeanX;
                 const dy = startDy - i * RADIAL_TOOL_ROW_GAP;
 
                 const pill = document.createElement("div");
