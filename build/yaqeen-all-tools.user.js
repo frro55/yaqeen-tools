@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0818.0507
+// @version      2026.0818.0512
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -142,7 +142,7 @@
 
     const RADIAL_STATE = { open: false, catIndex: null };
     const RADIAL_CAT_RADIUS = 170;
-    const RADIAL_TOOL_RADIUS = 260;
+    const RADIAL_TOOL_ROW_GAP = 58;
     const RADIAL_CAT_STEP_DEG = 27;
     const RADIAL_BASE_DEG = 183;
 
@@ -266,18 +266,20 @@
         });
 
         if (RADIAL_STATE.catIndex !== null) {
+            // بدل ما نوزّع الأدوات بقوس ضيق حول التصنيف (يصير متلاصق ومتراكب
+            // لو التصنيف فيه أكثر من ٣ أدوات أو أسماء طويلة زي عندنا)، نعرضها
+            // بعمود عمودي فوق حلقة التصنيفات - كل أداة بسطر لحالها، فمافي
+            // تراكب إطلاقاً بغض النظر عن العدد أو طول الاسم
             const catNode = nodes[RADIAL_STATE.catIndex];
-            const base = RADIAL_BASE_DEG + RADIAL_STATE.catIndex * RADIAL_CAT_STEP_DEG;
             const list = catNode.tools;
+            const startDy = -(RADIAL_CAT_RADIUS + 55);
 
             list.forEach((tool, i) => {
-                const raw = base + (i - (list.length - 1) / 2) * 14;
-                const deg = Math.min(268, Math.max(180, raw));
-                const [dx, dy] = radialPoint(deg, RADIAL_TOOL_RADIUS);
+                const dy = startDy - i * RADIAL_TOOL_ROW_GAP;
 
                 const pill = document.createElement("div");
                 pill.className = "yt-tool-pill";
-                pill.style.transform = "translate(-50%,-50%) translate(" + dx + "px," + dy + "px)";
+                pill.style.transform = "translate(-100%,-50%) translate(-10px," + dy + "px)";
                 pill.style.transitionDelay = (i * 45) + "ms";
                 pill.innerHTML = '<span>' + tool.name + '</span><span class="yt-dot"></span>';
                 pill.onclick = () => runToolFromRadial(tool);
@@ -685,15 +687,25 @@
             cursor:pointer;
             display:flex;
             align-items:center;
+            justify-content:flex-end;
             gap:10px;
             background:#1d2610;
             border-radius:999px;
             padding:10px 18px 10px 15px;
             box-shadow:0 6px 16px rgba(0,0,0,.28);
             white-space:nowrap;
+            max-width:min(80vw,340px);
+            overflow:hidden;
+            text-overflow:ellipsis;
             font:500 15px Tajawal,Arial,sans-serif;
             color:#eef4e2;
             transition:transform .38s cubic-bezier(.2,1.3,.4,1);
+        }
+
+        .yt-tool-pill span:first-child{
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
         }
 
         .yt-tool-pill .yt-dot{
