@@ -256,20 +256,23 @@
         });
 
         if (RADIAL_STATE.catIndex !== null) {
-            // بدل ما نوزّع الأدوات بقوس ضيق حول التصنيف (يصير متلاصق ومتراكب
-            // لو التصنيف فيه أكثر من ٣ أدوات أو أسماء طويلة زي عندنا)، نعرضها
-            // بعمود عمودي فوق حلقة التصنيفات - كل أداة بسطر لحالها، فمافي
-            // تراكب إطلاقاً بغض النظر عن العدد أو طول الاسم
+            // أدوات التصنيف تطلع بنفس اتجاه فقاعة التصنيف نفسها بالضبط (نفس
+            // الزاوية اللي هي واقفة عليها)، بس بأنصاف أقطار أكبر تدريجياً -
+            // يعني تكمل بنفس الخط الممتد من الزر عبر فقاعة التصنيف، بدل ما
+            // تطلع كلها من نقطة ثابتة بغض النظر عن مكان التصنيف المفتوح.
+            // ما فيه تراكب لأن كل أداة أبعد بشعاع أكبر من اللي قبلها على نفس الخط
             const catNode = nodes[RADIAL_STATE.catIndex];
             const list = catNode.tools;
-            const startDy = -(RADIAL_CAT_RADIUS + 55);
+            const catPosIndex = nodes.length - 1 - RADIAL_STATE.catIndex;
+            const catDeg = RADIAL_BASE_DEG + catPosIndex * RADIAL_CAT_STEP_DEG;
 
             list.forEach((tool, i) => {
-                const dy = startDy - i * RADIAL_TOOL_ROW_GAP;
+                const r = RADIAL_CAT_RADIUS + 70 + i * RADIAL_TOOL_ROW_GAP;
+                const [dx, dy] = radialPoint(catDeg, r);
 
                 const pill = document.createElement("div");
                 pill.className = "yt-tool-pill";
-                pill.style.transform = "translate(-100%,-50%) translate(-10px," + dy + "px)";
+                pill.style.transform = "translate(-50%,-50%) translate(" + dx + "px," + dy + "px)";
                 pill.style.transitionDelay = (i * 45) + "ms";
                 pill.innerHTML = '<span>' + tool.name + '</span><span class="yt-dot"></span>';
                 pill.onclick = () => runToolFromRadial(tool);
