@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0818.0756
+// @version      2026.0818.0801
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -283,7 +283,7 @@
             // التصنيفات الثانية، وبعدها يطلع للأعلى بخط عمودي صافي (x ثابت
             // لكل الصفوف، مافيه أي ميلان)
             const [catDxRaw, catDy] = radialPoint(catDeg, RADIAL_CAT_RADIUS);
-            const catDx = catDxRaw - 40;
+            const catDx = catDxRaw - 60;
             const startDy = catDy - 70;
 
             list.forEach((tool, i) => {

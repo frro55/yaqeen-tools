@@ -269,7 +269,7 @@
             // التصنيفات الثانية، وبعدها يطلع للأعلى بخط عمودي صافي (x ثابت
             // لكل الصفوف، مافيه أي ميلان)
             const [catDxRaw, catDy] = radialPoint(catDeg, RADIAL_CAT_RADIUS);
-            const catDx = catDxRaw - 40;
+            const catDx = catDxRaw - 60;
             const startDy = catDy - 70;
 
             list.forEach((tool, i) => {
