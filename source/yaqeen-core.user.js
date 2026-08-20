@@ -75,6 +75,7 @@
     const TOOL_ORDER = [
         "fleet-inventory",
         "available-vehicles",
+        "returned-vehicles-report",
         "payment-verify",
         "late-payments",
         "late-payments-branches",
@@ -84,7 +85,6 @@
         "closed-as-debt-branches",
         "airport-report",
         "booking-report",
-        "returned-vehicles-report",
         "shift-report",
         "vip-booking-add",
         "email-tools",
@@ -99,6 +99,7 @@
     const TOOL_GROUPS = {
         "fleet-inventory": "fleet",
         "available-vehicles": "fleet",
+        "returned-vehicles-report": "fleet",
         "late-payments": "debt",
         "late-payments-branches": "debt",
         "company-extension": "debt",
@@ -107,7 +108,6 @@
         "closed-as-debt-branches": "debt",
         "airport-report": "reports",
         "booking-report": "reports",
-        "returned-vehicles-report": "reports",
         "shift-report": "reports",
         "vip-booking-add": "reports",
         "email-tools": "other",
