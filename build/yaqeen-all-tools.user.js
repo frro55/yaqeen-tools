@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0820.0929
+// @version      2026.0820.0944
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -12687,14 +12687,37 @@ ${text}
           setTimeout(check, 300);
           return;
         }
-        var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
-        var hasRows = table && table.querySelectorAll('tbody tr').length > 0;
-        if (hasRows || Date.now() - start > timeoutMs) {
+        if (tableHasMeaningfulData(doc, columnsMap) || Date.now() - start > timeoutMs) {
           resolve(doc);
           return;
         }
         setTimeout(check, 300);
       })();
+    });
+  }
+
+  /**
+   * صفحة "المستأجرة" ثقيلة (مئات الصفوف) وأبطأ بالتحميل من صفحات أخرى، فأحياناً
+   * تظهر أول صفوف الجدول بخلايا فارغة مؤقتاً (حالة تحميل انتقالية) قبل أن تمتلئ
+   * بالبيانات الفعلية. الاكتفاء بوجود صفوف (tbody tr) فقط - كما في الأدوات
+   * الأخرى - كان يخدع المنطق فيعتبر التحميل مكتملاً وهو لسا فاضي، فيرجع تقرير
+   * بصفر سيارات رغم نجاح الطلب ظاهرياً. هذا الفحص يتأكد من وجود نص فعلي بعمود
+   * "المجموعة" على الأقل بصف واحد قبل اعتبار الصفحة جاهزة للقراءة.
+   */
+  function tableHasMeaningfulData(doc, columnsMap) {
+    var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
+    if (!table) return false;
+    var bodyRows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+    if (bodyRows.length === 0) return false;
+
+    var headerCells = Array.prototype.slice.call(table.querySelectorAll('thead tr th, thead tr td'));
+    var groupIdx = findColumnIndex(headerCells, columnsMap.group || GROUP_COLUMN_HINT);
+    if (groupIdx < 0) return true; // احتياطي: لو ما قدرنا نحدد رقم العمود، نكتفي بوجود صفوف
+
+    return bodyRows.some(function (row) {
+      var cells = row.querySelectorAll('td');
+      var cell = cells[groupIdx];
+      return cell && cell.textContent.trim().length > 0;
     });
   }
 
@@ -12934,17 +12957,39 @@ ${text}
   // تحميل كل البيانات
   // ==========================================================
 
+  var MAX_FETCH_ATTEMPTS = 3;
+
+  /**
+   * محاولة واحدة: يفتح iframe جديد ويجمع كل صفوفه. صفحة "المستأجرة" ثقيلة
+   * (مئات الصفوف) وأحياناً - رغم فحص tableHasMeaningfulData - يخرج الجدول لسا
+   * ما اكتمل تحميله بالكامل (مثلاً بدون كل صفحاته)، فنعيد المحاولة تلقائياً
+   * لو رجعت المحاولة بصفر سيارات بدل ما نعرض تقرير فاضٍ للمستخدم ونخليه يضطر
+   * يضغط "تحديث البيانات" يدوياً أكثر من مرة.
+   */
+  function fetchReturnedRowsWithRetry(attempt) {
+    attempt = attempt || 1;
+    var frame = openHiddenFrame(RETURNED_URL);
+    return fetchAllRecordsFromFrame(frame, RETURNED_URL, RETURNED_COLUMNS_MAP)
+      .then(function (result) {
+        var parsed = parseReturnedFromRecords(result.records);
+        if (parsed.length === 0 && attempt < MAX_FETCH_ATTEMPTS) {
+          console.warn('[تقرير السيارات المسترجعة] المحاولة ' + attempt + ' رجعت بدون بيانات، إعادة محاولة...');
+          setStatus('لم يتم العثور على بيانات بعد، جارٍ إعادة المحاولة (' + (attempt + 1) + '/' + MAX_FETCH_ATTEMPTS + ')...', 'loading');
+          return fetchReturnedRowsWithRetry(attempt + 1);
+        }
+        return parsed;
+      });
+  }
+
   function fetchAllData(force) {
     if (state.dataLoaded && !force) return Promise.resolve();
 
     setStatus('جارٍ تحميل بيانات السيارات المسترجعة...', 'loading');
     showLoadingOverlay();
 
-    var frame = openHiddenFrame(RETURNED_URL);
-
-    return fetchAllRecordsFromFrame(frame, RETURNED_URL, RETURNED_COLUMNS_MAP)
-      .then(function (result) {
-        state.rows = parseReturnedFromRecords(result.records);
+    return fetchReturnedRowsWithRetry()
+      .then(function (parsedRows) {
+        state.rows = parsedRows;
         console.log('[تقرير السيارات المسترجعة] إجمالي السيارات المجمّعة (كل الصفحات):', state.rows.length);
 
         var discoveredBranches = {};
@@ -12960,20 +13005,23 @@ ${text}
           });
         }
 
-        state.dataLoaded = true;
         state.lastUpdated = new Date();
-        setStatus('تم التحديث: ' + state.lastUpdated.toLocaleTimeString('ar-SA'), 'success');
+        if (state.rows.length === 0) {
+          // ما نعتبرها "محمّلة" حتى لو نجحت الشبكة تقنياً - عشان لو فتح المستخدم
+          // الأداة مرة ثانية بدون ضغط "تحديث"، تُعاد المحاولة تلقائياً بدل ما تعلق
+          // على نتيجة فاضية بالكاش
+          state.dataLoaded = false;
+          setStatus('تعذّر العثور على أي سيارات بعد عدة محاولات - جرّب "تحديث البيانات"', 'error');
+        } else {
+          state.dataLoaded = true;
+          setStatus('تم التحديث: ' + state.lastUpdated.toLocaleTimeString('ar-SA'), 'success');
+        }
         hideLoadingOverlay();
       })
       .catch(function (error) {
         console.error('[تقرير السيارات المسترجعة]', error);
         setStatus('تعذّر تحميل البيانات: ' + error.message, 'error');
         hideLoadingOverlay();
-        try {
-          if (frame && frame.isConnected) frame.remove();
-        } catch (err) {
-          /* تجاهل */
-        }
         throw error;
       });
   }
