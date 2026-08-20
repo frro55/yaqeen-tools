@@ -62,6 +62,7 @@ FILES=(
   yaqeen-closed-as-debt-branches-report.user.js
   yaqeen-customer-messages.user.js
   yaqeen-booking-report.user.js
+  yaqeen-returned-vehicles-report.user.js
   yaqeen-vip-booking.user.js
   yaqeen-ai-chat.user.js
   yaqeen-shift-report.user.js
