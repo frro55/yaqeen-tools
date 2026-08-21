@@ -109,7 +109,7 @@
                 method: 'POST',
                 url: AI_CHAT_CONFIG.apiUrl,
                 headers: {
-                    Authorization: AI_CHAT_CONFIG.apiKey,
+                    Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || AI_CHAT_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
                 data: JSON.stringify({ pageContext: pageContext, messages: apiMessages }),

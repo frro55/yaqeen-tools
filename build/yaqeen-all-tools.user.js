@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0821.0518
+// @version      2026.0821.0753
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -485,29 +485,45 @@
             const cached = JSON.parse(raw);
             if (!cached || !Array.isArray(cached.tools) || !cached.timestamp) return null;
             if (Date.now() - cached.timestamp > PERMISSIONS_CACHE_MS) return null;
-            return cached.tools;
+            return cached;
         } catch (err) {
             return null;
         }
     }
 
-    function writeCachedPermissions(tools) {
+    function writeCachedPermissions(tools, sessionToken, sessionExpiresAt) {
         try {
-            sessionStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify({ tools: tools, timestamp: Date.now() }));
+            sessionStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify({
+                tools: tools,
+                sessionToken: sessionToken,
+                sessionExpiresAt: sessionExpiresAt,
+                timestamp: Date.now(),
+            }));
         } catch (err) { /* تجاهل */ }
     }
 
-    function applyAllowedTools(tools) {
+    function applyAllowedTools(tools, sessionToken, sessionExpiresAt) {
         HOST_WINDOW.YAQEEN_TOOLS.allowedTools = Array.isArray(tools) ? tools : [];
         HOST_WINDOW.YAQEEN_TOOLS.permissionsLoaded = true;
+        // توكن الجلسة يُستخدم بدل المفتاح الثابت القديم بطلبات /send و/ai-chat -
+        // نحدّثه بس لو رجع وحدة جديدة (نتفادى مسحه بالغلط لو صار خطأ اتصال)
+        if (sessionToken) {
+            HOST_WINDOW.YAQEEN_TOOLS.sessionToken = sessionToken;
+            HOST_WINDOW.YAQEEN_TOOLS.sessionExpiresAt = sessionExpiresAt || 0;
+        }
         HOST_WINDOW.YAQEEN_TOOLS.refresh();
     }
 
-    /** يستدعى مرة وحدة عند تشغيل الـCore - يجيب صلاحيات المستخدم ويطبّقها على القائمة */
+    /**
+     * يستدعى عند تشغيل الـCore، وبعدها دورياً (setInterval بالأسفل) - يجيب
+     * صلاحيات المستخدم + توكن جلسة جديد ويطبّقهم على القائمة. التكرار الدوري
+     * ضروري عشان يجدد توكن الجلسة قبل ما ينتهي (صالح 4 ساعات من طرف السيرفر)
+     * لو الموظف سايب التبويب مفتوح لمدة طويلة بدون إعادة تحميل
+     */
     function loadUserPermissions() {
         const cached = readCachedPermissions();
         if (cached) {
-            applyAllowedTools(cached);
+            applyAllowedTools(cached.tools, cached.sessionToken, cached.sessionExpiresAt);
             return;
         }
 
@@ -526,8 +542,8 @@
                     applyAllowedTools([]);
                     return;
                 }
-                writeCachedPermissions(data.tools);
-                applyAllowedTools(data.tools);
+                writeCachedPermissions(data.tools, data.sessionToken, data.sessionExpiresAt);
+                applyAllowedTools(data.tools, data.sessionToken, data.sessionExpiresAt);
             });
         });
     }
@@ -538,6 +554,8 @@
         tools: [],
         allowedTools: [],
         permissionsLoaded: false,
+        sessionToken: "",
+        sessionExpiresAt: 0,
 
 
         add(tool){
@@ -783,6 +801,9 @@
     wait();
 
     loadUserPermissions();
+    // تحديث دوري كل 20 دقيقة - يجدد توكن الجلسة قبل انتهاءه (صالح 4 ساعات)
+    // لو الموظف سايب التبويب مفتوح لمدة طويلة بدون إعادة تحميل الصفحة
+    setInterval(loadUserPermissions, 20 * 60 * 1000);
 
 
     // اختصارات لوحة المفاتيح - نتجاهل الحدث لو المستخدم يكتب بحقل نص/textarea
@@ -4331,7 +4352,7 @@ ${text}
                     method: 'POST',
                     url: WHATSAPP_CONFIG.apiUrl,
                     headers: {
-                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                         'Content-Type': 'application/json',
                     },
                     data: JSON.stringify({
@@ -4700,7 +4721,7 @@ ${text}
                 method: 'POST',
                 url: WHATSAPP_CONFIG.apiUrl,
                 headers: {
-                    Authorization: WHATSAPP_CONFIG.apiKey,
+                    Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
                 data: JSON.stringify({ target: phoneJid, type: 'text', message: message }),
@@ -5378,7 +5399,7 @@ ${text}
                     method: 'POST',
                     url: WHATSAPP_CONFIG.apiUrl,
                     headers: {
-                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                         'Content-Type': 'application/json',
                     },
                     data: JSON.stringify({
@@ -5924,7 +5945,7 @@ ${text}
                 method: 'POST',
                 url: WHATSAPP_CONFIG.apiUrl,
                 headers: {
-                    Authorization: WHATSAPP_CONFIG.apiKey,
+                    Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
                 data: JSON.stringify({ target: phoneJid, type: 'text', message: message }),
@@ -6627,7 +6648,7 @@ ${text}
                     method: 'POST',
                     url: WHATSAPP_CONFIG.apiUrl,
                     headers: {
-                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                         'Content-Type': 'application/json',
                     },
                     data: JSON.stringify({
@@ -7410,7 +7431,7 @@ ${text}
                     method: 'POST',
                     url: WHATSAPP_CONFIG.apiUrl,
                     headers: {
-                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                         'Content-Type': 'application/json',
                     },
                     data: JSON.stringify({
@@ -8265,7 +8286,7 @@ ${text}
                     method: 'POST',
                     url: WHATSAPP_CONFIG.apiUrl,
                     headers: {
-                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                         'Content-Type': 'application/json',
                     },
                     data: JSON.stringify({
@@ -9285,7 +9306,7 @@ ${text}
                     method: 'POST',
                     url: WHATSAPP_CONFIG.apiUrl,
                     headers: {
-                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                         'Content-Type': 'application/json',
                     },
                     data: JSON.stringify({
@@ -10353,7 +10374,7 @@ ${text}
                     method: 'POST',
                     url: WHATSAPP_CONFIG.apiUrl,
                     headers: {
-                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                         'Content-Type': 'application/json',
                     },
                     data: JSON.stringify({
@@ -10664,7 +10685,7 @@ ${text}
                 method: 'POST',
                 url: WHATSAPP_CONFIG.apiUrl,
                 headers: {
-                    Authorization: WHATSAPP_CONFIG.apiKey,
+                    Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
                 data: JSON.stringify({
@@ -12191,7 +12212,7 @@ ${text}
           method: 'POST',
           url: WHATSAPP_CONFIG.apiUrl,
           headers: {
-            Authorization: WHATSAPP_CONFIG.apiKey,
+            Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
             'Content-Type': 'application/json',
           },
           data: JSON.stringify({
@@ -13913,7 +13934,7 @@ ${text}
           method: 'POST',
           url: WHATSAPP_CONFIG.apiUrl,
           headers: {
-            Authorization: WHATSAPP_CONFIG.apiKey,
+            Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
             'Content-Type': 'application/json',
           },
           data: JSON.stringify({
@@ -15080,7 +15101,7 @@ ${text}
                 method: 'POST',
                 url: WHATSAPP_CONFIG.apiUrl,
                 headers: {
-                    Authorization: WHATSAPP_CONFIG.apiKey,
+                    Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
                 data: JSON.stringify({ message: message, target: target }),
@@ -15467,7 +15488,7 @@ ${text}
                 method: 'POST',
                 url: AI_CHAT_CONFIG.apiUrl,
                 headers: {
-                    Authorization: AI_CHAT_CONFIG.apiKey,
+                    Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || AI_CHAT_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
                 data: JSON.stringify({ pageContext: pageContext, messages: apiMessages }),
@@ -16054,7 +16075,7 @@ ${text}
                 method: 'POST',
                 url: WHATSAPP_CONFIG.apiUrl,
                 headers: {
-                    Authorization: WHATSAPP_CONFIG.apiKey,
+                    Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
                 data: JSON.stringify({ target: WHATSAPP_CONFIG.target, type: 'text', message: message }),

@@ -872,7 +872,7 @@
                     method: 'POST',
                     url: WHATSAPP_CONFIG.apiUrl,
                     headers: {
-                        Authorization: WHATSAPP_CONFIG.apiKey,
+                        Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                         'Content-Type': 'application/json',
                     },
                     data: JSON.stringify({
