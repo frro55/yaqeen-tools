@@ -207,6 +207,7 @@
       <p>هذي الصفحة مخصصة للمدير فقط.<br>أدخل إيميلك للدخول.</p>
       <div class="error" id="loginError">تم رفض الدخول - هذا الحساب ليس أدمن أو غير مفعّل.</div>
       <input type="email" id="loginEmail" placeholder="admin@example.com" autocomplete="off">
+      <input type="password" id="loginPassword" placeholder="كلمة المرور" autocomplete="off">
       <button class="btn" style="width:100%" id="loginBtn">دخول</button>
     </div>
   </div>
@@ -294,49 +295,103 @@
     { key: "shift-report", label: "📋 تقرير الشفت" },
   ];
 
+  let sessionToken = localStorage.getItem("yaqeen_admin_session_token") || "";
+  let sessionExpiresAt = Number(localStorage.getItem("yaqeen_admin_session_expires") || 0);
   let adminEmail = localStorage.getItem("yaqeen_admin_email") || "";
   let allUsers = [];
 
-  function postJson(path, body) {
-    return fetch(API_BASE + path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).then(r => r.json()).catch(() => null);
+  function clearSession() {
+    sessionToken = "";
+    sessionExpiresAt = 0;
+    adminEmail = "";
+    localStorage.removeItem("yaqeen_admin_session_token");
+    localStorage.removeItem("yaqeen_admin_session_expires");
+    localStorage.removeItem("yaqeen_admin_email");
   }
 
-  function getJson(path) {
-    return fetch(API_BASE + path).then(r => r.json()).catch(() => null);
+  // طلب مصادَق عليه بتوكن الجلسة (Authorization header) - لو رجع 401
+  // (توكن منتهي/ملغى) يرجّع المستخدم لشاشة الدخول تلقائياً
+  function authFetch(path, options) {
+    options = options || {};
+    options.headers = Object.assign(
+      { "Content-Type": "application/json", "Authorization": sessionToken },
+      options.headers || {}
+    );
+    return fetch(API_BASE + path, options).then(r => {
+      if (r.status === 401) {
+        clearSession();
+        showLogin();
+        return null;
+      }
+      return r.json();
+    }).catch(() => null);
+  }
+
+  function adminGet(path) {
+    return authFetch(path, { method: "GET" });
+  }
+
+  function adminPost(path, body) {
+    return authFetch(path, { method: "POST", body: JSON.stringify(body || {}) });
   }
 
   // ===== تسجيل الدخول =====
   const loginScreen = document.getElementById("loginScreen");
   const appScreen = document.getElementById("appScreen");
   const loginEmailInput = document.getElementById("loginEmail");
+  const loginPasswordInput = document.getElementById("loginPassword");
   const loginError = document.getElementById("loginError");
 
-  function tryLogin(email) {
+  function showApp() {
+    loginScreen.style.display = "none";
+    appScreen.style.display = "block";
+    document.getElementById("whoLabel").textContent = "مسجّل الدخول: " + adminEmail;
+  }
+
+  function showLogin() {
+    appScreen.style.display = "none";
+    loginScreen.style.display = "flex";
+  }
+
+  function tryLogin(email, password) {
     loginError.style.display = "none";
-    return getJson("/api/admin/users?admin_email=" + encodeURIComponent(email)).then(data => {
+    return fetch(API_BASE + "/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }).then(r => r.json()).catch(() => null).then(data => {
       if (!data || data.success !== true) {
+        loginError.textContent = (data && data.message) || "تم رفض الدخول - تأكد من الإيميل وكلمة المرور.";
         loginError.style.display = "block";
         return false;
       }
-      adminEmail = email;
-      localStorage.setItem("yaqeen_admin_email", email);
-      loginScreen.style.display = "none";
-      appScreen.style.display = "block";
-      document.getElementById("whoLabel").textContent = "مسجّل الدخول: " + email;
-      allUsers = data.users || [];
-      renderUsers();
+      sessionToken = data.sessionToken;
+      sessionExpiresAt = data.sessionExpiresAt;
+      adminEmail = data.admin.email;
+      localStorage.setItem("yaqeen_admin_session_token", sessionToken);
+      localStorage.setItem("yaqeen_admin_session_expires", String(sessionExpiresAt));
+      localStorage.setItem("yaqeen_admin_email", adminEmail);
+      showApp();
+      loadUsers();
       loadAiPrompt();
       return true;
     });
   }
 
+  function bootstrapSession() {
+    if (sessionToken && sessionExpiresAt && Date.now() < sessionExpiresAt) {
+      showApp();
+      loadUsers();
+      loadAiPrompt();
+    } else {
+      clearSession();
+      showLogin();
+    }
+  }
+
   // ===== تعليمات شات AI =====
   function loadAiPrompt() {
-    return getJson("/api/admin/ai-settings?admin_email=" + encodeURIComponent(adminEmail)).then(data => {
+    return adminGet("/api/admin/ai-settings").then(data => {
       if (!data || data.success !== true) return;
       document.getElementById("aiPromptInput").value = data.prompt || "";
     });
@@ -351,7 +406,7 @@
     msg.textContent = "";
     msg.className = "add-msg";
 
-    postJson("/api/admin/ai-settings", { admin_email: adminEmail, prompt: prompt }).then(res => {
+    adminPost("/api/admin/ai-settings", { prompt: prompt }).then(res => {
       btn.disabled = false;
       if (!res || !res.success) {
         msg.textContent = res && res.message ? res.message : "فشل الحفظ";
@@ -366,24 +421,28 @@
 
   document.getElementById("loginBtn").addEventListener("click", () => {
     const email = loginEmailInput.value.trim().toLowerCase();
-    if (!email) return;
-    tryLogin(email);
+    const password = loginPasswordInput.value;
+    if (!email || !password) return;
+    tryLogin(email, password);
   });
   loginEmailInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") loginPasswordInput.focus();
+  });
+  loginPasswordInput.addEventListener("keydown", e => {
     if (e.key === "Enter") document.getElementById("loginBtn").click();
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
-    localStorage.removeItem("yaqeen_admin_email");
-    adminEmail = "";
-    appScreen.style.display = "none";
-    loginScreen.style.display = "flex";
+    adminPost("/api/admin/logout", {});
+    clearSession();
+    showLogin();
     loginEmailInput.value = "";
+    loginPasswordInput.value = "";
   });
 
   // ===== تحميل / عرض المستخدمين =====
   function loadUsers() {
-    return getJson("/api/admin/users?admin_email=" + encodeURIComponent(adminEmail)).then(data => {
+    return adminGet("/api/admin/users").then(data => {
       if (!data || data.success !== true) return;
       allUsers = data.users || [];
       renderUsers();
@@ -450,8 +509,7 @@
     statusWrap.className = "switch-row";
 
     const activeSwitch = buildSwitch("مفعّل", user.active, checked => {
-      postJson("/api/admin/toggle-active", {
-        admin_email: adminEmail,
+      adminPost("/api/admin/toggle-active", {
         user_id: user.id,
         active: checked,
       }).then(res => {
@@ -461,8 +519,7 @@
     });
 
     const adminSwitch = buildSwitch("أدمن", user.is_admin, checked => {
-      postJson("/api/admin/toggle-admin", {
-        admin_email: adminEmail,
+      adminPost("/api/admin/toggle-admin", {
         user_id: user.id,
         is_admin: checked,
       }).then(res => {
@@ -499,8 +556,7 @@
 
       const selectedTools = Object.keys(checkboxes).filter(key => checkboxes[key].checked);
 
-      postJson("/api/admin/user-tools", {
-        admin_email: adminEmail,
+      adminPost("/api/admin/user-tools", {
         user_id: user.id,
         name: nameInput.value.trim(),
         tools: selectedTools,
@@ -530,8 +586,7 @@
       saveMsg.textContent = "";
       saveMsg.className = "save-msg";
 
-      postJson("/api/admin/delete-user", {
-        admin_email: adminEmail,
+      adminPost("/api/admin/delete-user", {
         user_id: user.id,
       }).then(res => {
         deleteBtn.disabled = false;
@@ -585,8 +640,7 @@
     msg.textContent = "";
     msg.className = "add-msg";
 
-    postJson("/api/admin/users", {
-      admin_email: adminEmail,
+    adminPost("/api/admin/users", {
       email: email,
       name: nameInput.value.trim(),
     }).then(res => {
@@ -608,9 +662,7 @@
   document.getElementById("refreshBtn").addEventListener("click", loadUsers);
 
   // ===== بدء التشغيل =====
-  if (adminEmail) {
-    tryLogin(adminEmail);
-  }
+  bootstrapSession();
 </script>
 
 </body>
