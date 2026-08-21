@@ -52,6 +52,22 @@
     margin-bottom: 12px;
     display: none;
   }
+  .password-field { position: relative; }
+  .password-field input { padding-left: 38px; }
+  .password-field .toggle-pw {
+    position: absolute;
+    left: 6px;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #666;
+    padding: 0 6px;
+  }
 
   /* ===== أزرار عامة ===== */
   .btn {
@@ -207,7 +223,10 @@
       <p>هذي الصفحة مخصصة للمدير فقط.<br>أدخل إيميلك للدخول.</p>
       <div class="error" id="loginError">تم رفض الدخول - هذا الحساب ليس أدمن أو غير مفعّل.</div>
       <input type="email" id="loginEmail" placeholder="admin@example.com" autocomplete="off">
-      <input type="password" id="loginPassword" placeholder="كلمة المرور" autocomplete="off">
+      <div class="password-field">
+        <input type="password" id="loginPassword" placeholder="كلمة المرور" autocomplete="off">
+        <button type="button" class="toggle-pw" id="togglePasswordBtn" aria-label="إظهار/إخفاء كلمة المرور">👁</button>
+      </div>
       <button class="btn" style="width:100%" id="loginBtn">دخول</button>
     </div>
   </div>
@@ -430,6 +449,13 @@
   });
   loginPasswordInput.addEventListener("keydown", e => {
     if (e.key === "Enter") document.getElementById("loginBtn").click();
+  });
+
+  document.getElementById("togglePasswordBtn").addEventListener("click", () => {
+    const btn = document.getElementById("togglePasswordBtn");
+    const showing = loginPasswordInput.type === "text";
+    loginPasswordInput.type = showing ? "password" : "text";
+    btn.textContent = showing ? "👁" : "🙈";
   });
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
