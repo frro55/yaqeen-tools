@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0821.0753
+// @version      2026.0821.0810
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -329,6 +329,29 @@
     const PERMISSIONS_CACHE_KEY = "yaqeen_tool_permissions";
     const PERMISSIONS_CACHE_MS = 60 * 1000; // دقيقة وحدة - سحب صلاحية موظف يتطبق بسرعة معقولة
 
+    // ============================================================
+    // اختيار جلسة الواتساب النشطة (لو فيه أكثر من رقم مربوط بالبوت) - إعداد
+    // عام واحد يطبّق على كل الأدوات اللي ترسل واتساب، مخزّن محلياً بنفس
+    // الجهاز/المتصفح. القيمة الافتراضية "main" لو الموظف ما اختار شي بعد
+    // ============================================================
+    const ACTIVE_SESSION_KEY = "yaqeen_active_wa_session";
+
+    function getActiveSessionId() {
+        try {
+            return localStorage.getItem(ACTIVE_SESSION_KEY) || "main";
+        } catch (err) {
+            return "main";
+        }
+    }
+
+    function setActiveSessionId(id) {
+        try {
+            localStorage.setItem(ACTIVE_SESSION_KEY, id);
+        } catch (err) { /* تجاهل */ }
+        HOST_WINDOW.YAQEEN_TOOLS.activeSessionId = id;
+        updateSessionBadge();
+    }
+
     /** يبحث عن أول نص يشبه إيميل داخل نص عام */
     function findEmailInText(text) {
         if (!text) return "";
@@ -491,18 +514,32 @@
         }
     }
 
-    function writeCachedPermissions(tools, sessionToken, sessionExpiresAt) {
+    function writeCachedPermissions(tools, sessionToken, sessionExpiresAt, waSessions) {
         try {
             sessionStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify({
                 tools: tools,
                 sessionToken: sessionToken,
                 sessionExpiresAt: sessionExpiresAt,
+                waSessions: waSessions,
                 timestamp: Date.now(),
             }));
         } catch (err) { /* تجاهل */ }
     }
 
-    function applyAllowedTools(tools, sessionToken, sessionExpiresAt) {
+    /** يحدّث شكل شارة اختيار الجلسة (تختفي لو جلسة واحدة بس أو لو ما اتخلقت الواجهة بعد) */
+    function updateSessionBadge() {
+        const badge = document.getElementById("yt-session-badge");
+        if (!badge) return;
+        const available = HOST_WINDOW.YAQEEN_TOOLS.availableSessions || [];
+        if (available.length < 2) {
+            badge.style.display = "none";
+            return;
+        }
+        badge.style.display = "block";
+        badge.textContent = "📶 " + HOST_WINDOW.YAQEEN_TOOLS.activeSessionId;
+    }
+
+    function applyAllowedTools(tools, sessionToken, sessionExpiresAt, waSessions) {
         HOST_WINDOW.YAQEEN_TOOLS.allowedTools = Array.isArray(tools) ? tools : [];
         HOST_WINDOW.YAQEEN_TOOLS.permissionsLoaded = true;
         // توكن الجلسة يُستخدم بدل المفتاح الثابت القديم بطلبات /send و/ai-chat -
@@ -510,6 +547,18 @@
         if (sessionToken) {
             HOST_WINDOW.YAQEEN_TOOLS.sessionToken = sessionToken;
             HOST_WINDOW.YAQEEN_TOOLS.sessionExpiresAt = sessionExpiresAt || 0;
+        }
+        if (Array.isArray(waSessions)) {
+            HOST_WINDOW.YAQEEN_TOOLS.availableSessions = waSessions;
+            // لو الجلسة النشطة المخزّنة سابقاً ما عادت موجودة (اتحذفت من لوحة
+            // التحكم مثلاً)، نرجع تلقائياً لـ"main" أو أول جلسة متاحة
+            const current = getActiveSessionId();
+            if (waSessions.length && waSessions.indexOf(current) === -1) {
+                setActiveSessionId(waSessions.indexOf("main") !== -1 ? "main" : waSessions[0]);
+            } else {
+                HOST_WINDOW.YAQEEN_TOOLS.activeSessionId = current;
+            }
+            updateSessionBadge();
         }
         HOST_WINDOW.YAQEEN_TOOLS.refresh();
     }
@@ -523,7 +572,7 @@
     function loadUserPermissions() {
         const cached = readCachedPermissions();
         if (cached) {
-            applyAllowedTools(cached.tools, cached.sessionToken, cached.sessionExpiresAt);
+            applyAllowedTools(cached.tools, cached.sessionToken, cached.sessionExpiresAt, cached.waSessions);
             return;
         }
 
@@ -542,8 +591,8 @@
                     applyAllowedTools([]);
                     return;
                 }
-                writeCachedPermissions(data.tools, data.sessionToken, data.sessionExpiresAt);
-                applyAllowedTools(data.tools, data.sessionToken, data.sessionExpiresAt);
+                writeCachedPermissions(data.tools, data.sessionToken, data.sessionExpiresAt, data.waSessions);
+                applyAllowedTools(data.tools, data.sessionToken, data.sessionExpiresAt, data.waSessions);
             });
         });
     }
@@ -556,6 +605,8 @@
         permissionsLoaded: false,
         sessionToken: "",
         sessionExpiresAt: 0,
+        activeSessionId: getActiveSessionId(),
+        availableSessions: [],
 
 
         add(tool){
@@ -619,6 +670,22 @@
         document.body.appendChild(toolsLayer);
 
 
+        // شارة اختيار جلسة الواتساب النشطة - تظهر بس لو فيه أكثر من رقم
+        // واحد مربوط بالبوت حالياً. الضغط عليها يدور على الجلسات المتاحة
+
+        const sessionBadge = document.createElement("div");
+        sessionBadge.id = "yt-session-badge";
+        sessionBadge.onclick = () => {
+            const available = HOST_WINDOW.YAQEEN_TOOLS.availableSessions || [];
+            if (available.length < 2) return;
+            const idx = available.indexOf(HOST_WINDOW.YAQEEN_TOOLS.activeSessionId);
+            const next = available[(idx + 1) % available.length];
+            setActiveSessionId(next);
+        };
+        document.body.appendChild(sessionBadge);
+        updateSessionBadge();
+
+
         // التصميم
 
         const style = document.createElement("style");
@@ -642,6 +709,22 @@
         #yt-fab.yt-open{
             transform:rotate(45deg) scale(.92);
             box-shadow:0 10px 30px rgba(0,0,0,.35);
+        }
+
+        #yt-session-badge{
+            display:none;
+            position:fixed;
+            right:62px;
+            bottom:172px;
+            background:#1d2610;
+            color:#eef4e2;
+            font:600 11px Tajawal,Arial,sans-serif;
+            padding:5px 12px;
+            border-radius:999px;
+            cursor:pointer;
+            box-shadow:0 4px 12px rgba(0,0,0,.25);
+            white-space:nowrap;
+            z-index:100000000;
         }
 
         #yt-fab img{
@@ -4357,6 +4440,7 @@ ${text}
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
                         // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
@@ -4724,7 +4808,7 @@ ${text}
                     Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
-                data: JSON.stringify({ target: phoneJid, type: 'text', message: message }),
+                data: JSON.stringify({ target: phoneJid, sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main', type: 'text', message: message }),
                 onload: response => {
                     if (response.status >= 200 && response.status < 300) resolve();
                     else {
@@ -5404,6 +5488,7 @@ ${text}
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
                         // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
@@ -5948,7 +6033,7 @@ ${text}
                     Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
-                data: JSON.stringify({ target: phoneJid, type: 'text', message: message }),
+                data: JSON.stringify({ target: phoneJid, sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main', type: 'text', message: message }),
                 onload: response => {
                     if (response.status >= 200 && response.status < 300) resolve();
                     else {
@@ -6653,6 +6738,7 @@ ${text}
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
                         // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
@@ -7436,6 +7522,7 @@ ${text}
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '🏢 عقود الشركات غير الممددة - ' + new Date().toLocaleString('ar-SA'),
@@ -8291,6 +8378,7 @@ ${text}
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '🏢 عقود الشركات غير الممددة - ' + branchName + ' - ' + new Date().toLocaleString('ar-SA'),
@@ -9311,6 +9399,7 @@ ${text}
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '📕 عقود أغلقت كمديونية - ' + new Date().toLocaleString('ar-SA'),
@@ -10379,6 +10468,7 @@ ${text}
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '📕 عقود أغلقت كمديونية - ' + branchesLabel + ' - ' + new Date().toLocaleString('ar-SA'),
@@ -10690,6 +10780,7 @@ ${text}
                 },
                 data: JSON.stringify({
                     target: phoneJid,
+                    sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                     type: 'text',
                     message: message,
                 }),
@@ -12217,6 +12308,7 @@ ${text}
           },
           data: JSON.stringify({
             target: WHATSAPP_CONFIG.target,
+            sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
             type: 'image',
             // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
             // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
@@ -13939,6 +14031,7 @@ ${text}
           },
           data: JSON.stringify({
             target: WHATSAPP_CONFIG.target,
+            sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
             type: 'image',
             imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
             caption: '📦 تقرير الحجوزات والسيارات المسترجعة - ' + new Date().toLocaleString('ar-SA'),
@@ -15104,7 +15197,7 @@ ${text}
                     Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
-                data: JSON.stringify({ message: message, target: target }),
+                data: JSON.stringify({ message: message, target: target, sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main' }),
                 onload: response => {
                     if (response.status >= 200 && response.status < 300) {
                         resolve();
@@ -16078,7 +16171,7 @@ ${text}
                     Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
-                data: JSON.stringify({ target: WHATSAPP_CONFIG.target, type: 'text', message: message }),
+                data: JSON.stringify({ target: WHATSAPP_CONFIG.target, sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main', type: 'text', message: message }),
                 onload: response => {
                     if (response.status >= 200 && response.status < 300) resolve();
                     else {

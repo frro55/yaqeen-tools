@@ -877,6 +877,7 @@
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '📕 عقود أغلقت كمديونية - ' + new Date().toLocaleString('ar-SA'),

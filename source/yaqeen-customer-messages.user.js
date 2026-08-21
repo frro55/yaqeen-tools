@@ -160,6 +160,7 @@
                 },
                 data: JSON.stringify({
                     target: phoneJid,
+                    sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                     type: 'text',
                     message: message,
                 }),

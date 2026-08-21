@@ -131,7 +131,7 @@
                     Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
-                data: JSON.stringify({ message: message, target: target }),
+                data: JSON.stringify({ message: message, target: target, sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main' }),
                 onload: response => {
                     if (response.status >= 200 && response.status < 300) {
                         resolve();

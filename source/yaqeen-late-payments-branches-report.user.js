@@ -394,7 +394,7 @@
                     Authorization: (HOST_WINDOW.YAQEEN_TOOLS.sessionToken || WHATSAPP_CONFIG.apiKey),
                     'Content-Type': 'application/json',
                 },
-                data: JSON.stringify({ target: phoneJid, type: 'text', message: message }),
+                data: JSON.stringify({ target: phoneJid, sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main', type: 'text', message: message }),
                 onload: response => {
                     if (response.status >= 200 && response.status < 300) resolve();
                     else {
@@ -1099,6 +1099,7 @@
                     },
                     data: JSON.stringify({
                         target: WHATSAPP_CONFIG.target,
+                        sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
                         // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
                         // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
