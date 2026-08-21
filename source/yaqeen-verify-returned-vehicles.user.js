@@ -73,6 +73,7 @@
     dateTo: null,
     results: [], // [{group, plate, bookingNumber, agreementNo}] - تسليم بنفس موقع الفرع فقط
     excludedCrossBranch: [], // عقود تم استثناؤها (تسليم بموقع مختلف)
+    excludedDateMismatch: [], // عقود فُتحت لكن تاريخها الدقيق (من داخل العقد) خارج المدى المختار فعلياً
     skipped: [], // عقود تعذّر فحصها (فشل تحميل/انتقال)
   };
 
@@ -327,6 +328,19 @@
     return el ? el.textContent.trim() : '';
   }
 
+  /**
+   * تاريخ التسليم الدقيق من داخل تفاصيل العقد نفسه (data-testid="drop-off-date-secondary"،
+   * صيغة "DD/MM/YYYY" صريحة بدون أي لبس) - هذا هو المصدر الموثوق للتاريخ
+   * الفعلي. فلتر القائمة (اليوم/أمس/اسم يوم الأسبوع) تقريبي فقط ويُستخدم
+   * لتسريع الفحص، فبعده نتأكد من التاريخ الحقيقي هنا قبل احتساب العقد.
+   */
+  function extractExactDropoffDate(doc) {
+    var text = extractTestIdText(doc, 'drop-off-date-secondary');
+    var m = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(text);
+    if (!m) return null;
+    return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+  }
+
   /** نص عنصر المجموعة يجي بصيغة "المجموعة: GB" - نستخرج الرمز فقط بعد النقطتين */
   function extractGroupFromDetail(doc) {
     var text = extractTestIdText(doc, 'vehiclegroup');
@@ -432,10 +446,21 @@
     state.dateFrom = dateFrom;
     state.dateTo = dateTo;
 
+    // فلتر القائمة (اليوم/أمس/اسم يوم الأسبوع) تقريبي - نوسّعه بهامش أيام
+    // احترازي عشان ما نستبعد عقد فعلاً ضمن المدى المطلوب غلط بسبب خلاف بسيط
+    // بحدود اليوم بين حساباتنا وحسابات الموقع؛ التاريخ الدقيق الحقيقي
+    // (drop-off-date-secondary داخل العقد) هو اللي يقرر فعلياً بعدين
+    var PRE_FILTER_BUFFER_DAYS = 2;
+    var preFilterFrom = new Date(dateFrom);
+    preFilterFrom.setDate(preFilterFrom.getDate() - PRE_FILTER_BUFFER_DAYS);
+    var preFilterTo = new Date(dateTo);
+    preFilterTo.setDate(preFilterTo.getDate() + PRE_FILTER_BUFFER_DAYS);
+
     state.running = true;
     state.cancelled = false;
     state.results = [];
     state.excludedCrossBranch = [];
+    state.excludedDateMismatch = [];
     state.skipped = [];
 
     var processed = {};
@@ -479,10 +504,14 @@
           var dropoffLoc = extractTestIdText(detailDoc, 'drop-off-location');
           var pickupLoc = extractTestIdText(detailDoc, 'pickup-location');
           var sameLocation = dropoffLoc && pickupLoc && normalizeArabic(dropoffLoc) === normalizeArabic(pickupLoc);
-          if (sameLocation) {
+          var exactDate = extractExactDropoffDate(detailDoc);
+          var withinExactRange = isDateWithinRange(exactDate, dateFrom, dateTo);
+          if (sameLocation && withinExactRange) {
             state.results.push({ group: groupText, plate: found.plate, bookingNumber: found.bookingNumber, agreementNo: found.agreementNo });
-          } else {
+          } else if (!sameLocation) {
             state.excludedCrossBranch.push({ plate: found.plate, bookingNumber: found.bookingNumber, dropoffLocation: dropoffLoc });
+          } else {
+            state.excludedDateMismatch.push({ plate: found.plate, bookingNumber: found.bookingNumber, exactDate: exactDate });
           }
           try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
           return waitForListReady(frame);
@@ -518,10 +547,10 @@
           return Promise.resolve();
         }
 
-        var found = findFirstMatchingUnprocessedRow(doc, processed, dateFrom, dateTo);
+        var found = findFirstMatchingUnprocessedRow(doc, processed, preFilterFrom, preFilterTo);
         if (found) {
           processed[found.bookingNumber] = true;
-          var doneSoFar = state.results.length + state.excludedCrossBranch.length + state.skipped.length + 1;
+          var doneSoFar = state.results.length + state.excludedCrossBranch.length + state.excludedDateMismatch.length + state.skipped.length + 1;
           setStatus('جارٍ فحص العقد #' + found.bookingNumber + ' (' + doneSoFar + ')...', 'loading');
           return visitRowAndRecord(frame, found).then(function (newDoc) {
             if (!newDoc) return;
@@ -630,6 +659,7 @@
       (rangeLabel ? 'المدى: ' + rangeLabel + ' | ' : '') +
       'مطابق (نفس موقع الفرع): ' + state.results.length +
       ' | مستبعد (موقع تسليم مختلف): ' + state.excludedCrossBranch.length +
+      ' | خارج المدى فعلياً: ' + state.excludedDateMismatch.length +
       ' | تعذّر فحصه: ' + state.skipped.length;
 
     if (!state.running) {
