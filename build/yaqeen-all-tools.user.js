@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0821.0424
+// @version      2026.0821.0432
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -14420,7 +14420,7 @@ ${text}
 
   /** ينتظر ظهور تفاصيل العقد (المجموعة + مواقع الاستلام/التسليم) بعد الضغط على صف */
   function waitForDetailReady(iframe, timeoutMs) {
-    timeoutMs = timeoutMs || 15000;
+    timeoutMs = timeoutMs || 20000;
     return new Promise(function (resolve) {
       var start = Date.now();
       (function check() {
@@ -14475,6 +14475,20 @@ ${text}
       plate: cellText(indices.plate),
       rowEl: row,
     };
+  }
+
+  /** يبحث عن صف عقد محدد (برقم الحجز) بالصفحة الحالية - يُستخدم لإعادة محاولة عقد فشلت زيارته أول مرة */
+  function findRowByBookingNumber(doc, bookingNumber) {
+    var indices = computeListIndices(doc);
+    if (!indices) return null;
+    var table = findListTable(doc);
+    if (!table) return null;
+    var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+    for (var i = 0; i < rows.length; i++) {
+      var info = extractRowInfo(rows[i], indices);
+      if (info && info.bookingNumber === bookingNumber) return info;
+    }
+    return null;
   }
 
   function findFirstUnprocessedRow(doc, processed) {
@@ -14552,6 +14566,53 @@ ${text}
       renderResults();
     }
 
+    // تحت التشغيل بالتوازي (٤ إطارات) يصير الخادم أبطأ أحياناً فتنتهي مهلة
+    // انتظار صفحة تفاصيل عقد معيّن قبل ما تكتمل. بدل ما نستسلم من أول مرة،
+    // نرجع للقائمة ونعيد محاولة نفس العقد (بالبحث عنه برقم الحجز بالصفحة
+    // الحالية) حتى MAX_DETAIL_ATTEMPTS مرات قبل ما نعتبره "تعذّر فحصه" فعلياً.
+    var MAX_DETAIL_ATTEMPTS = 4;
+
+    function visitRowAndRecord(frame, found, attempt) {
+      attempt = attempt || 1;
+      try {
+        found.rowEl.click();
+      } catch (err) {
+        /* العنصر تعطّل - نكمل لمحاولة إعادة البحث أدناه */
+      }
+      return waitForDetailReady(frame).then(function (detailDoc) {
+        if (detailDoc) {
+          var groupText = extractGroupFromDetail(detailDoc) || 'غير محدد';
+          var dropoffLoc = extractTestIdText(detailDoc, 'drop-off-location');
+          var pickupLoc = extractTestIdText(detailDoc, 'pickup-location');
+          var sameLocation = dropoffLoc && pickupLoc && normalizeArabic(dropoffLoc) === normalizeArabic(pickupLoc);
+          if (sameLocation) {
+            state.results.push({ group: groupText, plate: found.plate, bookingNumber: found.bookingNumber, agreementNo: found.agreementNo });
+          } else {
+            state.excludedCrossBranch.push({ plate: found.plate, bookingNumber: found.bookingNumber, dropoffLocation: dropoffLoc });
+          }
+          try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
+          return waitForListReady(frame);
+        }
+
+        // فشلت هذي المحاولة - نرجع للقائمة ونجرّب من جديد قبل ما نستسلم
+        try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
+        return waitForListReady(frame).then(function (listDoc) {
+          if (!listDoc) return null;
+          if (attempt >= MAX_DETAIL_ATTEMPTS) {
+            state.skipped.push(found);
+            return listDoc;
+          }
+          var freshRow = findRowByBookingNumber(listDoc, found.bookingNumber);
+          if (!freshRow) {
+            state.skipped.push(found);
+            return listDoc;
+          }
+          setStatus('إعادة محاولة فحص العقد #' + found.bookingNumber + ' (محاولة ' + (attempt + 1) + ')...', 'loading');
+          return visitRowAndRecord(frame, freshRow, attempt + 1);
+        });
+      });
+    }
+
     function runWorker() {
       var frame = openHiddenFrame(COMPLETED_TODAY_URL);
       frames.push(frame);
@@ -14568,31 +14629,7 @@ ${text}
           processed[found.bookingNumber] = true;
           var doneSoFar = state.results.length + state.excludedCrossBranch.length + state.skipped.length + 1;
           setStatus('جارٍ فحص العقد #' + found.bookingNumber + ' (' + doneSoFar + ')...', 'loading');
-          try {
-            found.rowEl.click();
-          } catch (err) {
-            state.skipped.push(found);
-            return waitForListReady(frame).then(function (newDoc) {
-              return newDoc ? step(newDoc) : undefined;
-            });
-          }
-          return waitForDetailReady(frame).then(function (detailDoc) {
-            if (!detailDoc) {
-              state.skipped.push(found);
-            } else {
-              var groupText = extractGroupFromDetail(detailDoc) || 'غير محدد';
-              var dropoffLoc = extractTestIdText(detailDoc, 'drop-off-location');
-              var pickupLoc = extractTestIdText(detailDoc, 'pickup-location');
-              var sameLocation = dropoffLoc && pickupLoc && normalizeArabic(dropoffLoc) === normalizeArabic(pickupLoc);
-              if (sameLocation) {
-                state.results.push({ group: groupText, plate: found.plate, bookingNumber: found.bookingNumber, agreementNo: found.agreementNo });
-              } else {
-                state.excludedCrossBranch.push({ plate: found.plate, bookingNumber: found.bookingNumber, dropoffLocation: dropoffLoc });
-              }
-            }
-            try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
-            return waitForListReady(frame);
-          }).then(function (newDoc) {
+          return visitRowAndRecord(frame, found).then(function (newDoc) {
             if (!newDoc) return;
             renderResults(); // عرض حي أثناء الفحص
             return step(newDoc);
