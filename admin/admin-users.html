@@ -345,6 +345,21 @@
     }
   }
 
+  // آخر إصدار منشور فعلياً - نجيبه مباشرة من ملف الحزمة نفسه (نفس الملف اللي
+  // يحمّله Tampermonkey) بدل ما نعتمد على رقم نكتبه يدوياً وينسى تحديثه
+  let latestScriptVersion = "";
+
+  function loadLatestScriptVersion() {
+    return fetch(API_BASE + "/tools/yaqeen-all-tools.user.js")
+      .then(r => r.text())
+      .then(text => {
+        const match = /@version\s+(\S+)/.exec(text.slice(0, 2000));
+        latestScriptVersion = match ? match[1] : "";
+        renderUsers();
+      })
+      .catch(() => {});
+  }
+
   let sessionToken = localStorage.getItem("yaqeen_admin_session_token") || "";
   let sessionExpiresAt = Number(localStorage.getItem("yaqeen_admin_session_expires") || 0);
   let adminEmail = localStorage.getItem("yaqeen_admin_email") || "";
@@ -429,6 +444,7 @@
       loadUsers();
       loadAiPrompt();
       loadSessions();
+      loadLatestScriptVersion();
       return true;
     });
   }
@@ -439,6 +455,7 @@
       loadUsers();
       loadAiPrompt();
       loadSessions();
+      loadLatestScriptVersion();
     } else {
       clearSession();
       showLogin();
@@ -696,8 +713,19 @@
     tdEmail.className = "email";
     tdEmail.appendChild(document.createTextNode(user.email));
     const versionMeta = document.createElement("div");
-    versionMeta.style.cssText = "font-size:10.5px;color:#999;margin-top:3px;";
-    versionMeta.textContent = "الإصدار: " + (user.script_version || "—") + " · آخر ظهور: " + formatLastSeen(user.last_seen_at);
+    let versionColor = "#999";
+    let versionLabel = "—";
+    if (user.script_version) {
+      if (latestScriptVersion && user.script_version === latestScriptVersion) {
+        versionColor = "#16a34a";
+        versionLabel = user.script_version + " ✓";
+      } else {
+        versionColor = "#dc2626";
+        versionLabel = user.script_version + " ⚠";
+      }
+    }
+    versionMeta.style.cssText = "font-size:10.5px;margin-top:3px;font-weight:600;color:" + versionColor + ";";
+    versionMeta.textContent = "الإصدار: " + versionLabel + " · آخر ظهور: " + formatLastSeen(user.last_seen_at);
     tdEmail.appendChild(versionMeta);
     tr.appendChild(tdEmail);
 
