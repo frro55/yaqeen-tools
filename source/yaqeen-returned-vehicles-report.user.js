@@ -708,15 +708,23 @@
       var dayCounts = {};
       var dayReturns = {};
       var totalBookings = 0;
+      var totalReturns = 0;
       selectedDaysOrdered.forEach(function (day) {
         var count = dayMap[day] || 0;
+        var returnCount = returnDayMap[day] || 0;
         dayCounts[day] = count;
-        dayReturns[day] = returnDayMap[day] || 0;
+        dayReturns[day] = returnCount;
         totalBookings += count;
+        totalReturns += returnCount;
       });
 
-      var occupancyPercent = vehicleCount > 0 ? (totalBookings / vehicleCount) * 100 : totalBookings > 0 ? Infinity : 0;
-      var difference = vehicleCount - totalBookings;
+      // نضيف السيارات المسترجعة (نفس الفرع) خلال الأيام المختارة للسيارات
+      // الجاهزة حالياً، عشان نسبة الإشغال والفرق تعكس أنه فيه سيارات راح
+      // ترجع وتغطي جزء من النقص - بدل ما تُحسب فقط من الجاهز الآن
+      var effectiveVehicleCount = vehicleCount + totalReturns;
+
+      var occupancyPercent = effectiveVehicleCount > 0 ? (totalBookings / effectiveVehicleCount) * 100 : totalBookings > 0 ? Infinity : 0;
+      var difference = effectiveVehicleCount - totalBookings;
 
       return {
         group: group,
@@ -724,6 +732,8 @@
         branchCount: branchCount,
         yardCount: yardCount,
         totalBookings: totalBookings,
+        totalReturns: totalReturns,
+        effectiveVehicleCount: effectiveVehicleCount,
         dayCounts: dayCounts,
         dayReturns: dayReturns,
         occupancyPercent: occupancyPercent,
@@ -914,8 +924,17 @@
     selectedDaysOrdered.forEach(function (day, index) {
       columns.push({ key: 'day:' + day, label: day, dividerBefore: index === 0 });
     });
-    columns.push({ key: 'occupancy', label: 'نسبة الإشغال', dividerBefore: true });
-    columns.push({ key: 'difference', label: 'الفرق' });
+    columns.push({
+      key: 'occupancy',
+      label: 'نسبة الإشغال',
+      dividerBefore: true,
+      title: 'السيارات الجاهزة + السيارات المسترجعة (نفس الفرع) بالأيام المختارة، مقابل الحجوزات',
+    });
+    columns.push({
+      key: 'difference',
+      label: 'الفرق',
+      title: 'السيارات الجاهزة + السيارات المسترجعة (نفس الفرع) بالأيام المختارة - الحجوزات',
+    });
     return columns;
   }
 
@@ -972,11 +991,13 @@
 
     var totalVehicles = 0;
     var totalBookings = 0;
+    var totalReturns = 0;
     var totalsByDay = {};
     var returnsByDay = {};
     rows.forEach(function (r) {
       totalVehicles += r.vehicleCount;
       totalBookings += r.totalBookings;
+      totalReturns += r.totalReturns || 0;
       Object.keys(r.dayCounts).forEach(function (day) {
         totalsByDay[day] = (totalsByDay[day] || 0) + r.dayCounts[day];
       });
@@ -984,8 +1005,11 @@
         returnsByDay[day] = (returnsByDay[day] || 0) + r.dayReturns[day];
       });
     });
-    var totalOccupancy = totalVehicles > 0 ? (totalBookings / totalVehicles) * 100 : totalBookings > 0 ? Infinity : 0;
-    var totalDifference = totalVehicles - totalBookings;
+    // نفس منطق الصف الفردي: نضيف السيارات المسترجعة للأيام المختارة على
+    // الجاهزة حالياً قبل حساب نسبة الإشغال والفرق الإجمالية
+    var totalEffectiveVehicles = totalVehicles + totalReturns;
+    var totalOccupancy = totalEffectiveVehicles > 0 ? (totalBookings / totalEffectiveVehicles) * 100 : totalBookings > 0 ? Infinity : 0;
+    var totalDifference = totalEffectiveVehicles - totalBookings;
 
     columns.forEach(function (col) {
       if (col.key === 'occupancy') {
@@ -1058,6 +1082,7 @@
     columns.forEach(function (col) {
       var th = document.createElement('th');
       th.textContent = col.label + sortIndicator(col.key);
+      if (col.title) th.title = col.title;
       var headClassNames = [columnCellClassName(col)].filter(Boolean);
       if (headClassNames.length) th.className = headClassNames.join(' ');
       th.addEventListener('click', function () { onSortClick(col.key); });
