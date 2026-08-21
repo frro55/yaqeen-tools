@@ -63,6 +63,7 @@ FILES=(
   yaqeen-customer-messages.user.js
   yaqeen-booking-report.user.js
   yaqeen-returned-vehicles-report.user.js
+  yaqeen-verify-returned-vehicles.user.js
   yaqeen-vip-booking.user.js
   yaqeen-ai-chat.user.js
   yaqeen-shift-report.user.js
