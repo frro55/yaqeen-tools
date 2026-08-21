@@ -508,6 +508,22 @@
       const right = document.createElement("div");
       right.style.cssText = "display:flex;gap:8px;";
 
+      const renameBtn = document.createElement("button");
+      renameBtn.className = "btn secondary small";
+      renameBtn.textContent = "✏️ إعادة تسمية";
+      renameBtn.addEventListener("click", () => {
+        const newId = prompt('اسم جديد للجلسة "' + s.id + '":', s.id);
+        if (!newId || !newId.trim() || newId.trim() === s.id) return;
+        adminPost("/api/admin/wa-sessions/" + encodeURIComponent(s.id) + "/rename", { newId: newId.trim() }).then(res => {
+          if (!res || !res.success) {
+            alert(res && res.message ? res.message : "تعذّرت إعادة التسمية");
+            return;
+          }
+          loadSessions();
+        });
+      });
+      right.appendChild(renameBtn);
+
       if (s.status !== "open") {
         const qrBtn = document.createElement("button");
         qrBtn.className = "btn small";
