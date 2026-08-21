@@ -264,6 +264,17 @@
     </div>
 
     <div class="panel">
+      <h2>📱 جلسات واتساب</h2>
+      <div class="toolbar">
+        <input type="text" id="newSessionId" placeholder="معرّف الجلسة الجديدة (حروف/أرقام/شرطة فقط)">
+        <button class="btn small" id="addSessionBtn">➕ إضافة جلسة</button>
+        <button class="btn secondary small" id="refreshSessionsBtn">🔄 تحديث</button>
+        <span class="add-msg" id="sessionMsg"></span>
+      </div>
+      <div id="sessionsList" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="panel">
       <div class="toolbar">
         <input type="text" id="searchInput" placeholder="بحث بالإيميل...">
         <button class="btn secondary small" id="refreshBtn">🔄 تحديث</button>
@@ -286,6 +297,17 @@
       <div class="empty" id="emptyMsg" style="display:none;">لا يوجد مستخدمون مطابقون.</div>
     </div>
 
+  </div>
+
+  <!-- ===== نافذة عرض QR كود ربط جلسة واتساب ===== -->
+  <div id="qrModal" style="display:none;position:fixed;inset:0;background:rgba(20,26,10,.45);z-index:999999;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#fff;border-radius:16px;padding:26px;text-align:center;max-width:320px;width:100%;">
+      <h3 style="margin:0 0 6px;font-size:16px;">امسح الكود بواتساب</h3>
+      <p style="margin:0 0 14px;color:#666;font-size:12.5px;">القائمة ⋮ ← الأجهزة المرتبطة ← ربط جهاز</p>
+      <img id="qrModalImg" alt="QR" style="width:220px;height:220px;object-fit:contain;border:1px solid #eee;border-radius:8px;">
+      <p id="qrModalStatus" style="font-size:13px;color:#666;font-weight:bold;margin-top:12px;"></p>
+      <button class="btn secondary small" id="qrModalCloseBtn" style="margin-top:6px;">إغلاق</button>
+    </div>
   </div>
 
 <script>
@@ -354,6 +376,10 @@
     return authFetch(path, { method: "POST", body: JSON.stringify(body || {}) });
   }
 
+  function adminDelete(path) {
+    return authFetch(path, { method: "DELETE" });
+  }
+
   // ===== تسجيل الدخول =====
   const loginScreen = document.getElementById("loginScreen");
   const appScreen = document.getElementById("appScreen");
@@ -393,6 +419,7 @@
       showApp();
       loadUsers();
       loadAiPrompt();
+      loadSessions();
       return true;
     });
   }
@@ -402,11 +429,16 @@
       showApp();
       loadUsers();
       loadAiPrompt();
+      loadSessions();
     } else {
       clearSession();
       showLogin();
     }
   }
+
+  // تحديث دوري لحالة جلسات الواتساب كل 30 ثانية (طالما فيه توكن دخول صالح) -
+  // يعكس أي قطع اتصال يصير من طرف واتساب نفسه بدون ما يحتاج المدير يضغط تحديث يدوياً
+  setInterval(() => { if (sessionToken) loadSessions(); }, 30000);
 
   // ===== تعليمات شات AI =====
   function loadAiPrompt() {
@@ -437,6 +469,143 @@
       setTimeout(() => { msg.textContent = ""; }, 2500);
     });
   });
+
+  // ===== جلسات واتساب =====
+  const SESSION_STATUS_LABELS = {
+    open: { text: "متصلة ✓", color: "#16a34a" },
+    qr: { text: "بانتظار مسح QR", color: "#ca8a04" },
+    connecting: { text: "يتصل...", color: "#666" },
+    closed: { text: "منقطعة", color: "#dc2626" },
+  };
+
+  function loadSessions() {
+    return adminGet("/api/admin/wa-sessions").then(data => {
+      if (!data || data.success !== true) return;
+      renderSessions(data.sessions || []);
+    });
+  }
+
+  function renderSessions(sessions) {
+    const wrap = document.getElementById("sessionsList");
+    wrap.innerHTML = "";
+
+    if (sessions.length === 0) {
+      wrap.innerHTML = '<div class="empty">لا توجد جلسات واتساب حالياً.</div>';
+      return;
+    }
+
+    sessions.forEach(s => {
+      const label = SESSION_STATUS_LABELS[s.status] || { text: s.status, color: "#666" };
+
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 4px;border-bottom:1px solid #eee;flex-wrap:wrap;";
+
+      const left = document.createElement("div");
+      left.innerHTML = '<b style="font-size:13.5px;">' + s.id + '</b>' +
+        '&nbsp;&nbsp;<span style="font-size:12px;font-weight:bold;color:' + label.color + ';">' + label.text + '</span>';
+      row.appendChild(left);
+
+      const right = document.createElement("div");
+      right.style.cssText = "display:flex;gap:8px;";
+
+      if (s.status !== "open") {
+        const qrBtn = document.createElement("button");
+        qrBtn.className = "btn small";
+        qrBtn.textContent = "📷 عرض QR";
+        qrBtn.addEventListener("click", () => openQrModal(s.id));
+        right.appendChild(qrBtn);
+      }
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn small danger";
+      delBtn.textContent = "🗑 حذف";
+      delBtn.addEventListener("click", () => {
+        const ok = confirm('متأكد تبي تحذف جلسة "' + s.id + '"؟ لازم تربطها من جديد بمسح QR لو تبيها ترجع.');
+        if (!ok) return;
+        adminDelete("/api/admin/wa-sessions/" + encodeURIComponent(s.id)).then(res => {
+          if (!res || !res.success) {
+            alert(res && res.message ? res.message : "تعذر الحذف");
+            return;
+          }
+          loadSessions();
+        });
+      });
+      right.appendChild(delBtn);
+
+      row.appendChild(right);
+      wrap.appendChild(row);
+    });
+  }
+
+  document.getElementById("addSessionBtn").addEventListener("click", () => {
+    const input = document.getElementById("newSessionId");
+    const msg = document.getElementById("sessionMsg");
+    const id = input.value.trim();
+    if (!id) return;
+
+    msg.textContent = "";
+    msg.className = "add-msg";
+
+    adminPost("/api/admin/wa-sessions", { id: id }).then(res => {
+      if (!res || !res.success) {
+        msg.textContent = (res && res.message) || "فشلت الإضافة";
+        msg.className = "add-msg err";
+        return;
+      }
+      msg.textContent = "تمت الإضافة ✓ اضغط 📷 عرض QR لربطها";
+      msg.className = "add-msg ok";
+      input.value = "";
+      loadSessions();
+      setTimeout(() => { msg.textContent = ""; }, 4000);
+    });
+  });
+
+  document.getElementById("refreshSessionsBtn").addEventListener("click", loadSessions);
+
+  // ===== نافذة QR كود =====
+  let qrPollTimer = null;
+  let qrPollSessionId = null;
+
+  function openQrModal(sessionId) {
+    qrPollSessionId = sessionId;
+    document.getElementById("qrModal").style.display = "flex";
+    document.getElementById("qrModalImg").src = "";
+    document.getElementById("qrModalStatus").textContent = "جاري التحميل...";
+    pollQr();
+    if (qrPollTimer) clearInterval(qrPollTimer);
+    qrPollTimer = setInterval(pollQr, 3000);
+  }
+
+  function closeQrModal() {
+    if (qrPollTimer) clearInterval(qrPollTimer);
+    qrPollTimer = null;
+    qrPollSessionId = null;
+    document.getElementById("qrModal").style.display = "none";
+  }
+
+  function pollQr() {
+    if (!qrPollSessionId) return;
+    const sessionId = qrPollSessionId;
+    adminGet("/api/admin/wa-sessions/" + encodeURIComponent(sessionId) + "/qr").then(data => {
+      if (qrPollSessionId !== sessionId) return; // المستخدم فتح جلسة ثانية أو أغلق النافذة أثناء الطلب
+      if (!data || !data.success) return;
+
+      if (data.status === "open") {
+        document.getElementById("qrModalStatus").textContent = "تم الاتصال بنجاح ✓";
+        setTimeout(() => { closeQrModal(); loadSessions(); }, 1200);
+        return;
+      }
+
+      if (data.qrImage) {
+        document.getElementById("qrModalImg").src = data.qrImage;
+        document.getElementById("qrModalStatus").textContent = "بانتظار المسح...";
+      } else {
+        document.getElementById("qrModalStatus").textContent = "الحالة الحالية: " + data.status;
+      }
+    });
+  }
+
+  document.getElementById("qrModalCloseBtn").addEventListener("click", closeQrModal);
 
   document.getElementById("loginBtn").addEventListener("click", () => {
     const email = loginEmailInput.value.trim().toLowerCase();
