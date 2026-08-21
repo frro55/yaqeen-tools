@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0820.0944
+// @version      2026.0821.0337
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -12509,9 +12509,12 @@ ${text}
  * أداة مستقلة تُسجَّل داخل نظام الأدوات الحالي عبر YAQEEN_TOOLS.add()
  * ولا تُعدّل أي شيء في الـ Core أو بقية الأدوات.
  *
- * مصدر البيانات: صفحة السيارات المستأجرة (rented) - كل السيارات المستأجرة
- * حالياً، سواء راح تتسلم بنفس الفرع أو بفرع مختلف. تُقرأ عبر iframe مخفي من
- * نفس النطاق (بدون أي API خارجي)، وتُستخرج البيانات مباشرة من جدول HTML.
+ * نفس فكرة أداة "تقرير الحجوزات القادمة" بالضبط (حجوزات قادمة مقابل سيارات
+ * جاهزة لكل مجموعة، بنسبة إشغال وفرق) - بإضافة مصدر بيانات رابع: صفحة
+ * السيارات المستأجرة الحالية (المسترجعة/rented)، نأخذ منها فقط السيارات
+ * الراجعة لنفس الفرع (نتجاهل الراجعة لفروع ثانية لأنها ما تفيد فرعك)،
+ * ونعرض عددها تحت كل عمود يوم كمعلومة إضافية (بدون التأثير على حساب نسبة
+ * الإشغال أو الفرق - هذي محسوبة فقط من السيارات الجاهزة حالياً كما هي).
  */
 (function () {
   'use strict';
@@ -12526,31 +12529,58 @@ ${text}
   // ==========================================================
   // إعدادات ثابتة
   // ==========================================================
+  var BRANCH_LOCATION_ID = 29;
+  var YARD_LOCATION_ID = 53;
   var PAGE_SIZE = 500;
-  var RETURNED_URL =
-    'https://yaqeen.lumirental.com/rental/vehicles/rented?pageSize=' +
-    PAGE_SIZE +
-    '&sort=dropoffDate&order=desc&pageNumber=0';
-
   var SAME_BRANCH_LABEL = 'نفس الفرع';
+  var MAX_FETCH_ATTEMPTS = 3;
 
-  var WEEKDAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  var URLS = {
+    bookings:
+      'https://yaqeen.lumirental.com/rental/branches/' +
+      BRANCH_LOCATION_ID +
+      '/bookings/upcoming?pageSize=' +
+      PAGE_SIZE,
+    vehicles: {
+      branch:
+        'https://yaqeen.lumirental.com/rental/vehicles/ready?currentLocationIds=' +
+        BRANCH_LOCATION_ID +
+        '&pageSize=' +
+        PAGE_SIZE,
+      yard:
+        'https://yaqeen.lumirental.com/rental/vehicles/ready?currentLocationIds=' +
+        YARD_LOCATION_ID +
+        '&pageSize=' +
+        PAGE_SIZE,
+    },
+    returned:
+      'https://yaqeen.lumirental.com/rental/vehicles/rented?pageSize=' +
+      PAGE_SIZE +
+      '&sort=dropoffDate&order=desc&pageNumber=0',
+  };
 
   /**
-   * شرائح فلتر التاريخ: "متأخر" (تاريخ تسليم فات ولسا ما تسلمت)، "اليوم"،
-   * "غداً"، ثم 5 أيام قادمة بترتيبها الحقيقي، وأخيراً "لاحقاً" (أبعد من ٧ أيام).
+   * ترتيب الأيام بالضبط زي ما يعرضه يقين: "اليوم"، "غداً"، ثم بقية أيام الأسبوع
+   * السبعة بترتيبها الحقيقي (السبت موجود ضمنها) بدءاً من اليوم اللي بعد "غداً"
+   * مباشرة - مو قائمة ثابتة تبدأ دائماً بالأحد بغض النظر عن يوم اليوم الفعلي.
    */
+  var WEEKDAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   function buildDayChips() {
-    var chips = ['متأخر', 'اليوم', 'غداً'];
+    var chips = ['اليوم', 'غداً'];
     var cursor = (new Date().getDay() + 2) % 7; // اليوم اللي بعد "غداً" مباشرة
-    for (var i = 0; i < 5; i++) {
+    while (chips.length < 9) {
       chips.push(WEEKDAY_NAMES[cursor]);
       cursor = (cursor + 1) % 7;
     }
-    chips.push('لاحقاً');
     return chips;
   }
   var DAY_CHIPS = buildDayChips();
+
+  var VEHICLE_SOURCES = [
+    { value: 'branch', label: 'الفرع' },
+    { value: 'yard', label: 'الساحة' },
+    { value: 'all', label: 'الكل' },
+  ];
 
   // إعدادات بوت واتساب (VPS خاص بالمستخدم)
   var WHATSAPP_CONFIG = {
@@ -12559,38 +12589,53 @@ ${text}
     target: '120363021290047142@g.us',
   };
 
-  // أسماء الأعمدة المطلوب البحث عنها داخل رأس الجدول (مع تحمّل اختلاف الترتيب)
-  var RETURNED_COLUMNS_MAP = {
-    plate: ['رقم اللوحة'],
-    vehicle: ['المركبة'],
-    year: ['سنة'],
+  // أسماء الأعمدة المطلوب البحث عنها داخل رؤوس الجداول (مع تحمّل اختلاف الترتيب)
+  var BOOKING_COLUMNS_MAP = {
+    id: ['رقم الحجز'],
+    pickup: ['وقت الاستلام'],
     group: ['المجموعة'],
-    color: ['لون'],
-    bookingNo: ['رقم الحجز'],
+    vehicle: ['المركبة'],
+  };
+  var VEHICLE_COLUMNS_MAP = {
+    group: ['المجموعة'],
+  };
+  var RETURNED_COLUMNS_MAP = {
+    group: ['المجموعة'],
     dropoffBranch: ['فرع التسليم'],
     dropoffText: ['تاريخ التسليم'],
   };
+
+  // عمود "المجموعة" موجود بكل الجداول الثلاثة، لذلك نستخدمه لتمييز جدول
+  // البيانات الحقيقي عن أي جداول أخرى بالصفحة
   var GROUP_COLUMN_HINT = ['المجموعة'];
 
+  var OCCUPANCY_WARNING_THRESHOLD = 80;
+  var OCCUPANCY_CRITICAL_THRESHOLD = 100;
+
   // ==========================================================
-  // الحالة
+  // الحالة والذاكرة المؤقتة (Cache)
   // ==========================================================
   var state = {
     dataLoaded: false,
     lastUpdated: null,
-    rows: [], // [{plate, vehicle, year, group, color, bookingNo, branch, dayLabel}]
+    bookings: [], // [{id, pickupText, day, group, vehicle}]
+    vehiclesBySource: { branch: [], yard: [], all: [] }, // group[] لكل مصدر
+    returns: [], // [{group, day}] - سيارات مسترجعة لنفس الفرع فقط
+    selectedSource: 'all',
     selectedDays: new Set(['اليوم']),
-    selectedBranches: null, // null = كل الفروع (لسا ما هيّئت القائمة)
-    branchesInitialized: false,
-    sort: { key: 'group', dir: 1 },
+    sort: { key: null, dir: 1 },
+    // تعديلات يدوية لعدد سيارات "الساحة" فقط لكل مجموعة - تُستخدم لإعادة حساب
+    // نسبة الإشغال والفرق فوراً بدون أي طلب شبكة جديد
+    vehicleOverrides: {},
   };
 
-  var modalEls = null;
+  var modalEls = null; // مراجع عناصر الـ DOM بعد بنائها لأول مرة
 
   // ==========================================================
   // أدوات مساعدة عامة
   // ==========================================================
 
+  /** إزالة التشكيل وتوحيد بعض الحروف العربية لتسهيل مطابقة النصوص */
   function normalizeArabic(text) {
     return (text || '')
       .replace(/[ً-ْ]/g, '')
@@ -12618,8 +12663,7 @@ ${text}
   }
 
   // ==========================================================
-  // تحميل صفحة أخرى من نفس الموقع عبر iframe مخفي + ترقيم الصفحات
-  // (نفس آلية أداة "تقرير الحجوزات القادمة" بالضبط)
+  // تحميل صفحة أخرى من نفس الموقع عبر iframe مخفي (بدون نافذة منبثقة)
   // ==========================================================
 
   function findDataTable(doc, requiredColumnVariants) {
@@ -12655,6 +12699,44 @@ ${text}
     return best;
   }
 
+  function findColumnIndex(headerCells, labelVariants) {
+    var normalizedVariants = labelVariants.map(normalizeArabic);
+    for (var i = 0; i < headerCells.length; i++) {
+      var headerText = normalizeArabic(headerCells[i].textContent);
+      for (var j = 0; j < normalizedVariants.length; j++) {
+        if (headerText.indexOf(normalizedVariants[j]) !== -1) return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * صفحات ثقيلة (مثل صفحة المستأجرة بمئات الصفوف) ممكن تظهر أول صفوفها
+   * بخلايا فارغة مؤقتاً أثناء التحميل. الاكتفاء بوجود صفوف (tbody tr) فقط
+   * يخدع المنطق فيعتبر التحميل مكتمل وهو لسا فاضي. هذا الفحص يتأكد من وجود
+   * نص فعلي بعمود "المجموعة" على الأقل بصف واحد قبل اعتبار الصفحة جاهزة.
+   */
+  function tableHasMeaningfulData(doc, columnsMap) {
+    var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
+    if (!table) return false;
+    var bodyRows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+    if (bodyRows.length === 0) return false;
+
+    var headerCells = Array.prototype.slice.call(table.querySelectorAll('thead tr th, thead tr td'));
+    var groupIdx = findColumnIndex(headerCells, columnsMap.group || GROUP_COLUMN_HINT);
+    if (groupIdx < 0) return true; // احتياطي: لو ما قدرنا نحدد رقم العمود، نكتفي بوجود صفوف
+
+    return bodyRows.some(function (row) {
+      var cells = row.querySelectorAll('td');
+      var cell = cells[groupIdx];
+      return cell && cell.textContent.trim().length > 0;
+    });
+  }
+
+  /**
+   * ينشئ iframe مخفي (خارج حدود الشاشة تماماً) ويحمّل الرابط المطلوب بداخله،
+   * بدل فتح نافذة منبثقة حقيقية.
+   */
   function openHiddenFrame(url) {
     var iframe = document.createElement('iframe');
     iframe.src = url;
@@ -12663,6 +12745,7 @@ ${text}
     return iframe;
   }
 
+  /** يستنى حتى تظهر أول صفحة بيانات (بمعنى فعلي، مو مجرد صف فاضي) داخل الـiframe */
   function waitForFirstFrame(iframe, requestedUrl, columnsMap, timeoutMs) {
     timeoutMs = timeoutMs || 20000;
     return new Promise(function (resolve, reject) {
@@ -12696,30 +12779,9 @@ ${text}
     });
   }
 
-  /**
-   * صفحة "المستأجرة" ثقيلة (مئات الصفوف) وأبطأ بالتحميل من صفحات أخرى، فأحياناً
-   * تظهر أول صفوف الجدول بخلايا فارغة مؤقتاً (حالة تحميل انتقالية) قبل أن تمتلئ
-   * بالبيانات الفعلية. الاكتفاء بوجود صفوف (tbody tr) فقط - كما في الأدوات
-   * الأخرى - كان يخدع المنطق فيعتبر التحميل مكتملاً وهو لسا فاضي، فيرجع تقرير
-   * بصفر سيارات رغم نجاح الطلب ظاهرياً. هذا الفحص يتأكد من وجود نص فعلي بعمود
-   * "المجموعة" على الأقل بصف واحد قبل اعتبار الصفحة جاهزة للقراءة.
-   */
-  function tableHasMeaningfulData(doc, columnsMap) {
-    var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
-    if (!table) return false;
-    var bodyRows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
-    if (bodyRows.length === 0) return false;
-
-    var headerCells = Array.prototype.slice.call(table.querySelectorAll('thead tr th, thead tr td'));
-    var groupIdx = findColumnIndex(headerCells, columnsMap.group || GROUP_COLUMN_HINT);
-    if (groupIdx < 0) return true; // احتياطي: لو ما قدرنا نحدد رقم العمود، نكتفي بوجود صفوف
-
-    return bodyRows.some(function (row) {
-      var cells = row.querySelectorAll('td');
-      var cell = cells[groupIdx];
-      return cell && cell.textContent.trim().length > 0;
-    });
-  }
+  // ==========================================================
+  // ترقيم الصفحات (Pagination)
+  // ==========================================================
 
   var NEXT_PAGE_SELECTORS = [
     '[aria-label="Next page"]',
@@ -12758,17 +12820,7 @@ ${text}
     return false;
   }
 
-  function findColumnIndex(headerCells, labelVariants) {
-    var normalizedVariants = labelVariants.map(normalizeArabic);
-    for (var i = 0; i < headerCells.length; i++) {
-      var headerText = normalizeArabic(headerCells[i].textContent);
-      for (var j = 0; j < normalizedVariants.length; j++) {
-        if (headerText.indexOf(normalizedVariants[j]) !== -1) return i;
-      }
-    }
-    return -1;
-  }
-
+  /** يقرأ صفوف الصفحة الحالية فقط (بدون تنقّل بين الصفحات) */
   function readCurrentPageRows(doc, columnsMap) {
     var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
     if (!table) throw new Error('لم يتم العثور على جدول البيانات في الصفحة');
@@ -12797,6 +12849,7 @@ ${text}
       .filter(Boolean);
   }
 
+  /** يجمع صفوف كل صفحات الجدول */
   function collectAllPages(iframe, doc, columnsMap) {
     return new Promise(function (resolve) {
       var allRows = [];
@@ -12886,16 +12939,48 @@ ${text}
   }
 
   // ==========================================================
-  // تحليل تاريخ التسليم إلى شريحة يوم (نفس شرائح DAY_CHIPS)
+  // استخراج البيانات من الجداول
   // ==========================================================
 
-  /** يستخرج تاريخ/وقت التسليم من نص الخلية (ثلاث صيغ محتملة تعرضها يقين) */
+  /** يحوّل نص "وقت الاستلام" (مثال: "اليوم - 08:30") إلى اسم اليوم فقط */
+  function extractDayLabel(pickupText) {
+    if (!pickupText) return null;
+    var dayPart = pickupText.split('-')[0].trim();
+    var normalizedDayPart = normalizeArabic(dayPart);
+    var match = DAY_CHIPS.find(function (chip) {
+      return normalizeArabic(chip) === normalizedDayPart;
+    });
+    return match || dayPart;
+  }
+
+  /** يحوّل السجلات الخام المجموعة من كل صفحات جدول الحجوزات إلى كائنات حجز */
+  function parseBookingsFromRecords(rawRecords) {
+    return rawRecords
+      .filter(function (r) { return r.group; })
+      .map(function (r) {
+        return {
+          id: r.id,
+          pickupText: r.pickup,
+          day: extractDayLabel(r.pickup),
+          group: r.group.trim(),
+          vehicle: r.vehicle,
+        };
+      });
+  }
+
+  /** يحوّل السجلات الخام المجموعة من كل صفحات جدول المركبات إلى أسماء مجموعات */
+  function parseVehiclesFromRecords(rawRecords) {
+    return rawRecords
+      .filter(function (r) { return r.group; })
+      .map(function (r) { return r.group.trim(); });
+  }
+
+  /** يستخرج تاريخ التسليم (بدون وقت) من نص خلية "تاريخ التسليم" (ثلاث صيغ محتملة) */
   function parseDropoffDateOnly(text) {
     text = (text || '').trim();
     var now = new Date();
     var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // "اليوم - HH:MM" أو "غداً - HH:MM"
     var relMatch = /^(اليوم|غدا ?ً?)\s*-/.exec(text);
     if (relMatch) {
       var isToday = normalizeArabic(relMatch[1]) === normalizeArabic('اليوم');
@@ -12904,7 +12989,6 @@ ${text}
       return d;
     }
 
-    // "DD-MM-YYYY" (يُستخدم للتواريخ البعيدة والمتأخرة/الفائتة على حدٍ سواء)
     var dateMatch = /(\d{1,2})-(\d{1,2})-(\d{4})/.exec(text);
     if (dateMatch) {
       var day = parseInt(dateMatch[1], 10);
@@ -12916,165 +13000,506 @@ ${text}
     return null;
   }
 
-  /** يحوّل تاريخ التسليم (بدون وقت) إلى اسم الشريحة المطابقة في DAY_CHIPS */
-  function dayBucketLabel(dateOnly) {
-    if (!dateOnly) return 'غير محدد';
+  /**
+   * يحوّل تاريخ التسليم إلى اسم شريحة اليوم بنفس مفردات DAY_CHIPS (اليوم/غداً/
+   * أيام الأسبوع). أي تاريخ متأخر (فات ولسا ما رجعت) يُحتسب "اليوم" لأنها
+   * غالباً راجعة أو بطريقها فعلياً - هذا يفيد الموظف يعتمد عليها بحساباته اليوم.
+   */
+  function computeReturnDayLabel(dropoffText) {
+    var dateOnly = parseDropoffDateOnly(dropoffText);
+    if (!dateOnly) return null;
     var now = new Date();
     var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var diffDays = Math.round((dateOnly - todayMid) / 86400000);
-    if (diffDays < 0) return 'متأخر';
-    if (diffDays === 0) return 'اليوم';
+    if (diffDays <= 0) return 'اليوم';
     if (diffDays === 1) return 'غداً';
-    if (diffDays <= 6) return WEEKDAY_NAMES[dateOnly.getDay()];
-    return 'لاحقاً';
+    return WEEKDAY_NAMES[dateOnly.getDay()];
   }
 
-  /** يحوّل السجلات الخام المجموعة من كل صفحات الجدول إلى صفوف تقرير */
-  function parseReturnedFromRecords(rawRecords) {
+  /** يحوّل السجلات الخام لصفحة "المستأجرة" إلى سيارات مسترجعة بنفس الفرع فقط */
+  function parseReturnsFromRecords(rawRecords) {
     return rawRecords
       .filter(function (r) { return r.group; })
-      .map(function (r) {
+      .filter(function (r) {
         var branchRaw = (r.dropoffBranch || '').trim();
-        var branch = !branchRaw || normalizeArabic(branchRaw) === normalizeArabic(SAME_BRANCH_LABEL)
-          ? SAME_BRANCH_LABEL
-          : branchRaw;
-        var dateOnly = parseDropoffDateOnly(r.dropoffText);
-        return {
-          plate: r.plate,
-          vehicle: r.vehicle,
-          year: r.year,
-          group: r.group.trim(),
-          color: r.color,
-          bookingNo: r.bookingNo,
-          branch: branch,
-          dropoffText: r.dropoffText,
-          dayLabel: dayBucketLabel(dateOnly),
-        };
-      });
+        // نتجاهل أي سيارة راجعة لفرع مختلف - ما تفيد أسطول فرعك
+        return !branchRaw || normalizeArabic(branchRaw) === normalizeArabic(SAME_BRANCH_LABEL);
+      })
+      .map(function (r) {
+        return { group: r.group.trim(), day: computeReturnDayLabel(r.dropoffText) };
+      })
+      .filter(function (r) { return r.day; });
   }
 
   // ==========================================================
-  // تحميل كل البيانات
+  // تشخيص (Console)
   // ==========================================================
 
-  var MAX_FETCH_ATTEMPTS = 3;
+  function logSourceDiagnostics(label, requestedUrl, doc, groups) {
+    var table = findDataTable(doc, GROUP_COLUMN_HINT);
+    var headerTexts = table
+      ? Array.prototype.map.call(table.querySelectorAll('thead th, thead td'), function (c) {
+          return c.textContent.trim();
+        })
+      : null;
+    var finalUrl = doc && doc.URL ? doc.URL : '(غير معروف)';
+    var requestedQuery = requestedUrl.split('?')[1] || '';
+    var urlMismatch = requestedQuery && finalUrl.indexOf(requestedQuery) === -1;
+
+    console.groupCollapsed('[تقرير السيارات المسترجعة] تشخيص مصدر: ' + label);
+    console.log('الرابط المطلوب:', requestedUrl);
+    console.log('الرابط النهائي بعد التحميل:', finalUrl);
+    if (urlMismatch) {
+      console.warn('⚠️ الرابط النهائي يختلف عن المطلوب — على الأغلب الموقع تجاهل الفلتر أو أعاد التوجيه لموقع/فرع افتراضي');
+    }
+    console.log('عنوان الصفحة (title):', doc ? doc.title : '(غير معروف)');
+    console.log('تم العثور على جدول بعمود "المجموعة":', !!table);
+    console.log('رؤوس أعمدة الجدول المكتشف:', headerTexts);
+    console.log('عدد صفوف الجدول:', table ? table.querySelectorAll('tbody tr').length : 0);
+    console.log('عدد السيارات المستخرجة:', groups.length);
+    console.log('عينة من المجموعات المستخرجة:', groups.slice(0, 8));
+    if (groups.length === 0 && doc && doc.body) {
+      console.log('أول 300 حرف من نص الصفحة (لتشخيص صفحة فارغة أو رسالة خطأ):', doc.body.innerText.slice(0, 300));
+    }
+    console.groupEnd();
+  }
+
+  // ==========================================================
+  // تحميل كل البيانات (مع الكاش)
+  // ==========================================================
 
   /**
-   * محاولة واحدة: يفتح iframe جديد ويجمع كل صفوفه. صفحة "المستأجرة" ثقيلة
-   * (مئات الصفوف) وأحياناً - رغم فحص tableHasMeaningfulData - يخرج الجدول لسا
-   * ما اكتمل تحميله بالكامل (مثلاً بدون كل صفحاته)، فنعيد المحاولة تلقائياً
-   * لو رجعت المحاولة بصفر سيارات بدل ما نعرض تقرير فاضٍ للمستخدم ونخليه يضطر
-   * يضغط "تحديث البيانات" يدوياً أكثر من مرة.
+   * صفحة "المستأجرة" ثقيلة (مئات الصفوف)، فأحياناً رغم فحص tableHasMeaningfulData
+   * ترجع محاولة واحدة بصفر سجلات خام (لسا ما اكتمل تحميلها بالكامل). نعيد
+   * المحاولة تلقائياً بدل ما نعرض عمود "مسترجعة" فاضي بالغلط.
    */
-  function fetchReturnedRowsWithRetry(attempt) {
+  function fetchReturnedRecordsWithRetry(attempt) {
     attempt = attempt || 1;
-    var frame = openHiddenFrame(RETURNED_URL);
-    return fetchAllRecordsFromFrame(frame, RETURNED_URL, RETURNED_COLUMNS_MAP)
-      .then(function (result) {
-        var parsed = parseReturnedFromRecords(result.records);
-        if (parsed.length === 0 && attempt < MAX_FETCH_ATTEMPTS) {
-          console.warn('[تقرير السيارات المسترجعة] المحاولة ' + attempt + ' رجعت بدون بيانات، إعادة محاولة...');
-          setStatus('لم يتم العثور على بيانات بعد، جارٍ إعادة المحاولة (' + (attempt + 1) + '/' + MAX_FETCH_ATTEMPTS + ')...', 'loading');
-          return fetchReturnedRowsWithRetry(attempt + 1);
-        }
-        return parsed;
-      });
+    var frame = openHiddenFrame(URLS.returned);
+    return fetchAllRecordsFromFrame(frame, URLS.returned, RETURNED_COLUMNS_MAP).then(function (result) {
+      if (result.records.length === 0 && attempt < MAX_FETCH_ATTEMPTS) {
+        console.warn('[تقرير السيارات المسترجعة] محاولة جلب المسترجعة ' + attempt + ' رجعت بدون بيانات، إعادة محاولة...');
+        return fetchReturnedRecordsWithRetry(attempt + 1);
+      }
+      return result;
+    });
   }
 
   function fetchAllData(force) {
     if (state.dataLoaded && !force) return Promise.resolve();
 
-    setStatus('جارٍ تحميل بيانات السيارات المسترجعة...', 'loading');
+    setStatus('جارٍ تحميل بيانات الحجوزات والسيارات...', 'loading');
     showLoadingOverlay();
 
-    return fetchReturnedRowsWithRetry()
-      .then(function (parsedRows) {
-        state.rows = parsedRows;
-        console.log('[تقرير السيارات المسترجعة] إجمالي السيارات المجمّعة (كل الصفحات):', state.rows.length);
+    var bookingsFrame = openHiddenFrame(URLS.bookings);
+    var branchFrame = openHiddenFrame(URLS.vehicles.branch);
+    var yardFrame = openHiddenFrame(URLS.vehicles.yard);
 
-        var discoveredBranches = {};
-        state.rows.forEach(function (r) { discoveredBranches[r.branch] = true; });
+    return fetchAllRecordsFromFrame(bookingsFrame, URLS.bookings, BOOKING_COLUMNS_MAP)
+      .then(function (result) {
+        state.bookings = parseBookingsFromRecords(result.records);
+        console.log('[تقرير السيارات المسترجعة] إجمالي الحجوزات المجمّعة (كل الصفحات):', state.bookings.length);
+        return fetchAllRecordsFromFrame(branchFrame, URLS.vehicles.branch, VEHICLE_COLUMNS_MAP);
+      })
+      .then(function (result) {
+        var branchVehicles = parseVehiclesFromRecords(result.records);
+        logSourceDiagnostics('الفرع', URLS.vehicles.branch, result.doc, branchVehicles);
+        state.vehiclesBySource.branch = branchVehicles;
+        return fetchAllRecordsFromFrame(yardFrame, URLS.vehicles.yard, VEHICLE_COLUMNS_MAP);
+      })
+      .then(function (result) {
+        var yardVehicles = parseVehiclesFromRecords(result.records);
+        logSourceDiagnostics('الساحة', URLS.vehicles.yard, result.doc, yardVehicles);
+        state.vehiclesBySource.yard = yardVehicles;
+        state.vehiclesBySource.all = state.vehiclesBySource.branch.concat(yardVehicles);
 
-        if (!state.branchesInitialized) {
-          state.selectedBranches = new Set(Object.keys(discoveredBranches));
-          state.branchesInitialized = true;
-        } else {
-          // نضيف أي فرع جديد اكتُشف حديثاً كمُفعّل افتراضياً، بدون لمس اختيارات المستخدم الحالية
-          Object.keys(discoveredBranches).forEach(function (b) {
-            if (!state.selectedBranches.has(b)) state.selectedBranches.add(b);
-          });
+        if (yardVehicles.length === 0) {
+          console.warn('[تقرير السيارات المسترجعة] لم يتم العثور على أي مركبة في الساحة');
         }
 
+        return fetchReturnedRecordsWithRetry();
+      })
+      .then(function (result) {
+        state.returns = parseReturnsFromRecords(result.records);
+        console.log('[تقرير السيارات المسترجعة] إجمالي السيارات المسترجعة بنفس الفرع (كل الصفحات):', state.returns.length);
+
+        state.dataLoaded = true;
         state.lastUpdated = new Date();
-        if (state.rows.length === 0) {
-          // ما نعتبرها "محمّلة" حتى لو نجحت الشبكة تقنياً - عشان لو فتح المستخدم
-          // الأداة مرة ثانية بدون ضغط "تحديث"، تُعاد المحاولة تلقائياً بدل ما تعلق
-          // على نتيجة فاضية بالكاش
-          state.dataLoaded = false;
-          setStatus('تعذّر العثور على أي سيارات بعد عدة محاولات - جرّب "تحديث البيانات"', 'error');
-        } else {
-          state.dataLoaded = true;
-          setStatus('تم التحديث: ' + state.lastUpdated.toLocaleTimeString('ar-SA'), 'success');
-        }
+        setStatus('تم التحديث: ' + state.lastUpdated.toLocaleTimeString('ar-SA'), 'success');
         hideLoadingOverlay();
       })
       .catch(function (error) {
         console.error('[تقرير السيارات المسترجعة]', error);
         setStatus('تعذّر تحميل البيانات: ' + error.message, 'error');
         hideLoadingOverlay();
+        [bookingsFrame, branchFrame, yardFrame].forEach(function (f) {
+          try {
+            if (f && f.isConnected) f.remove();
+          } catch (err) {
+            /* تجاهل */
+          }
+        });
         throw error;
       });
   }
 
   // ==========================================================
-  // التجميع حسب المجموعة (إجمالي + تفصيل حسب فرع التسليم)
+  // بناء صفوف التقرير (تجميع حسب المجموعة)
   // ==========================================================
 
-  function getFilteredRows() {
-    var days = state.selectedDays;
-    var branches = state.selectedBranches;
-    return state.rows.filter(function (r) {
-      if (!days.has(r.dayLabel)) return false;
-      if (branches && !branches.has(r.branch)) return false;
-      return true;
+  function buildReportRows(bookings, vehiclesBySource, selectedSource, selectedDaysOrdered, vehicleOverrides, returns) {
+    var branchCountByGroup = {};
+    (vehiclesBySource.branch || []).forEach(function (group) {
+      branchCountByGroup[group] = (branchCountByGroup[group] || 0) + 1;
+    });
+
+    var yardCountByGroup = {};
+    (vehiclesBySource.yard || []).forEach(function (group) {
+      yardCountByGroup[group] = (yardCountByGroup[group] || 0) + 1;
+    });
+
+    var bookingCountByGroupDay = {};
+    bookings.forEach(function (booking) {
+      if (!bookingCountByGroupDay[booking.group]) bookingCountByGroupDay[booking.group] = {};
+      var dayMap = bookingCountByGroupDay[booking.group];
+      dayMap[booking.day] = (dayMap[booking.day] || 0) + 1;
+    });
+
+    var returnCountByGroupDay = {};
+    (returns || []).forEach(function (ret) {
+      if (!returnCountByGroupDay[ret.group]) returnCountByGroupDay[ret.group] = {};
+      var dayMap = returnCountByGroupDay[ret.group];
+      dayMap[ret.day] = (dayMap[ret.day] || 0) + 1;
+    });
+
+    var allGroups = {};
+    Object.keys(branchCountByGroup).forEach(function (g) { allGroups[g] = true; });
+    Object.keys(yardCountByGroup).forEach(function (g) { allGroups[g] = true; });
+    Object.keys(bookingCountByGroupDay).forEach(function (g) { allGroups[g] = true; });
+    Object.keys(returnCountByGroupDay).forEach(function (g) { allGroups[g] = true; });
+
+    var rows = Object.keys(allGroups).map(function (group) {
+      var branchCount = branchCountByGroup[group] || 0;
+      var rawYardCount = yardCountByGroup[group] || 0;
+      var overrideKey = yardOverrideKey(group);
+      var yardCount = Object.prototype.hasOwnProperty.call(vehicleOverrides, overrideKey)
+        ? vehicleOverrides[overrideKey]
+        : rawYardCount;
+
+      var vehicleCount =
+        selectedSource === 'branch' ? branchCount :
+        selectedSource === 'yard' ? yardCount :
+        branchCount + yardCount;
+
+      var dayMap = bookingCountByGroupDay[group] || {};
+      var returnDayMap = returnCountByGroupDay[group] || {};
+      var dayCounts = {};
+      var dayReturns = {};
+      var totalBookings = 0;
+      selectedDaysOrdered.forEach(function (day) {
+        var count = dayMap[day] || 0;
+        dayCounts[day] = count;
+        dayReturns[day] = returnDayMap[day] || 0;
+        totalBookings += count;
+      });
+
+      var occupancyPercent = vehicleCount > 0 ? (totalBookings / vehicleCount) * 100 : totalBookings > 0 ? Infinity : 0;
+      var difference = vehicleCount - totalBookings;
+
+      return {
+        group: group,
+        vehicleCount: vehicleCount,
+        branchCount: branchCount,
+        yardCount: yardCount,
+        totalBookings: totalBookings,
+        dayCounts: dayCounts,
+        dayReturns: dayReturns,
+        occupancyPercent: occupancyPercent,
+        difference: difference,
+      };
+    });
+
+    rows.sort(function (a, b) {
+      return a.group.localeCompare(b.group, 'ar');
+    });
+    return rows;
+  }
+
+  // ==========================================================
+  // الفرز
+  // ==========================================================
+
+  function numOrZero(v) {
+    if (v === Infinity) return Number.MAX_SAFE_INTEGER;
+    return Number.isFinite(v) ? v : 0;
+  }
+
+  function getSortAccessor(key) {
+    if (key === 'group') return function (r) { return r.group; };
+    if (key === 'vehicles') return function (r) { return r.vehicleCount; };
+    if (key === 'bookings') return function (r) { return r.totalBookings; };
+    if (key === 'occupancy') return function (r) { return r.occupancyPercent; };
+    if (key === 'difference') return function (r) { return r.difference; };
+    if (key.indexOf('day:') === 0) {
+      var day = key.slice(4);
+      return function (r) { return r.dayCounts[day] || 0; };
+    }
+    return function () { return 0; };
+  }
+
+  function sortRows(rows) {
+    if (!state.sort.key) return rows;
+    var accessor = getSortAccessor(state.sort.key);
+    var sorted = rows.slice().sort(function (a, b) {
+      var va = accessor(a);
+      var vb = accessor(b);
+      if (typeof va === 'string') return va.localeCompare(vb, 'ar') * state.sort.dir;
+      return (numOrZero(va) - numOrZero(vb)) * state.sort.dir;
+    });
+    return sorted;
+  }
+
+  // ==========================================================
+  // تنسيق نسبة الإشغال والفرق
+  // ==========================================================
+
+  function formatPercentLabel(percent) {
+    if (!Number.isFinite(percent)) return 'بدون سيارات';
+    return Math.round(percent) + '%';
+  }
+
+  function occupancyLevel(percent) {
+    if (!Number.isFinite(percent)) return 'critical';
+    if (percent > OCCUPANCY_CRITICAL_THRESHOLD) return 'critical';
+    if (percent >= OCCUPANCY_WARNING_THRESHOLD) return 'warning';
+    return 'good';
+  }
+
+  function buildOccupancyCell(percent, extraClassName) {
+    var td = document.createElement('td');
+    td.className = 'yqv-occupancy-cell' + (extraClassName ? ' ' + extraClassName : '');
+    var label = formatPercentLabel(percent);
+    td.dataset.copyText = label;
+
+    var level = occupancyLevel(percent);
+    var wrapper = document.createElement('div');
+    wrapper.className = 'yqv-bar-wrapper yqv-occ-' + level;
+
+    var fill = document.createElement('div');
+    fill.className = 'yqv-bar-fill';
+    var widthPercent = Number.isFinite(percent) ? Math.max(Math.min(percent, 100), 4) : 100;
+    fill.style.width = widthPercent + '%';
+
+    var text = document.createElement('span');
+    text.className = 'yqv-bar-text';
+    text.textContent = label;
+
+    wrapper.appendChild(fill);
+    wrapper.appendChild(text);
+    td.appendChild(wrapper);
+    return td;
+  }
+
+  function buildDifferenceCell(difference) {
+    var td = document.createElement('td');
+    var sign = difference > 0 ? '+' : '';
+    td.textContent = sign + difference;
+    td.className = 'yqv-diff-cell ' + (difference > 0 ? 'yqv-diff-positive' : difference < 0 ? 'yqv-diff-negative' : 'yqv-diff-zero');
+    return td;
+  }
+
+  function buildYardInput(row, onCommit) {
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.className = 'yqv-vehicle-input';
+    input.value = row.yardCount;
+    input.setAttribute('value', row.yardCount);
+    input.addEventListener('click', function (e) { e.stopPropagation(); });
+    input.addEventListener('change', function () {
+      var value = parseInt(input.value, 10);
+      if (!Number.isFinite(value) || value < 0) value = 0;
+      state.vehicleOverrides[yardOverrideKey(row.group)] = value;
+      renderTable();
+    });
+    return input;
+  }
+
+  function buildVehiclesCell(row, extraClassName) {
+    var td = document.createElement('td');
+    td.className = ['yqv-vehicles-cell', extraClassName].filter(Boolean).join(' ');
+    td.dataset.copyText = row.vehicleCount;
+
+    if (state.selectedSource === 'branch') {
+      td.textContent = row.vehicleCount;
+      return td;
+    }
+
+    if (state.selectedSource === 'yard') {
+      td.appendChild(buildYardInput(row));
+      return td;
+    }
+
+    var totalEl = document.createElement('div');
+    totalEl.className = 'yqv-vehicles-total';
+    totalEl.textContent = row.vehicleCount;
+    td.appendChild(totalEl);
+
+    var yardRow = document.createElement('div');
+    yardRow.className = 'yqv-yard-edit';
+    yardRow.title = 'عدد سيارات الساحة - يُجمع تلقائياً مع أسطول الفرع (' + row.branchCount + ')';
+
+    var yardInput = buildYardInput(row);
+    yardInput.classList.add('yqv-yard-input');
+    yardRow.appendChild(yardInput);
+
+    var label = document.createElement('span');
+    label.className = 'yqv-yard-label';
+    label.textContent = 'ساحة';
+    yardRow.appendChild(label);
+
+    td.appendChild(yardRow);
+    return td;
+  }
+
+  /** خلية عمود يوم: عدد الحجوزات بالخط العريض، وتحته - إن وُجد - عدد السيارات المسترجعة بنفس اليوم/الفرع */
+  function buildDayCell(bookingCount, returnCount, extraClassName) {
+    var td = document.createElement('td');
+    if (extraClassName) td.className = extraClassName;
+    td.dataset.copyText = returnCount > 0 ? bookingCount + ' (+' + returnCount + ' مسترجعة)' : String(bookingCount);
+
+    var mainEl = document.createElement('div');
+    mainEl.textContent = bookingCount;
+    td.appendChild(mainEl);
+
+    if (returnCount > 0) {
+      var subEl = document.createElement('div');
+      subEl.className = 'yqv-return-sub';
+      subEl.title = 'سيارات مسترجعة لنفس الفرع متوقعة بهذا اليوم';
+      subEl.textContent = '↩ ' + returnCount;
+      td.appendChild(subEl);
+    }
+
+    return td;
+  }
+
+  // ==========================================================
+  // بناء الجدول (الأعمدة تُبنى تلقائياً حسب الأيام المختارة)
+  // ==========================================================
+
+  function getSelectedDaysOrdered() {
+    return DAY_CHIPS.filter(function (day) {
+      return state.selectedDays.has(day);
     });
   }
 
-  function buildGroupSummaries(rows) {
-    var byGroup = {};
-    rows.forEach(function (r) {
-      if (!byGroup[r.group]) byGroup[r.group] = { group: r.group, total: 0, byBranch: {} };
-      var g = byGroup[r.group];
-      g.total++;
-      g.byBranch[r.branch] = (g.byBranch[r.branch] || 0) + 1;
+  function buildColumnDefinitions(selectedDaysOrdered) {
+    var columns = [
+      { key: 'group', label: 'المجموعة' },
+      { key: 'vehicles', label: 'السيارات' },
+      { key: 'bookings', label: 'الحجوزات' },
+    ];
+    selectedDaysOrdered.forEach(function (day, index) {
+      columns.push({ key: 'day:' + day, label: day, dividerBefore: index === 0 });
     });
-
-    var groups = Object.keys(byGroup).map(function (key) {
-      var g = byGroup[key];
-      var details = Object.keys(g.byBranch)
-        .map(function (branch) { return { branch: branch, count: g.byBranch[branch] }; })
-        .sort(function (a, b) {
-          if (b.count !== a.count) return b.count - a.count;
-          return a.branch.localeCompare(b.branch, 'ar');
-        });
-      return { group: g.group, total: g.total, details: details };
-    });
-
-    groups.sort(function (a, b) {
-      if (state.sort.key === 'total') return (b.total - a.total) * state.sort.dir;
-      return a.group.localeCompare(b.group, 'ar') * state.sort.dir;
-    });
-
-    return groups;
+    columns.push({ key: 'occupancy', label: 'نسبة الإشغال', dividerBefore: true });
+    columns.push({ key: 'difference', label: 'الفرق' });
+    return columns;
   }
 
-  // ==========================================================
-  // بناء الجدول
-  // ==========================================================
+  function columnCellClassName(col) {
+    return col.dividerBefore ? 'yqv-col-divider' : '';
+  }
 
   function sortIndicator(key) {
     if (state.sort.key !== key) return '';
     return state.sort.dir === 1 ? ' ▲' : ' ▼';
+  }
+
+  function buildRowElement(row, columns) {
+    var tr = document.createElement('tr');
+    columns.forEach(function (col) {
+      if (col.key === 'occupancy') {
+        tr.appendChild(buildOccupancyCell(row.occupancyPercent, columnCellClassName(col)));
+        return;
+      }
+      if (col.key === 'difference') {
+        var diffCell = buildDifferenceCell(row.difference);
+        if (columnCellClassName(col)) diffCell.className += ' ' + columnCellClassName(col);
+        tr.appendChild(diffCell);
+        return;
+      }
+      if (col.key === 'vehicles') {
+        tr.appendChild(buildVehiclesCell(row, columnCellClassName(col)));
+        return;
+      }
+      if (col.key.indexOf('day:') === 0) {
+        var day = col.key.slice(4);
+        var bookingCount = row.dayCounts[day] || 0;
+        var returnCount = (row.dayReturns && row.dayReturns[day]) || 0;
+        tr.appendChild(buildDayCell(bookingCount, returnCount, columnCellClassName(col)));
+        return;
+      }
+      var td = document.createElement('td');
+      var classNames = [columnCellClassName(col)].filter(Boolean);
+      if (col.key === 'group') {
+        td.textContent = row.group;
+        classNames.push('yqv-group-cell');
+      } else if (col.key === 'bookings') {
+        td.textContent = row.totalBookings;
+      }
+      if (classNames.length) td.className = classNames.join(' ');
+      tr.appendChild(td);
+    });
+    return tr;
+  }
+
+  function buildTotalsRow(rows, columns) {
+    var tr = document.createElement('tr');
+    tr.className = 'yqv-totals-row';
+
+    var totalVehicles = 0;
+    var totalBookings = 0;
+    var totalsByDay = {};
+    var returnsByDay = {};
+    rows.forEach(function (r) {
+      totalVehicles += r.vehicleCount;
+      totalBookings += r.totalBookings;
+      Object.keys(r.dayCounts).forEach(function (day) {
+        totalsByDay[day] = (totalsByDay[day] || 0) + r.dayCounts[day];
+      });
+      Object.keys(r.dayReturns || {}).forEach(function (day) {
+        returnsByDay[day] = (returnsByDay[day] || 0) + r.dayReturns[day];
+      });
+    });
+    var totalOccupancy = totalVehicles > 0 ? (totalBookings / totalVehicles) * 100 : totalBookings > 0 ? Infinity : 0;
+    var totalDifference = totalVehicles - totalBookings;
+
+    columns.forEach(function (col) {
+      if (col.key === 'occupancy') {
+        tr.appendChild(buildOccupancyCell(totalOccupancy, columnCellClassName(col)));
+        return;
+      }
+      if (col.key === 'difference') {
+        var diffCell = buildDifferenceCell(totalDifference);
+        if (columnCellClassName(col)) diffCell.className += ' ' + columnCellClassName(col);
+        tr.appendChild(diffCell);
+        return;
+      }
+      if (col.key.indexOf('day:') === 0) {
+        var day = col.key.slice(4);
+        tr.appendChild(buildDayCell(totalsByDay[day] || 0, returnsByDay[day] || 0, columnCellClassName(col)));
+        return;
+      }
+      var td = document.createElement('td');
+      var classNames = [columnCellClassName(col)].filter(Boolean);
+      if (col.key === 'group') td.textContent = 'الإجمالي';
+      else if (col.key === 'vehicles') td.textContent = totalVehicles;
+      else if (col.key === 'bookings') td.textContent = totalBookings;
+      if (classNames.length) td.className = classNames.join(' ');
+      tr.appendChild(td);
+    });
+    return tr;
   }
 
   function onSortClick(key) {
@@ -13082,82 +13507,34 @@ ${text}
       state.sort.dir *= -1;
     } else {
       state.sort.key = key;
-      state.sort.dir = key === 'total' ? -1 : 1;
+      state.sort.dir = 1;
     }
     renderTable();
   }
 
-  function buildGroupRow(group) {
-    var tr = document.createElement('tr');
-    tr.className = 'yqv-group-row';
-
-    var groupTd = document.createElement('td');
-    groupTd.className = 'yqv-group-cell';
-    groupTd.textContent = group.group;
-    tr.appendChild(groupTd);
-
-    var branchTd = document.createElement('td');
-    branchTd.textContent = 'الإجمالي';
-    tr.appendChild(branchTd);
-
-    var countTd = document.createElement('td');
-    countTd.className = 'yqv-count-cell';
-    countTd.textContent = group.total;
-    tr.appendChild(countTd);
-
-    return tr;
-  }
-
-  function buildDetailRow(detail) {
-    var tr = document.createElement('tr');
-    tr.className = 'yqv-detail-row' + (detail.branch === SAME_BRANCH_LABEL ? '' : ' yqv-detail-row--cross');
-
-    var groupTd = document.createElement('td');
-    tr.appendChild(groupTd);
-
-    var branchTd = document.createElement('td');
-    branchTd.className = 'yqv-branch-cell';
-    branchTd.textContent = detail.branch;
-    tr.appendChild(branchTd);
-
-    var countTd = document.createElement('td');
-    countTd.className = 'yqv-count-cell';
-    countTd.textContent = detail.count;
-    tr.appendChild(countTd);
-
-    return tr;
-  }
-
-  function buildTotalsRow(totalCount) {
-    var tr = document.createElement('tr');
-    tr.className = 'yqv-totals-row';
-
-    var groupTd = document.createElement('td');
-    groupTd.textContent = 'الإجمالي الكلي';
-    tr.appendChild(groupTd);
-
-    tr.appendChild(document.createElement('td'));
-
-    var countTd = document.createElement('td');
-    countTd.className = 'yqv-count-cell';
-    countTd.textContent = totalCount;
-    tr.appendChild(countTd);
-
-    return tr;
+  function yardOverrideKey(group) {
+    return 'yard::' + group;
   }
 
   function getCurrentReportData() {
-    var filteredRows = getFilteredRows();
-    var groups = buildGroupSummaries(filteredRows);
-    return { filteredRows: filteredRows, groups: groups };
+    var selectedDaysOrdered = getSelectedDaysOrdered();
+    var rows = buildReportRows(state.bookings || [], state.vehiclesBySource, state.selectedSource, selectedDaysOrdered, state.vehicleOverrides, state.returns || []);
+    rows = rows.filter(function (r) {
+      return r.vehicleCount > 0 || r.totalBookings > 0;
+    });
+    return {
+      selectedDaysOrdered: selectedDaysOrdered,
+      sortedRows: sortRows(rows),
+      columns: buildColumnDefinitions(selectedDaysOrdered),
+    };
   }
 
   function renderTable() {
     if (!modalEls) return;
 
     var reportData = getCurrentReportData();
-    var groups = reportData.groups;
-    var filteredRows = reportData.filteredRows;
+    var sortedRows = reportData.sortedRows;
+    var columns = reportData.columns;
 
     var theadRow = modalEls.table.querySelector('thead tr');
     var tbody = modalEls.table.querySelector('tbody');
@@ -13166,49 +13543,41 @@ ${text}
     tbody.innerHTML = '';
     tfoot.innerHTML = '';
 
-    var columns = [
-      { key: 'group', label: 'المجموعة' },
-      { key: 'branch', label: 'الفرع' },
-      { key: 'total', label: 'العدد' },
-    ];
     columns.forEach(function (col) {
       var th = document.createElement('th');
       th.textContent = col.label + sortIndicator(col.key);
-      if (col.key === 'group' || col.key === 'total') {
-        th.addEventListener('click', function () { onSortClick(col.key); });
-        th.classList.add('yqv-sortable');
-      }
+      var headClassNames = [columnCellClassName(col)].filter(Boolean);
+      if (headClassNames.length) th.className = headClassNames.join(' ');
+      th.addEventListener('click', function () { onSortClick(col.key); });
       theadRow.appendChild(th);
     });
 
-    if (groups.length === 0) {
+    if (sortedRows.length === 0) {
       var emptyRow = document.createElement('tr');
       var emptyCell = document.createElement('td');
       emptyCell.colSpan = columns.length;
       emptyCell.className = 'yqv-empty';
-      emptyCell.textContent = 'لا توجد سيارات مطابقة للفلاتر الحالية';
+      emptyCell.textContent = 'لا توجد بيانات مطابقة للاختيار الحالي';
       emptyRow.appendChild(emptyCell);
       tbody.appendChild(emptyRow);
     } else {
-      groups.forEach(function (group) {
-        tbody.appendChild(buildGroupRow(group));
-        group.details.forEach(function (detail) {
-          tbody.appendChild(buildDetailRow(detail));
-        });
+      sortedRows.forEach(function (row) {
+        tbody.appendChild(buildRowElement(row, columns));
       });
     }
 
-    tfoot.appendChild(buildTotalsRow(filteredRows.length));
+    tfoot.appendChild(buildTotalsRow(sortedRows, columns));
 
-    modalEls.totalMatchedEl.textContent = filteredRows.length;
-    modalEls.totalAllEl.textContent = state.rows.length;
+    modalEls.totalBookingsEl.textContent = (state.bookings || []).length;
+    modalEls.totalReturnsEl.textContent = (state.returns || []).length;
   }
 
   // ==========================================================
-  // الإجراءات: تحديث / نسخ / تصدير / طباعة / واتساب
+  // الإجراءات: تحديث / نسخ / تصدير / طباعة
   // ==========================================================
 
   function handleRefresh() {
+    state.vehicleOverrides = {};
     fetchAllData(true)
       .then(renderTable)
       .catch(function () { renderTable(); });
@@ -13221,12 +13590,16 @@ ${text}
 
     modalEls.table.querySelectorAll('tbody tr').forEach(function (tr) {
       var cells = tr.querySelectorAll('td');
-      lines.push(Array.prototype.map.call(cells, function (td) { return td.textContent.trim(); }).join('\t'));
+      lines.push(Array.prototype.map.call(cells, function (td) {
+        return td.dataset.copyText !== undefined ? td.dataset.copyText : td.textContent.trim();
+      }).join('\t'));
     });
 
     var footCells = modalEls.table.querySelectorAll('tfoot td');
     if (footCells.length) {
-      lines.push(Array.prototype.map.call(footCells, function (td) { return td.textContent.trim(); }).join('\t'));
+      lines.push(Array.prototype.map.call(footCells, function (td) {
+        return td.dataset.copyText !== undefined ? td.dataset.copyText : td.textContent.trim();
+      }).join('\t'));
     }
     return lines.join('\n');
   }
@@ -13253,7 +13626,10 @@ ${text}
       .call(modalEls.table.querySelectorAll('tbody tr'), function (tr) {
         var cells = tr.querySelectorAll('td');
         var rowHtml = Array.prototype.map
-          .call(cells, function (td) { return '<td>' + escapeHtml(td.textContent.trim()) + '</td>'; })
+          .call(cells, function (td) {
+            var value = td.dataset.copyText !== undefined ? td.dataset.copyText : td.textContent.trim();
+            return '<td>' + escapeHtml(value) + '</td>';
+          })
           .join('');
         return '<tr>' + rowHtml + '</tr>';
       })
@@ -13263,7 +13639,10 @@ ${text}
     var footHtml = footCells.length
       ? '<tr>' +
         Array.prototype.map
-          .call(footCells, function (td) { return '<td><b>' + escapeHtml(td.textContent.trim()) + '</b></td>'; })
+          .call(footCells, function (td) {
+            var value = td.dataset.copyText !== undefined ? td.dataset.copyText : td.textContent.trim();
+            return '<td><b>' + escapeHtml(value) + '</b></td>';
+          })
           .join('') +
         '</tr>'
       : '';
@@ -13282,7 +13661,7 @@ ${text}
     var link = document.createElement('a');
     var dateStr = new Date().toISOString().slice(0, 10);
     link.href = url;
-    link.download = 'تقرير-السيارات-المسترجعة-' + dateStr + '.xls';
+    link.download = 'تقرير-الحجوزات-والمسترجعة-' + dateStr + '.xls';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -13295,29 +13674,43 @@ ${text}
     'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
     'h1{font-size:20px;margin:0 0 4px;}' +
     '.yqv-print-meta{color:#555;font-size:13px;margin-bottom:16px;}' +
-    'table{border-collapse:collapse;width:100%;font-size:13px;}' +
-    'th,td{border:1px solid #999;padding:6px 10px;text-align:center;white-space:nowrap;}' +
+    'table{border-collapse:collapse;width:100%;font-size:12.5px;}' +
+    'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
     'th{background:#f0f0f0;}' +
     '.yqv-totals-row{font-weight:bold;background:#f0f0f0;}' +
-    '.yqv-group-cell{font-weight:bold;}';
+    '.yqv-group-cell{font-weight:bold;}' +
+    '.yqv-vehicle-input{width:52px;border:0;background:transparent;text-align:center;font:inherit;color:inherit;}' +
+    '.yqv-bar-wrapper{position:relative;display:block;height:16px;min-width:80px;border-radius:5px;background:#e5e5e5;overflow:hidden;}' +
+    '.yqv-bar-fill{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:5px;}' +
+    '.yqv-occ-good .yqv-bar-fill{background:#22c55e;}' +
+    '.yqv-occ-warning .yqv-bar-fill{background:#eab308;}' +
+    '.yqv-occ-critical .yqv-bar-fill{background:#ef4444;}' +
+    '.yqv-bar-text{position:relative;z-index:1;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45);}' +
+    '.yqv-diff-positive{color:#16a34a;font-weight:bold;}' +
+    '.yqv-diff-negative{color:#dc2626;font-weight:bold;}' +
+    '.yqv-diff-zero{color:#b45309;font-weight:bold;}' +
+    '.yqv-return-sub{font-size:10.5px;color:#16a34a;font-weight:bold;margin-top:2px;}';
 
   function buildStaticTableHtml() {
-    return modalEls.table.outerHTML;
+    var clone = modalEls.table.cloneNode(true);
+    Array.prototype.slice.call(clone.querySelectorAll('input')).forEach(function (input) {
+      var td = input.closest('td');
+      if (td) td.textContent = td.dataset.copyText !== undefined ? td.dataset.copyText : input.value;
+    });
+    return clone.outerHTML;
   }
 
   function buildReportMetaHtml() {
     var now = new Date().toLocaleString('ar-SA');
-    var daysLabel = DAY_CHIPS.filter(function (d) { return state.selectedDays.has(d); }).join('، ') || '—';
-    var branchesLabel =
-      state.selectedBranches && state.selectedBranches.size > 0
-        ? Array.from(state.selectedBranches).join('، ')
-        : 'كل الفروع';
+    var sourceLabel = VEHICLE_SOURCES.filter(function (s) { return s.value === state.selectedSource; })[0].label;
+    var daysLabel = getSelectedDaysOrdered().join('، ') || '—';
     return (
-      '<h1>📦 تقرير السيارات المسترجعة</h1>' +
+      '<h1>📦 تقرير الحجوزات والسيارات المسترجعة</h1>' +
       '<div class="yqv-print-meta">' + escapeHtml(now) +
+      ' | مصدر السيارات: ' + escapeHtml(sourceLabel) +
       ' | الأيام: ' + escapeHtml(daysLabel) +
-      ' | الفروع: ' + escapeHtml(branchesLabel) +
-      ' | عدد السيارات المطابقة: ' + escapeHtml(String(getFilteredRows().length)) + '</div>'
+      ' | إجمالي الحجوزات: ' + escapeHtml(String((state.bookings || []).length)) +
+      ' | إجمالي المسترجعة (نفس الفرع): ' + escapeHtml(String((state.returns || []).length)) + '</div>'
     );
   }
 
@@ -13329,7 +13722,7 @@ ${text}
     }
 
     var printHtml =
-      '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير السيارات المسترجعة</title>' +
+      '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير الحجوزات والسيارات المسترجعة</title>' +
       '<style>' + TABLE_EXPORT_CSS + 'body{padding:24px;}</style></head><body>' +
       buildReportMetaHtml() +
       buildStaticTableHtml() +
@@ -13498,7 +13891,7 @@ ${text}
             target: WHATSAPP_CONFIG.target,
             type: 'image',
             imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
-            caption: '📦 تقرير السيارات المسترجعة - ' + new Date().toLocaleString('ar-SA'),
+            caption: '📦 تقرير الحجوزات والسيارات المسترجعة - ' + new Date().toLocaleString('ar-SA'),
           }),
           onload: function (response) {
             if (response.status >= 200 && response.status < 300) {
@@ -13535,14 +13928,14 @@ ${text}
     document.head.appendChild(style);
   }
 
-  function buildDayChip(day) {
+  function buildChip(day) {
     var chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'yqv-chip' + (state.selectedDays.has(day) ? ' yqv-chip--active' : '');
     chip.textContent = day;
     chip.addEventListener('click', function () {
       if (state.selectedDays.has(day)) {
-        if (state.selectedDays.size === 1) return; // يبقى يوم واحد مختار على الأقل
+        if (state.selectedDays.size === 1) return;
         state.selectedDays.delete(day);
         chip.classList.remove('yqv-chip--active');
       } else {
@@ -13552,53 +13945,6 @@ ${text}
       renderTable();
     });
     return chip;
-  }
-
-  function renderBranchChips() {
-    if (!modalEls) return;
-    var container = modalEls.branchChipsEl;
-    container.innerHTML = '';
-
-    var allBranches = Array.from(
-      state.rows.reduce(function (set, r) { set.add(r.branch); return set; }, new Set())
-    ).sort(function (a, b) {
-      if (a === SAME_BRANCH_LABEL) return -1;
-      if (b === SAME_BRANCH_LABEL) return 1;
-      return a.localeCompare(b, 'ar');
-    });
-
-    allBranches.forEach(function (branch) {
-      var chip = document.createElement('button');
-      chip.type = 'button';
-      var isActive = state.selectedBranches && state.selectedBranches.has(branch);
-      chip.className = 'yqv-chip' + (isActive ? ' yqv-chip--active' : '');
-      chip.textContent = branch;
-      chip.addEventListener('click', function () {
-        if (!state.selectedBranches) state.selectedBranches = new Set();
-        if (state.selectedBranches.has(branch)) {
-          state.selectedBranches.delete(branch);
-          chip.classList.remove('yqv-chip--active');
-        } else {
-          state.selectedBranches.add(branch);
-          chip.classList.add('yqv-chip--active');
-        }
-        renderTable();
-      });
-      container.appendChild(chip);
-    });
-  }
-
-  function handleSelectAllBranches() {
-    var allBranches = state.rows.reduce(function (set, r) { set.add(r.branch); return set; }, new Set());
-    state.selectedBranches = allBranches;
-    renderBranchChips();
-    renderTable();
-  }
-
-  function handleClearAllBranches() {
-    state.selectedBranches = new Set();
-    renderBranchChips();
-    renderTable();
   }
 
   function buildModalOnce() {
@@ -13616,8 +13962,8 @@ ${text}
     modal.innerHTML =
       '<header class="yqv-header">' +
       '  <div class="yqv-header-titles">' +
-      '    <h2>📦 تقرير السيارات المسترجعة</h2>' +
-      '    <div class="yqv-stat-badge">مطابق للفلتر: <strong id="yqv-total-matched">0</strong> من أصل <strong id="yqv-total-all">0</strong></div>' +
+      '    <h2>📦 تقرير الحجوزات والسيارات المسترجعة</h2>' +
+      '    <div class="yqv-stat-badge">الحجوزات: <strong id="yqv-total-bookings">0</strong> | المسترجعة (نفس الفرع): <strong id="yqv-total-returns">0</strong></div>' +
       '  </div>' +
       '  <button type="button" class="yqv-close" aria-label="إغلاق">✕</button>' +
       '</header>' +
@@ -13631,17 +13977,14 @@ ${text}
       '  </div>' +
       '</div>' +
       '<div class="yqv-filters">' +
-      '  <div class="yqv-filter-group yqv-filter-group--grow">' +
-      '    <span class="yqv-filter-label">تاريخ التسليم</span>' +
-      '    <div class="yqv-day-chips"></div>' +
+      '  <div class="yqv-filter-group">' +
+      '    <span class="yqv-filter-label">مصدر السيارات</span>' +
+      '    <fieldset class="yqv-source-filter" aria-label="مصدر السيارات"></fieldset>' +
       '  </div>' +
       '  <div class="yqv-filter-divider" aria-hidden="true"></div>' +
       '  <div class="yqv-filter-group yqv-filter-group--grow">' +
-      '    <span class="yqv-filter-label">فرع التسليم' +
-      '      <button type="button" class="yqv-mini-btn" data-action="select-all-branches">تحديد الكل</button>' +
-      '      <button type="button" class="yqv-mini-btn" data-action="clear-all-branches">إلغاء التحديد</button>' +
-      '    </span>' +
-      '    <div class="yqv-branch-chips"></div>' +
+      '    <span class="yqv-filter-label">الأيام</span>' +
+      '    <div class="yqv-day-chips"></div>' +
       '  </div>' +
       '</div>' +
       '<div class="yqv-table-wrapper">' +
@@ -13653,9 +13996,26 @@ ${text}
       '</div>' +
       '<div class="yqv-status" id="yqv-status"></div>';
 
+    var sourceFieldset = modal.querySelector('.yqv-source-filter');
+    VEHICLE_SOURCES.forEach(function (source) {
+      var label = document.createElement('label');
+      var input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'yqv-source';
+      input.value = source.value;
+      input.checked = source.value === state.selectedSource;
+      input.addEventListener('change', function () {
+        state.selectedSource = source.value;
+        renderTable();
+      });
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(' ' + source.label));
+      sourceFieldset.appendChild(label);
+    });
+
     var chipsContainer = modal.querySelector('.yqv-day-chips');
     DAY_CHIPS.forEach(function (day) {
-      chipsContainer.appendChild(buildDayChip(day));
+      chipsContainer.appendChild(buildChip(day));
     });
 
     modal.querySelector('[data-action="refresh"]').addEventListener('click', handleRefresh);
@@ -13663,8 +14023,6 @@ ${text}
     modal.querySelector('[data-action="export"]').addEventListener('click', handleExportExcel);
     modal.querySelector('[data-action="print"]').addEventListener('click', handlePrint);
     modal.querySelector('[data-action="whatsapp"]').addEventListener('click', handleSendWhatsApp);
-    modal.querySelector('[data-action="select-all-branches"]').addEventListener('click', handleSelectAllBranches);
-    modal.querySelector('[data-action="clear-all-branches"]').addEventListener('click', handleClearAllBranches);
 
     modal.querySelector('.yqv-close').addEventListener('click', hideModal);
     overlay.addEventListener('click', function (e) {
@@ -13681,11 +14039,10 @@ ${text}
       overlay: overlay,
       modal: modal,
       table: modal.querySelector('.yqv-table'),
-      totalMatchedEl: modal.querySelector('#yqv-total-matched'),
-      totalAllEl: modal.querySelector('#yqv-total-all'),
+      totalBookingsEl: modal.querySelector('#yqv-total-bookings'),
+      totalReturnsEl: modal.querySelector('#yqv-total-returns'),
       statusEl: modal.querySelector('#yqv-status'),
       loadingOverlayEl: modal.querySelector('#yqv-loading-overlay'),
-      branchChipsEl: modal.querySelector('.yqv-branch-chips'),
     };
   }
 
@@ -13709,13 +14066,9 @@ ${text}
     try {
       buildModalOnce();
       showModal();
-      renderBranchChips();
       renderTable();
       fetchAllData(false)
-        .then(function () {
-          renderBranchChips();
-          renderTable();
-        })
+        .then(renderTable)
         .catch(function () { renderTable(); });
     } catch (error) {
       console.error('[تقرير السيارات المسترجعة] خطأ غير متوقع:', error);
@@ -13724,14 +14077,14 @@ ${text}
   }
 
   // ==========================================================
-  // التنسيقات (CSS)
+  // التنسيقات (CSS) - دعم الوضع الداكن + RTL + Responsive
   // ==========================================================
   var MODAL_CSS =
     '.yqv-overlay{position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;' +
     'background:#0008;padding:24px;font-family:Arial,Tahoma,sans-serif;font-size:16px;}' +
     '.yqv-overlay--open{display:flex;}' +
     '.yqv-modal{background:#fff;color:#1a1a1a;border-radius:16px;position:relative;' +
-    'width:min(1200px,97vw);height:min(880px,94vh);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;}' +
+    'width:min(1560px,97vw);height:min(920px,94vh);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;}' +
     '.yqv-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 28px;' +
     'background:#A3E635;color:#1a1a1a;}' +
     '.yqv-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}' +
@@ -13745,19 +14098,18 @@ ${text}
     '.yqv-actions button{cursor:pointer;border:none;background:#eee;color:#333;' +
     'padding:10px 16px;border-radius:8px;font-size:14px;transition:background .15s;}' +
     '.yqv-actions button:hover{background:#e2e2e2;}' +
-    '.yqv-filters{display:flex;flex-wrap:wrap;align-items:flex-start;gap:24px;padding:16px 28px;' +
+    '.yqv-filters{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding:16px 28px;' +
     'background:#fafafa;border-bottom:1px solid #eee;}' +
     '.yqv-filter-group{display:flex;flex-direction:column;gap:8px;}' +
     '.yqv-filter-group--grow{flex:1;min-width:260px;}' +
-    '.yqv-filter-label{font-size:12.5px;font-weight:bold;opacity:.6;text-transform:uppercase;letter-spacing:.02em;' +
-    'display:flex;align-items:center;gap:8px;}' +
+    '.yqv-filter-label{font-size:12.5px;font-weight:bold;opacity:.6;text-transform:uppercase;letter-spacing:.02em;}' +
     '.yqv-filter-divider{align-self:stretch;width:1px;background:#e2e2e2;}' +
-    '.yqv-mini-btn{cursor:pointer;border:1px solid #ddd;background:#fff;color:#555;' +
-    'padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:normal;text-transform:none;letter-spacing:0;}' +
-    '.yqv-mini-btn:hover{background:#f0f0f0;}' +
-    '.yqv-day-chips,.yqv-branch-chips{display:flex;flex-wrap:wrap;gap:8px;max-height:90px;overflow-y:auto;}' +
+    '.yqv-source-filter{display:flex;align-items:center;gap:14px;border:0;padding:0;margin:0;flex-wrap:wrap;}' +
+    '.yqv-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:15px;cursor:pointer;}' +
+    '.yqv-source-filter input[type="radio"]{width:16px;height:16px;accent-color:#78B500;}' +
+    '.yqv-day-chips{display:flex;flex-wrap:wrap;gap:8px;}' +
     '.yqv-chip{cursor:pointer;border:1px solid #ddd;background:#fff;color:#333;' +
-    'padding:8px 16px;border-radius:999px;font-size:14px;transition:all .15s;white-space:nowrap;}' +
+    'padding:8px 16px;border-radius:999px;font-size:14px;transition:all .15s;}' +
     '.yqv-chip--active{background:#A3E635;border-color:#A3E635;color:#1a1a1a;font-weight:bold;}' +
     '.yqv-table-wrapper{overflow:auto;flex:1;padding:0 28px;position:relative;' +
     'scrollbar-width:auto;scrollbar-color:#9CA3AF #f0f0f0;}' +
@@ -13770,19 +14122,41 @@ ${text}
     '.yqv-loading-overlay--visible{display:flex;}' +
     '.yqv-spinner-lg{width:36px;height:36px;border:4px solid #A3E635;border-left-color:transparent;' +
     'border-radius:50%;animation:yqv-spin .8s linear infinite;}' +
-    '.yqv-table{width:100%;border-collapse:collapse;font-size:15px;min-width:480px;}' +
+    '.yqv-table{width:100%;border-collapse:collapse;font-size:15px;min-width:760px;}' +
     '.yqv-table th,.yqv-table td{padding:10px 16px;text-align:center;border-bottom:1px solid #eee;white-space:nowrap;}' +
-    '.yqv-table thead th{position:sticky;top:0;background:#f5f5f5;user-select:none;z-index:3;font-weight:bold;font-size:14px;}' +
-    '.yqv-table thead th.yqv-sortable{cursor:pointer;}' +
-    '.yqv-table tbody tr.yqv-group-row{background-color:#f9fdf0;font-weight:bold;}' +
-    '.yqv-table tbody tr.yqv-detail-row{background-color:#fff;font-size:13.5px;color:#555;}' +
-    '.yqv-table tbody tr.yqv-detail-row--cross .yqv-branch-cell{color:#C24A0C;font-weight:bold;}' +
-    '.yqv-table tbody tr:hover{background-color:#f0f0f0;}' +
+    '.yqv-table thead th{position:sticky;top:0;background:#f5f5f5;cursor:pointer;user-select:none;z-index:3;font-weight:bold;font-size:14px;}' +
+    '.yqv-table th:nth-child(1),.yqv-table td:nth-child(1){position:sticky;inset-inline-start:0;width:120px;min-width:120px;}' +
+    '.yqv-table th:nth-child(2),.yqv-table td:nth-child(2){position:sticky;inset-inline-start:120px;width:96px;min-width:96px;}' +
+    '.yqv-table th:nth-child(3),.yqv-table td:nth-child(3){position:sticky;inset-inline-start:216px;width:96px;min-width:96px;' +
+    'box-shadow:2px 0 0 rgba(0,0,0,.06);}' +
+    '.yqv-table th:nth-child(-n+3){z-index:4;}' +
+    '.yqv-table td:nth-child(-n+3){z-index:2;background-color:inherit;}' +
+    '.yqv-col-divider{border-inline-start:2px solid #eee;}' +
+    '.yqv-table tbody tr{background-color:#fff;}' +
+    '.yqv-table tbody tr:hover{background-color:#f5f5f5;}' +
     '.yqv-group-cell{font-weight:bold;font-size:16px;}' +
-    '.yqv-branch-cell{padding-inline-start:24px !important;}' +
-    '.yqv-count-cell{font-weight:bold;}' +
     '.yqv-totals-row{font-weight:bold;background-color:#f5f5f5 !important;position:sticky;bottom:0;z-index:2;}' +
     '.yqv-empty{padding:32px !important;opacity:.7;font-size:16px;}' +
+    '.yqv-vehicles-cell{padding:4px 8px !important;}' +
+    '.yqv-vehicle-input{width:56px;padding:6px 4px;border:1px solid #ddd;border-radius:6px;text-align:center;' +
+    'font:inherit;font-weight:bold;color:inherit;background:#fff;}' +
+    '.yqv-vehicle-input:focus{outline:2px solid #78B500;border-color:#78B500;}' +
+    '.yqv-vehicles-total{font-weight:bold;font-size:15px;line-height:1.3;}' +
+    '.yqv-yard-edit{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:3px;}' +
+    '.yqv-yard-edit .yqv-vehicle-input{width:40px;padding:3px 2px;font-size:12px;}' +
+    '.yqv-yard-label{font-size:10px;opacity:.55;white-space:nowrap;}' +
+    '.yqv-return-sub{font-size:10.5px;color:#16a34a;font-weight:bold;margin-top:2px;line-height:1.2;}' +
+    '.yqv-bar-wrapper{position:relative;height:22px;border-radius:7px;background:#e5e5e5;overflow:hidden;min-width:120px;}' +
+    '.yqv-bar-fill{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:7px;transition:width .2s;}' +
+    '.yqv-occ-good .yqv-bar-fill{background:#22c55e;}' +
+    '.yqv-occ-warning .yqv-bar-fill{background:#eab308;}' +
+    '.yqv-occ-critical .yqv-bar-fill{background:#ef4444;}' +
+    '.yqv-bar-text{position:relative;z-index:1;font-size:12.5px;font-weight:bold;line-height:22px;' +
+    'text-shadow:0 1px 2px rgba(0,0,0,.35);color:#fff;}' +
+    '.yqv-diff-cell{font-weight:bold;font-size:16px;}' +
+    '.yqv-diff-positive{color:#16a34a;}' +
+    '.yqv-diff-negative{color:#dc2626;}' +
+    '.yqv-diff-zero{color:#b45309;}' +
     '.yqv-status{padding:12px 28px;font-size:13px;min-height:20px;opacity:.85;display:flex;align-items:center;gap:8px;}' +
     '.yqv-status--loading{color:#2563eb;}' +
     '.yqv-status--success{color:#16a34a;}' +
