@@ -310,6 +310,17 @@
     return Object.keys(obj).length;
   }
 
+  /**
+   * نشغّل عدة إطارات (iframes) مستقلة بالتوازي، كل واحد يحمّل نفس قائمة
+   * العقود من الصفر ويتصفّح صفحاتها لحاله - لكنها كلها تتشارك نفس كائن
+   * "processed" و"iterCounter"، وبما إن جافاسكربت أحادي الخيط (event loop
+   * واحد)، وضع الصف كـ"processed" يصير فوراً وبشكل متزامن قبل أي await، فما
+   * فيه احتمال يعالج فريمان نفس العقد مرتين. هذا يسرّع الفحص تقريباً بعدد
+   * الإطارات (بدل عقد عقد بالتسلسل)، مقابل بعض التكرار غير المؤذي (كل فريم
+   * يمر على كل الصفحات، بس يتخطى أي عقد سبق فريم ثاني عالجه).
+   */
+  var WORKER_COUNT = 4;
+
   function runAudit() {
     if (state.running) return Promise.resolve();
     state.running = true;
@@ -319,15 +330,17 @@
     state.skipped = [];
 
     var processed = {};
-    var frame = openHiddenFrame(COMPLETED_TODAY_URL);
-    var iter = 0;
+    var frames = [];
+    var iterCounter = { count: 0 };
 
-    setStatus('جارٍ تحميل قائمة العقود المكتملة اليوم...', 'loading');
+    setStatus('جارٍ تحميل قائمة العقود المكتملة اليوم (' + WORKER_COUNT + ' إطارات بالتوازي)...', 'loading');
     if (modalEls) modalEls.startBtn.disabled = true;
     if (modalEls) modalEls.cancelBtn.hidden = false;
 
-    function finish() {
-      try { if (frame && frame.isConnected) frame.remove(); } catch (err) { /* تجاهل */ }
+    function finishAll() {
+      frames.forEach(function (f) {
+        try { if (f && f.isConnected) f.remove(); } catch (err) { /* تجاهل */ }
+      });
       state.running = false;
       state.lastRunAt = new Date();
       if (modalEls) {
@@ -335,78 +348,80 @@
         modalEls.startBtn.textContent = '🔍 إعادة الفحص';
         modalEls.cancelBtn.hidden = true;
       }
+      renderResults();
     }
 
-    function step(doc) {
-      if (state.cancelled) { finish(); renderResults(); return Promise.resolve(); }
-      iter++;
-      if (iter > MAX_ITERATIONS || processedCount(processed) > MAX_ROWS) {
-        finish();
-        renderResults();
-        return Promise.resolve();
-      }
+    function runWorker() {
+      var frame = openHiddenFrame(COMPLETED_TODAY_URL);
+      frames.push(frame);
 
-      var found = findFirstUnprocessedRow(doc, processed);
-      if (found) {
-        processed[found.bookingNumber] = true;
-        var doneSoFar = state.results.length + state.excludedCrossBranch.length + state.skipped.length + 1;
-        setStatus('جارٍ فحص العقد #' + found.bookingNumber + ' (' + doneSoFar + ')...', 'loading');
-        try {
-          found.rowEl.click();
-        } catch (err) {
-          state.skipped.push(found);
-          return waitForListReady(frame).then(step);
+      function step(doc) {
+        if (state.cancelled) return Promise.resolve();
+        iterCounter.count++;
+        if (iterCounter.count > MAX_ITERATIONS || processedCount(processed) > MAX_ROWS) {
+          return Promise.resolve();
         }
-        return waitForDetailReady(frame).then(function (detailDoc) {
-          if (!detailDoc) {
+
+        var found = findFirstUnprocessedRow(doc, processed);
+        if (found) {
+          processed[found.bookingNumber] = true;
+          var doneSoFar = state.results.length + state.excludedCrossBranch.length + state.skipped.length + 1;
+          setStatus('جارٍ فحص العقد #' + found.bookingNumber + ' (' + doneSoFar + ')...', 'loading');
+          try {
+            found.rowEl.click();
+          } catch (err) {
             state.skipped.push(found);
-          } else {
-            var groupText = extractGroupFromDetail(detailDoc) || 'غير محدد';
-            var dropoffLoc = extractTestIdText(detailDoc, 'drop-off-location');
-            var pickupLoc = extractTestIdText(detailDoc, 'pickup-location');
-            var sameLocation = dropoffLoc && pickupLoc && normalizeArabic(dropoffLoc) === normalizeArabic(pickupLoc);
-            if (sameLocation) {
-              state.results.push({ group: groupText, plate: found.plate, bookingNumber: found.bookingNumber, agreementNo: found.agreementNo });
-            } else {
-              state.excludedCrossBranch.push({ plate: found.plate, bookingNumber: found.bookingNumber, dropoffLocation: dropoffLoc });
-            }
+            return waitForListReady(frame).then(function (newDoc) {
+              return newDoc ? step(newDoc) : undefined;
+            });
           }
-          try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
-          return waitForListReady(frame);
-        }).then(function (newDoc) {
-          if (!newDoc) { finish(); renderResults(); return; }
-          renderResults(); // عرض حي أثناء الفحص
-          return step(newDoc);
+          return waitForDetailReady(frame).then(function (detailDoc) {
+            if (!detailDoc) {
+              state.skipped.push(found);
+            } else {
+              var groupText = extractGroupFromDetail(detailDoc) || 'غير محدد';
+              var dropoffLoc = extractTestIdText(detailDoc, 'drop-off-location');
+              var pickupLoc = extractTestIdText(detailDoc, 'pickup-location');
+              var sameLocation = dropoffLoc && pickupLoc && normalizeArabic(dropoffLoc) === normalizeArabic(pickupLoc);
+              if (sameLocation) {
+                state.results.push({ group: groupText, plate: found.plate, bookingNumber: found.bookingNumber, agreementNo: found.agreementNo });
+              } else {
+                state.excludedCrossBranch.push({ plate: found.plate, bookingNumber: found.bookingNumber, dropoffLocation: dropoffLoc });
+              }
+            }
+            try { frame.contentWindow.history.back(); } catch (err) { /* تجاهل */ }
+            return waitForListReady(frame);
+          }).then(function (newDoc) {
+            if (!newDoc) return;
+            renderResults(); // عرض حي أثناء الفحص
+            return step(newDoc);
+          });
+        }
+
+        var nextControl = findNextPageControl(doc);
+        if (!nextControl || isControlDisabled(nextControl)) {
+          return Promise.resolve();
+        }
+        try {
+          nextControl.click();
+        } catch (err) {
+          return Promise.resolve();
+        }
+        return waitForListReady(frame).then(function (newDoc) {
+          return newDoc ? step(newDoc) : undefined;
         });
       }
 
-      var nextControl = findNextPageControl(doc);
-      if (!nextControl || isControlDisabled(nextControl)) {
-        finish();
-        renderResults();
-        return Promise.resolve();
-      }
-      try {
-        nextControl.click();
-      } catch (err) {
-        finish();
-        renderResults();
-        return Promise.resolve();
-      }
-      return waitForListReady(frame).then(function (newDoc) {
-        if (!newDoc) { finish(); renderResults(); return; }
-        return step(newDoc);
+      return waitForListReady(frame, 20000).then(function (doc) {
+        return doc ? step(doc) : undefined;
       });
     }
 
-    return waitForListReady(frame, 20000).then(function (doc) {
-      if (!doc) {
-        finish();
-        setStatus('تعذّر تحميل قائمة العقود المكتملة', 'error');
-        return;
-      }
-      return step(doc);
-    });
+    var workers = [];
+    for (var i = 0; i < WORKER_COUNT; i++) {
+      workers.push(runWorker());
+    }
+    return Promise.all(workers).then(finishAll);
   }
 
   function handleCancel() {
