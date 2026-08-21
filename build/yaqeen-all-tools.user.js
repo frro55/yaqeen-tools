@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0821.0432
+// @version      2026.0821.0442
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -14217,17 +14217,18 @@ ${text}
 /**
  * أداة "تحقق من المسترجعة فعلياً"
  * ------------------------------------------------------------
- * أداة تدقيق تُستخدم نهاية اليوم للتحقق من صحة أرقام أداة "السيارات
- * المسترجعة" - بدل الاعتماد على صفحة "المستأجرة" (rented) اللي تتوقع تواريخ
- * تسليم مستقبلية، هذي الأداة تقرأ قائمة العقود *المكتملة فعلياً* اليوم
- * (completed)، وتفتح كل عقد على حدة (المجموعة ما تظهر إلا داخل تفاصيل
- * العقد نفسه)، وتستثني أي عقد تم تسليمه بموقع مختلف عن موقع فرعك، ثم تحسب
- * عدد السيارات المسترجعة فعلياً لكل مجموعة.
+ * أداة تدقيق تُستخدم نهاية اليوم (أو لمراجعة أي يوم/مدى أيام سابق بنفس
+ * الشهر) للتحقق من صحة أرقام أداة "السيارات المسترجعة" - بدل الاعتماد على
+ * صفحة "المستأجرة" (rented) اللي تتوقع تواريخ تسليم مستقبلية، هذي الأداة
+ * تجيب كل عقود الشهر المكتملة (completed) مرة وحدة، تفلترها محلياً حسب
+ * التاريخ المختار (فلتر "من/إلى")، وتفتح فقط العقود المطابقة على حدة
+ * (المجموعة ما تظهر إلا داخل تفاصيل العقد نفسه)، وتستثني أي عقد تم تسليمه
+ * بموقع مختلف عن موقع فرعك، ثم تحسب عدد السيارات المسترجعة فعلياً لكل مجموعة.
  *
- * ملاحظة: كل عقد يحتاج فتح صفحة تفاصيله الحقيقية (بدون رابط مباشر - الصف
- * قابل للضغط فقط عبر JS)، فالفحص يمر عقد عقد بالتسلسل وقد يستغرق دقيقة أو
- * أكثر حسب عدد العقود المكتملة اليوم - هذا طبيعي ومقصود لأنها أداة تدقيق
- * دقيق وليست تقرير سريع.
+ * ملاحظة: كل عقد مطابق للفلتر يحتاج فتح صفحة تفاصيله الحقيقية (بدون رابط
+ * مباشر - الصف قابل للضغط فقط عبر JS)، فالفحص قد يستغرق دقيقة أو أكثر حسب
+ * عدد العقود بالمدى المختار - هذا طبيعي ومقصود لأنها أداة تدقيق دقيق وليست
+ * تقرير سريع.
  */
 (function () {
   'use strict';
@@ -14243,13 +14244,15 @@ ${text}
   // إعدادات ثابتة
   // ==========================================================
   var BRANCH_LOCATION_ID = 29;
-  var COMPLETED_TODAY_URL =
+  // نجيب الشهر كامل مرة وحدة، وفلتر التاريخ (يوم أو مدى أيام) يُطبَّق محلياً
+  // على الصفوف قبل ما نفتح تفاصيلها - عشان ما نحتاج نغيّر رابط الطلب لكل يوم
+  var COMPLETED_MONTH_URL =
     'https://yaqeen.lumirental.com/rental/branches/' +
     BRANCH_LOCATION_ID +
-    '/bookings/completed?dropOffDateRangeStart=TODAY&pageSize=500';
+    '/bookings/completed?dropOffDateRangeStart=THIS_MONTH&pageSize=5000';
 
-  var MAX_ROWS = 600; // حد أقصى احترازي (عدد العقود بيوم واحد ما يتوقع يقرب من هذا الرقم)
-  var MAX_ITERATIONS = 700;
+  var MAX_ROWS = 2000; // حد أقصى احترازي لعدد العقود المفتوحة فعلياً بالمدى المختار
+  var MAX_ITERATIONS = 4000; // يشمل أيضاً تصفّح صفحات الشهر كامل بحثاً عن صفوف بالمدى
 
   var COMPLETED_COLUMNS_MAP = {
     bookingNumber: ['رقم الحجز'],
@@ -14258,6 +14261,8 @@ ${text}
     plate: ['المركبة'],
   };
 
+  var WEEKDAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
   // ==========================================================
   // الحالة
   // ==========================================================
@@ -14265,6 +14270,8 @@ ${text}
     running: false,
     cancelled: false,
     lastRunAt: null,
+    dateFrom: null, // Date (بدون وقت) - يُهيّأ بالقيمة الافتراضية عند بناء الواجهة
+    dateTo: null,
     results: [], // [{group, plate, bookingNumber, agreementNo}] - تسليم بنفس موقع الفرع فقط
     excludedCrossBranch: [], // عقود تم استثناؤها (تسليم بموقع مختلف)
     skipped: [], // عقود تعذّر فحصها (فشل تحميل/انتقال)
@@ -14491,7 +14498,13 @@ ${text}
     return null;
   }
 
-  function findFirstUnprocessedRow(doc, processed) {
+  /**
+   * أول صف غير معالَج وتاريخه ضمن المدى المختار. أي صف خارج المدى يُعلَّم
+   * "processed" فوراً بدون فتح تفاصيله - نقرأ التاريخ من نص القائمة نفسه
+   * فما نحتاج نفتح العقد أصلاً لو تاريخه غير مطلوب، وهذا يوفّر وقت كبير لما
+   * يكون المدى المختار يوم أو يومين فقط من شهر كامل.
+   */
+  function findFirstMatchingUnprocessedRow(doc, processed, dateFrom, dateTo) {
     var indices = computeListIndices(doc);
     if (!indices) return null;
     var table = findListTable(doc);
@@ -14499,7 +14512,13 @@ ${text}
     var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
     for (var i = 0; i < rows.length; i++) {
       var info = extractRowInfo(rows[i], indices);
-      if (info && !processed[info.bookingNumber]) return info;
+      if (!info || processed[info.bookingNumber]) continue;
+      var dateOnly = parseCompletedDropoffDate(info.dropoffText);
+      if (!isDateWithinRange(dateOnly, dateFrom, dateTo)) {
+        processed[info.bookingNumber] = true;
+        continue;
+      }
+      return info;
     }
     return null;
   }
@@ -14515,6 +14534,71 @@ ${text}
     if (!text) return '';
     var match = /:\s*(.+)$/.exec(text);
     return match ? match[1].trim() : text;
+  }
+
+  function todayMidnight() {
+    var now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  /** yyyy-mm-dd محلي (بدون تحويل UTC) - يُستخدم كقيمة افتراضية لحقول input[type=date] */
+  function toIsoDateLocal(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
+  /** yyyy-mm-dd -> Date محلي بدون وقت */
+  function fromIsoDateLocal(str) {
+    var parts = (str || '').split('-');
+    if (parts.length !== 3) return null;
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  }
+
+  /**
+   * يحوّل نص "وقت التسليم" لتاريخ فعلي (بدون وقت). صيغ صفحة "المكتملة":
+   * "اليوم - HH:MM"، "أمس - HH:MM"، اسم يوم أسبوع ("الخميس - HH:MM" - يعني
+   * أقرب خميس ماضٍ خلال آخر ٧ أيام)، أو تاريخ صريح "DD-MM-YYYY" للأقدم من أسبوع.
+   */
+  function parseCompletedDropoffDate(text) {
+    text = (text || '').trim();
+    if (!text) return null;
+    var todayMid = todayMidnight();
+
+    var relMatch = /^(اليوم|أمس)\s*-/.exec(text);
+    if (relMatch) {
+      var d = new Date(todayMid);
+      if (normalizeArabic(relMatch[1]) === normalizeArabic('أمس')) d.setDate(d.getDate() - 1);
+      return d;
+    }
+
+    var normalizedText = normalizeArabic(text);
+    for (var i = 0; i < WEEKDAY_NAMES.length; i++) {
+      if (normalizedText.indexOf(normalizeArabic(WEEKDAY_NAMES[i])) === 0) {
+        var diff = (todayMid.getDay() - i + 7) % 7;
+        if (diff === 0) diff = 7; // اليوم نفسه له تسمية "اليوم" مباشرة، فأي اسم يوم أسبوع يعني أسبوع مضى بالحد الأدنى
+        var weekdayDate = new Date(todayMid);
+        weekdayDate.setDate(weekdayDate.getDate() - diff);
+        return weekdayDate;
+      }
+    }
+
+    var dateMatch = /(\d{1,2})-(\d{1,2})-(\d{4})/.exec(text);
+    if (dateMatch) {
+      return new Date(parseInt(dateMatch[3], 10), parseInt(dateMatch[2], 10) - 1, parseInt(dateMatch[1], 10));
+    }
+
+    return null;
+  }
+
+  function isDateWithinRange(dateOnly, from, to) {
+    if (!dateOnly) return false;
+    return dateOnly.getTime() >= from.getTime() && dateOnly.getTime() <= to.getTime();
   }
 
   // ==========================================================
@@ -14538,6 +14622,17 @@ ${text}
 
   function runAudit() {
     if (state.running) return Promise.resolve();
+
+    var dateFrom = fromIsoDateLocal(modalEls.fromDateInput.value) || todayMidnight();
+    var dateTo = fromIsoDateLocal(modalEls.toDateInput.value) || todayMidnight();
+    if (dateFrom.getTime() > dateTo.getTime()) {
+      var swap = dateFrom;
+      dateFrom = dateTo;
+      dateTo = swap;
+    }
+    state.dateFrom = dateFrom;
+    state.dateTo = dateTo;
+
     state.running = true;
     state.cancelled = false;
     state.results = [];
@@ -14548,7 +14643,7 @@ ${text}
     var frames = [];
     var iterCounter = { count: 0 };
 
-    setStatus('جارٍ تحميل قائمة العقود المكتملة اليوم (' + WORKER_COUNT + ' إطارات بالتوازي)...', 'loading');
+    setStatus('جارٍ تحميل قائمة العقود المكتملة هذا الشهر (' + WORKER_COUNT + ' إطارات بالتوازي)...', 'loading');
     if (modalEls) modalEls.startBtn.disabled = true;
     if (modalEls) modalEls.cancelBtn.hidden = false;
 
@@ -14614,7 +14709,7 @@ ${text}
     }
 
     function runWorker() {
-      var frame = openHiddenFrame(COMPLETED_TODAY_URL);
+      var frame = openHiddenFrame(COMPLETED_MONTH_URL);
       frames.push(frame);
 
       function step(doc) {
@@ -14624,7 +14719,7 @@ ${text}
           return Promise.resolve();
         }
 
-        var found = findFirstUnprocessedRow(doc, processed);
+        var found = findFirstMatchingUnprocessedRow(doc, processed, dateFrom, dateTo);
         if (found) {
           processed[found.bookingNumber] = true;
           var doneSoFar = state.results.length + state.excludedCrossBranch.length + state.skipped.length + 1;
@@ -14727,7 +14822,13 @@ ${text}
     totalTr.appendChild(totalCountTd);
     tfoot.appendChild(totalTr);
 
+    var rangeLabel = state.dateFrom && state.dateTo
+      ? (toIsoDateLocal(state.dateFrom) === toIsoDateLocal(state.dateTo)
+          ? toIsoDateLocal(state.dateFrom)
+          : toIsoDateLocal(state.dateFrom) + ' → ' + toIsoDateLocal(state.dateTo))
+      : '';
     modalEls.summaryEl.textContent =
+      (rangeLabel ? 'المدى: ' + rangeLabel + ' | ' : '') +
       'مطابق (نفس موقع الفرع): ' + state.results.length +
       ' | مستبعد (موقع تسليم مختلف): ' + state.excludedCrossBranch.length +
       ' | تعذّر فحصه: ' + state.skipped.length;
@@ -14800,10 +14901,14 @@ ${text}
       '<header class="yqa-header">' +
       '  <div class="yqa-header-titles">' +
       '    <h2>✅ تحقق من المسترجعة فعلياً</h2>' +
-      '    <div class="yqa-stat-badge">يفحص العقود المكتملة اليوم عقداً عقداً ويستثني تسليم فرع آخر</div>' +
+      '    <div class="yqa-stat-badge">يفحص العقود المكتملة باليوم أو المدى المختار عقداً عقداً ويستثني تسليم فرع آخر</div>' +
       '  </div>' +
       '  <button type="button" class="yqa-close" aria-label="إغلاق">✕</button>' +
       '</header>' +
+      '<div class="yqa-filters">' +
+      '  <label class="yqa-date-field">من <input type="date" class="yqa-date-input" id="yqa-date-from"></label>' +
+      '  <label class="yqa-date-field">إلى <input type="date" class="yqa-date-input" id="yqa-date-to"></label>' +
+      '</div>' +
       '<div class="yqa-toolbar">' +
       '  <div class="yqa-actions">' +
       '    <button type="button" class="yqa-start-btn" data-action="start">🔍 بدء الفحص</button>' +
@@ -14839,7 +14944,14 @@ ${text}
       cancelBtn: modal.querySelector('.yqa-cancel-btn'),
       summaryEl: modal.querySelector('#yqa-summary'),
       statusEl: modal.querySelector('#yqa-status'),
+      fromDateInput: modal.querySelector('#yqa-date-from'),
+      toDateInput: modal.querySelector('#yqa-date-to'),
     };
+
+    // افتراضياً: اليوم فقط (مدى من يوم واحد) - يقدر المستخدم يوسّعه لأي مدى داخل الشهر
+    var todayIso = toIsoDateLocal(todayMidnight());
+    modalEls.fromDateInput.value = todayIso;
+    modalEls.toDateInput.value = todayIso;
   }
 
   function showModal() {
@@ -14879,6 +14991,9 @@ ${text}
     '.yqa-stat-badge{font-size:12px;opacity:.8;}' +
     '.yqa-close{background:transparent;border:0;font-size:20px;cursor:pointer;color:inherit;line-height:1;padding:8px;border-radius:8px;flex-shrink:0;}' +
     '.yqa-close:hover{background:rgba(0,0,0,.08);}' +
+    '.yqa-filters{display:flex;flex-wrap:wrap;gap:16px;padding:12px 24px;background:#fafafa;border-bottom:1px solid #eee;}' +
+    '.yqa-date-field{display:flex;align-items:center;gap:6px;font-size:13px;color:#555;}' +
+    '.yqa-date-input{border:1px solid #ddd;border-radius:6px;padding:6px 8px;font:inherit;color:inherit;}' +
     '.yqa-toolbar{display:flex;align-items:center;padding:14px 24px;border-bottom:1px solid #eee;}' +
     '.yqa-actions{display:flex;flex-wrap:wrap;gap:8px;}' +
     '.yqa-actions button{cursor:pointer;border:none;background:#eee;color:#333;' +
