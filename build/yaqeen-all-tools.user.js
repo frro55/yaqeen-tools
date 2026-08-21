@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0821.0337
+// @version      2026.0821.0346
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -13002,8 +13002,9 @@ ${text}
 
   /**
    * يحوّل تاريخ التسليم إلى اسم شريحة اليوم بنفس مفردات DAY_CHIPS (اليوم/غداً/
-   * أيام الأسبوع). أي تاريخ متأخر (فات ولسا ما رجعت) يُحتسب "اليوم" لأنها
-   * غالباً راجعة أو بطريقها فعلياً - هذا يفيد الموظف يعتمد عليها بحساباته اليوم.
+   * أيام الأسبوع). السيارات المتأخرة عن تاريخ تسليمها (راجعة من قبل ولسا ما
+   * تسلمت فعلياً) تُستثنى بالكامل ولا تُحتسب ضمن أي يوم - وجودها بالنظام متأخر
+   * عن الموعد، فما نعتمد عليها كـ"سيارة راح ترجع اليوم" لأنها فعلياً متأخرة.
    */
   function computeReturnDayLabel(dropoffText) {
     var dateOnly = parseDropoffDateOnly(dropoffText);
@@ -13011,7 +13012,8 @@ ${text}
     var now = new Date();
     var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var diffDays = Math.round((dateOnly - todayMid) / 86400000);
-    if (diffDays <= 0) return 'اليوم';
+    if (diffDays < 0) return null; // متأخرة - نستثنيها
+    if (diffDays === 0) return 'اليوم';
     if (diffDays === 1) return 'غداً';
     return WEEKDAY_NAMES[dateOnly.getDay()];
   }
