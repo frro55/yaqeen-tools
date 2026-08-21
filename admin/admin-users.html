@@ -336,6 +336,15 @@
     { key: "shift-report", label: "📋 تقرير الشفت" },
   ];
 
+  function formatLastSeen(iso) {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleString("ar-SA", { dateStyle: "short", timeStyle: "short" });
+    } catch (err) {
+      return "—";
+    }
+  }
+
   let sessionToken = localStorage.getItem("yaqeen_admin_session_token") || "";
   let sessionExpiresAt = Number(localStorage.getItem("yaqeen_admin_session_expires") || 0);
   let adminEmail = localStorage.getItem("yaqeen_admin_email") || "";
@@ -682,10 +691,14 @@
   function buildRow(user) {
     const tr = document.createElement("tr");
 
-    // الإيميل
+    // الإيميل (+ رقم إصدار السكربت وآخر ظهور تحته)
     const tdEmail = document.createElement("td");
     tdEmail.className = "email";
-    tdEmail.textContent = user.email;
+    tdEmail.appendChild(document.createTextNode(user.email));
+    const versionMeta = document.createElement("div");
+    versionMeta.style.cssText = "font-size:10.5px;color:#999;margin-top:3px;";
+    versionMeta.textContent = "الإصدار: " + (user.script_version || "—") + " · آخر ظهور: " + formatLastSeen(user.last_seen_at);
+    tdEmail.appendChild(versionMeta);
     tr.appendChild(tdEmail);
 
     // الاسم

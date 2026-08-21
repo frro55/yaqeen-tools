@@ -312,6 +312,10 @@
     // ============================================================
 
     const PERMISSIONS_API_URL = "https://api.yaqeen-vip.space/api/tools";
+    // رقم إصدار الحزمة المثبتة فعلياً عند هذا الموظف (يوفّره Tampermonkey
+    // تلقائياً من @version) - يُرسل مع كل طلب صلاحيات عشان الأدمن يقدر يشوف
+    // بلوحة التحكم مين لسا على نسخة قديمة
+    const SCRIPT_VERSION = (typeof GM_info !== "undefined" && GM_info.script && GM_info.script.version) || "unknown";
     const PERMISSIONS_CACHE_KEY = "yaqeen_tool_permissions";
     const PERMISSIONS_CACHE_MS = 60 * 1000; // دقيقة وحدة - سحب صلاحية موظف يتطبق بسرعة معقولة
 
@@ -570,7 +574,7 @@
                 return;
             }
 
-            postJson(PERMISSIONS_API_URL, { email: email }).then(data => {
+            postJson(PERMISSIONS_API_URL, { email: email, scriptVersion: SCRIPT_VERSION }).then(data => {
                 if (!data || data.success !== true || !Array.isArray(data.tools)) {
                     // فشل الاتصال أو success:false - ما نخزّن هذي النتيجة بالكاش
                     // (حتى تتاح إعادة محاولة حقيقية بأقرب تحميل صفحة)، وما نظهر أي أداة
