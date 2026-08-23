@@ -49,7 +49,9 @@
   var YARD_LOCATION_ID = 53;
   var PAGE_SIZE = 500;
   var SAME_BRANCH_LABEL = 'نفس الفرع';
-  var MAX_FETCH_ATTEMPTS = 3;
+  var MAX_FETCH_ATTEMPTS = 5;
+  var RETURNED_FETCH_TIMEOUT_MS = 30000;
+  var RETRY_DELAY_MS = 1500;
 
   var URLS = {
     bookings:
@@ -624,13 +626,22 @@
    * ترجع محاولة واحدة بصفر سجلات خام (لسا ما اكتمل تحميلها بالكامل). نعيد
    * المحاولة تلقائياً بدل ما نعرض عمود "مسترجعة" فاضي بالغلط.
    */
+  function delay(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
   function fetchReturnedRecordsWithRetry(attempt) {
     attempt = attempt || 1;
     var frame = openHiddenFrame(URLS.returned);
-    return fetchAllRecordsFromFrame(frame, URLS.returned, RETURNED_COLUMNS_MAP).then(function (result) {
+    return fetchAllRecordsFromFrame(frame, URLS.returned, RETURNED_COLUMNS_MAP, RETURNED_FETCH_TIMEOUT_MS).then(function (result) {
       if (result.records.length === 0 && attempt < MAX_FETCH_ATTEMPTS) {
-        console.warn('[تقرير الحجوزات القادمة] محاولة جلب المسترجعة ' + attempt + ' رجعت بدون بيانات، إعادة محاولة...');
-        return fetchReturnedRecordsWithRetry(attempt + 1);
+        console.warn('[تقرير الحجوزات القادمة] محاولة جلب المسترجعة ' + attempt + ' رجعت بدون بيانات، إعادة محاولة بعد مهلة قصيرة...');
+        // مهلة قبل إعادة المحاولة - صفحة "المستأجرة" ثقيلة وممكن تحتاج وقت
+        // إضافي قبل ما تصير جاهزة فعلياً، إعادة المحاولة فوراً بدون انتظار
+        // غالباً تصطدم بنفس حالة "لسا ما اكتمل التحميل"
+        return delay(RETRY_DELAY_MS).then(function () {
+          return fetchReturnedRecordsWithRetry(attempt + 1);
+        });
       }
       return result;
     });
