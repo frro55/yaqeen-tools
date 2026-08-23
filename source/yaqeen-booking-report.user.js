@@ -1739,7 +1739,16 @@
       showModal();
       renderTable(); // عرض فوري (من الكاش إن وُجد) قبل انتظار الشبكة
       fetchAllData(false)
-        .then(renderTable)
+        .then(function () {
+          renderTable();
+          // أول فتح: لو المسترجعة رجعت صفر رغم كل محاولات إعادة الجلب
+          // الداخلية (صفحة "المستأجرة" ثقيلة وأحياناً تحتاج وقت إضافي)، نعيد
+          // دورة تحميل كاملة صامتة مرة وحدة تلقائياً - نفس اللي كان المستخدم
+          // يضطر يسويه يدوياً بالضغط على "تحديث البيانات"
+          if ((state.returns || []).length === 0) {
+            return fetchAllData(true).then(renderTable);
+          }
+        })
         .catch(function () { renderTable(); });
     } catch (error) {
       console.error('[تقرير الحجوزات القادمة] خطأ غير متوقع:', error);
