@@ -93,9 +93,9 @@
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-email-tools')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-email-tools';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }

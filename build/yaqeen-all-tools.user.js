@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0823.2332
+// @version      2026.0823.2346
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1013,9 +1013,9 @@
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-fleet-inventory')) return;
         var style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-fleet-inventory';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -1528,9 +1528,9 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-available-vehicles')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-available-vehicles';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -2036,9 +2036,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-email-tools')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-email-tools';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -3632,9 +3632,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-airport-hours')) return;
         var style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-airport-hours';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -4870,9 +4870,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-late-payments')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-late-payments';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -6158,9 +6158,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-late-payments-branches')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-late-payments-branches';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -7066,9 +7066,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-company-ext')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-company-ext';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -7944,9 +7944,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-company-ext-branches')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-company-ext-branches';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -9029,9 +9029,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-closed-debt')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-closed-debt';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -10117,9 +10117,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-closed-debt-branches')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-closed-debt-branches';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -10888,9 +10888,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-customer-msg')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-customer-msg';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -13180,9 +13180,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-vip-booking')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-vip-booking';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
@@ -14187,9 +14187,9 @@ ${rowsHtml}
         '.shift-emp-remove:hover{background:#fbdada;}' +
         '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles')) return;
+        if (document.getElementById('yq-shared-styles-shift-report')) return;
         const style = document.createElement('style');
-        style.id = 'yq-shared-styles';
+        style.id = 'yq-shared-styles-shift-report';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
