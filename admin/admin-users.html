@@ -198,12 +198,22 @@
   }
 
   .stats-row { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; box-shadow: var(--shadow-card); }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; box-shadow: var(--shadow-card); cursor: pointer; transition: box-shadow .15s, border-color .15s; }
+  .stat-card:hover { border-color: var(--accent-deep); }
   .stat-card.warning { background: var(--warning-bg); border-color: #f3dfae; box-shadow: none; }
   .stat-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
   .stat-card.warning .stat-label { color: var(--warning); font-weight: 700; }
   .stat-value { font-size: 26px; font-weight: 800; }
   .stat-card.warning .stat-value { color: #8a5a08; }
+
+  .filter-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-chip {
+    padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--ink-soft); font-size: 12.5px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  .filter-chip:hover { border-color: var(--accent-deep); }
+  .filter-chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
   .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
   .search-wrap { position: relative; flex: 1; max-width: 320px; }
@@ -395,15 +405,15 @@
         </div>
 
         <div class="stats-row">
-          <div class="stat-card">
+          <div class="stat-card" data-filter="active" role="button" tabindex="0">
             <div class="stat-label">موظفون فعّالون</div>
             <div class="stat-value" id="statActive">0</div>
           </div>
-          <div class="stat-card warning">
+          <div class="stat-card warning" data-filter="pending" role="button" tabindex="0">
             <div class="stat-label">⏳ بانتظار التفعيل</div>
             <div class="stat-value" id="statPending">0</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" data-filter="admin" role="button" tabindex="0">
             <div class="stat-label">أدمنية النظام</div>
             <div class="stat-value" id="statAdmins">0</div>
           </div>
@@ -414,6 +424,15 @@
           <input type="text" id="newName" placeholder="الاسم (اختياري)">
           <button class="btn" id="addBtn">➕ إضافة موظف</button>
           <span class="add-msg" id="addMsg"></span>
+        </div>
+
+        <div class="filter-chips" id="filterChips">
+          <button type="button" class="filter-chip active" data-filter="all">الكل</button>
+          <button type="button" class="filter-chip" data-filter="active">✅ مفعّلون</button>
+          <button type="button" class="filter-chip" data-filter="pending">⏳ بانتظار التفعيل</button>
+          <button type="button" class="filter-chip" data-filter="never">🚫 لم يفتحوا الأداة أبداً</button>
+          <button type="button" class="filter-chip" data-filter="stale">⚠️ لم يحدّثوا الأداة</button>
+          <button type="button" class="filter-chip" data-filter="admin">👑 أدمن</button>
         </div>
 
         <div class="toolbar">
@@ -567,6 +586,23 @@
   let sessionExpiresAt = Number(localStorage.getItem("yaqeen_admin_session_expires") || 0);
   let adminEmail = localStorage.getItem("yaqeen_admin_email") || "";
   let allUsers = [];
+  let currentFilter = "all";
+
+  function matchesFilter(user) {
+    if (currentFilter === "all") return true;
+    if (currentFilter === "active") return !!user.active;
+    if (currentFilter === "pending") return !user.active;
+    if (currentFilter === "never") return !user.script_version;
+    if (currentFilter === "stale") return !!user.script_version && !!latestScriptVersion && user.script_version !== latestScriptVersion;
+    if (currentFilter === "admin") return !!user.is_admin;
+    return true;
+  }
+
+  function setFilter(filter) {
+    currentFilter = filter;
+    document.querySelectorAll(".filter-chip").forEach(c => c.classList.toggle("active", c.getAttribute("data-filter") === filter));
+    renderUsers();
+  }
 
   function clearSession() {
     sessionToken = "";
@@ -933,7 +969,7 @@
 
     updateStats();
 
-    const filtered = allUsers.filter(u => !query || (u.email || "").toLowerCase().includes(query));
+    const filtered = allUsers.filter(u => (!query || (u.email || "").toLowerCase().includes(query)) && matchesFilter(u));
 
     if (filtered.length === 0) {
       emptyMsg.style.display = "block";
@@ -1229,6 +1265,16 @@
 
   document.getElementById("searchInput").addEventListener("input", renderUsers);
   document.getElementById("refreshBtn").addEventListener("click", loadUsers);
+
+  document.querySelectorAll(".filter-chip").forEach(chip => {
+    chip.addEventListener("click", () => setFilter(chip.getAttribute("data-filter")));
+  });
+  document.querySelectorAll(".stat-card").forEach(card => {
+    card.addEventListener("click", () => setFilter(card.getAttribute("data-filter")));
+    card.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter(card.getAttribute("data-filter")); }
+    });
+  });
 
   // ===== بدء التشغيل =====
   bootstrapSession();
