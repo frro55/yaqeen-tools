@@ -4,59 +4,94 @@
 <meta charset="UTF-8">
 <title>لوحة إدارة المستخدمين - أدوات يقين</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap">
 <style>
+  :root{
+    --accent:#A3E635;
+    --accent-deep:#79a916;
+    --accent-ink:#3c4a10;
+    --ink:#1c1c1a;
+    --ink-soft:#767068;
+    --ink-faint:#a19c92;
+    --bg:#f6f6f2;
+    --surface:#ffffff;
+    --border:#e9e7df;
+    --success:#16a34a; --success-bg:#eaf7e9;
+    --danger:#dc2626; --danger-bg:#fdecec;
+    --warning:#c2760c; --warning-bg:#fdf3e0;
+    --radius-lg:22px; --radius-md:14px; --radius-sm:10px;
+    --shadow-card:0 1px 2px rgba(28,28,26,.04), 0 10px 26px -16px rgba(28,28,26,.14);
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     min-height: 100vh;
-    font-family: Arial, Tahoma, sans-serif;
-    background: #f5f5f5;
-    color: #1a1a1a;
-    padding: 24px 16px;
+    font-family: "Tajawal", Arial, Tahoma, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
   }
+  a{ color: var(--accent-deep); }
 
   /* ===== شاشة الدخول ===== */
   #loginScreen {
-    min-height: 80vh;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 24px;
+    background:
+      radial-gradient(1100px 620px at 82% -8%, rgba(163,230,53,.16), transparent 60%),
+      radial-gradient(900px 500px at -6% 108%, rgba(163,230,53,.10), transparent 55%),
+      var(--bg);
   }
   .login-card {
-    max-width: 380px;
+    max-width: 400px;
     width: 100%;
-    background: #fff;
-    border: 3px solid #A3E635;
-    border-radius: 16px;
-    padding: 34px 26px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 42px 38px 34px;
     text-align: center;
-    box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    box-shadow: 0 1px 2px rgba(28,28,26,.05), 0 24px 48px -20px rgba(60,70,10,.22);
   }
-  .login-card .icon { font-size: 44px; margin-bottom: 10px; }
-  .login-card h1 { margin: 0 0 8px; font-size: 20px; }
-  .login-card p { margin: 0 0 20px; color: #666; font-size: 13.5px; line-height: 1.8; }
+  .login-card .icon {
+    width: 60px; height: 60px; margin: 0 auto 18px;
+    border-radius: 16px;
+    background: linear-gradient(160deg, var(--accent), var(--accent-deep));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 14px 26px -12px rgba(121,169,22,.6);
+  }
+  .login-card h1 { margin: 0 0 8px; font-size: 20px; font-weight: 800; }
+  .login-card p { margin: 0 0 26px; color: var(--ink-soft); font-size: 13.5px; line-height: 1.8; }
+  .login-card label { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); margin-bottom: 7px; text-align: right; }
+  .login-card .field { margin-bottom: 16px; }
   .login-card input {
     width: 100%;
-    padding: 12px 14px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
+    padding: 13px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
     font-size: 14px;
-    margin-bottom: 12px;
+    font-family: inherit;
     text-align: right;
     direction: ltr;
+    background: #fbfbf9;
+    outline: none;
+    color: var(--ink);
   }
+  .login-card input:focus { border-color: var(--accent-deep); box-shadow: 0 0 0 3px rgba(163,230,53,.22); }
   .login-card .error {
-    color: #dc2626;
-    font-size: 13px;
+    color: var(--danger);
+    font-size: 12.5px;
     font-weight: bold;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     display: none;
   }
   .password-field { position: relative; }
-  .password-field input { padding-left: 38px; }
+  .password-field input { padding-inline-end: 40px; }
   .password-field .toggle-pw {
     position: absolute;
-    left: 6px;
+    inset-inline-end: 6px;
     top: 0;
     height: 100%;
     display: flex;
@@ -65,152 +100,239 @@
     border: none;
     cursor: pointer;
     font-size: 16px;
-    color: #666;
+    color: var(--ink-soft);
     padding: 0 6px;
   }
+  .login-footnote { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--ink-faint); }
 
   /* ===== أزرار عامة ===== */
   .btn {
-    display: inline-block;
-    background: #A3E635;
-    color: #1a1a1a;
-    border: none;
-    border-radius: 8px;
-    padding: 11px 22px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-  }
-  .btn:hover { background: #8fcf1e; }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
-  .btn.secondary { background: #eee; color: #333; }
-  .btn.secondary:hover { background: #ddd; }
-  .btn.danger { background: #fecaca; color: #7f1d1d; }
-  .btn.danger:hover { background: #fca5a5; }
-  .btn.small { padding: 7px 14px; font-size: 12.5px; }
-
-  /* ===== لوحة الإدارة ===== */
-  #appScreen { display: none; max-width: 1100px; margin: 0 auto; }
-
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    background: #fff;
-    border: 1px solid #e5e5e5;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 18px;
-  }
-  .topbar h1 { font-size: 18px; margin: 0; }
-  .topbar .who { font-size: 12.5px; color: #666; }
-
-  .panel {
-    background: #fff;
-    border: 1px solid #e5e5e5;
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin-bottom: 18px;
-  }
-  .panel h2 { font-size: 15px; margin: 0 0 14px; }
-
-  .toolbar {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .toolbar input[type="text"], .toolbar input[type="email"] {
-    padding: 10px 12px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 13.5px;
-  }
-  #searchInput { min-width: 220px; }
-
-  .add-form {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 14px;
-    align-items: center;
-  }
-  .add-form input { min-width: 200px; }
-  .add-msg { font-size: 13px; font-weight: bold; }
-  .add-msg.ok { color: #16a34a; }
-  .add-msg.err { color: #dc2626; }
-
-  table { width: 100%; border-collapse: collapse; }
-  th, td {
-    padding: 10px 8px;
-    text-align: right;
-    border-bottom: 1px solid #eee;
-    font-size: 13.5px;
-    vertical-align: top;
-  }
-  th { color: #666; font-size: 12.5px; }
-  td.email { direction: ltr; text-align: right; color: #444; font-size: 12.5px; }
-  td input[type="text"] {
-    width: 100%;
-    padding: 7px 9px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 13px;
-  }
-
-  .tools-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(140px, 1fr));
-    gap: 4px 10px;
-  }
-  .tools-grid label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12.5px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .switch-row { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-  .switch {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    border-radius: 11px;
+    padding: 11px 20px;
+    font-size: 13.5px;
+    font-weight: 800;
+    font-family: inherit;
     cursor: pointer;
-    font-size: 12.5px;
+    box-shadow: 0 8px 16px -8px rgba(121,169,22,.55);
+    white-space: nowrap;
   }
+  .btn:hover { filter: brightness(.97); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+  .btn.secondary { background: var(--surface); color: var(--ink); border: 1.5px solid var(--border); box-shadow: none; font-weight: 700; }
+  .btn.secondary:hover { background: #fbfbf9; }
+  .btn.danger { background: var(--danger-bg); color: #a11313; border: 1px solid #f3caca; box-shadow: none; font-weight: 700; }
+  .btn.danger:hover { background: #fbdada; }
+  .btn.small { padding: 8px 14px; font-size: 12.5px; }
+
+  /* ===== الهيكل العام ===== */
+  #appScreen { display: none; min-height: 100vh; }
+  #appScreen.open { display: flex; }
+
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-inline-start: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 26px 18px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 26px; }
+  .brand-icon {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(160deg, var(--accent), var(--accent-deep));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .brand-title { font-size: 14.5px; font-weight: 800; line-height: 1.2; }
+  .brand-sub { font-size: 11px; color: var(--ink-faint); }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 11px;
+    padding: 12px 14px; border-radius: 12px;
+    color: var(--ink-soft); font-size: 14px; font-weight: 600;
+    cursor: pointer; margin-bottom: 4px; user-select: none;
+  }
+  .nav-item:hover { background: #f5f4ee; }
+  .nav-item.active { background: var(--accent); color: var(--accent-ink); font-weight: 800; }
+  .nav-item .nav-icon { font-size: 16px; }
+
+  .sidebar-footer {
+    margin-top: auto; padding: 14px 12px;
+    border-radius: 14px; background: #fbfbf7; border: 1px solid var(--border);
+  }
+  .sidebar-footer .who-label { font-size: 11px; color: var(--ink-faint); margin-bottom: 3px; }
+  .sidebar-footer .who-email {
+    font-size: 12.5px; font-weight: 700; direction: ltr; text-align: right;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .logout-row {
+    display: flex; align-items: center; gap: 6px; margin-top: 9px;
+    font-size: 12px; color: var(--ink-soft); cursor: pointer;
+  }
+  .logout-row:hover { color: var(--danger); }
+
+  .content { flex: 1; min-width: 0; padding: 30px 40px; overflow-x: hidden; }
+  .tab-panel { max-width: 1180px; display: none; }
+  .tab-panel.active { display: block; }
+  .page-head { margin-bottom: 22px; }
+  .page-head h1 { margin: 0 0 5px; font-size: 22px; font-weight: 800; }
+  .page-head p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 20px 22px;
+    margin-bottom: 18px;
+  }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; box-shadow: var(--shadow-card); }
+  .stat-card.warning { background: var(--warning-bg); border-color: #f3dfae; box-shadow: none; }
+  .stat-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+  .stat-card.warning .stat-label { color: var(--warning); font-weight: 700; }
+  .stat-value { font-size: 26px; font-weight: 800; }
+  .stat-card.warning .stat-value { color: #8a5a08; }
+
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .search-wrap { position: relative; flex: 1; max-width: 320px; }
+  .search-wrap input {
+    width: 100%; padding: 10px 38px 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 11px;
+    font-size: 13.5px; font-family: inherit; background: var(--surface); outline: none;
+  }
+  .search-wrap input:focus { border-color: var(--accent-deep); }
+  .search-wrap .search-icon { position: absolute; inset-inline-end: 13px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); }
+  .toolbar-spacer { flex: 1; }
+
+  .add-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card); padding: 14px 16px; margin-bottom: 18px;
+  }
+  .add-bar input {
+    padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 11px;
+    font-size: 13.5px; font-family: inherit; background: #fbfbf9; outline: none;
+  }
+  .add-bar input:focus { border-color: var(--accent-deep); }
+  .add-bar input#newEmail { flex: 1; min-width: 200px; direction: ltr; text-align: right; }
+  .add-bar input#newName { flex: 1; min-width: 160px; }
+  .add-msg { font-size: 12.5px; font-weight: bold; }
+  .add-msg.ok { color: var(--success); }
+  .add-msg.err { color: var(--danger); }
+
+  /* ===== جدول المستخدمين ===== */
+  .table-panel { padding: 6px 22px 4px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 14px 6px; text-align: right; border-top: 1px solid var(--border); font-size: 13.5px; vertical-align: top; }
+  thead th { border-top: 0; font-size: 11.5px; font-weight: 800; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .03em; padding-bottom: 12px; }
+  td.email { direction: ltr; text-align: right; }
+  .email-main { font-weight: 700; font-size: 13.5px; }
+  .email-meta { font-size: 10.5px; font-weight: 600; margin-top: 4px; color: var(--ink-faint); }
+  .email-meta.fresh { color: var(--success); }
+  .email-meta.stale { color: var(--danger); }
+  td input[type="text"] {
+    width: 100%; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 9px;
+    font-size: 13px; font-family: inherit; background: #fbfbf9; outline: none;
+  }
+  td input[type="text"]:focus { border-color: var(--accent-deep); }
+
+  .tools-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+    border-radius: 999px; background: #f1f0ea; font-size: 12.5px; font-weight: 700;
+    cursor: pointer; user-select: none; border: none; font-family: inherit; color: var(--ink);
+  }
+  .tools-chip:hover { background: #e8e6da; }
+
+  .details-row td { border-top: 0; padding: 0; }
+  .tool-details {
+    background: #fbfdf3; border: 1.5px solid var(--accent); border-radius: 16px;
+    margin: 2px 0 14px; overflow: hidden;
+  }
+  .tool-details-body { padding: 18px; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+  .tool-group { background: #fbfbf7; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .tool-group-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+  .tool-group-title { font-size: 12.5px; font-weight: 800; }
+  .tool-group-selectall { font-size: 10.5px; color: var(--accent-deep); font-weight: 700; cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+  .tool-list { display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
+  .tool-list label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+  .tool-list input[type="checkbox"] { accent-color: var(--accent-deep); width: 15px; height: 15px; }
+
+  .switch-row { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .switch { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12.5px; }
   .switch input { display: none; }
   .switch .track {
-    width: 34px;
-    height: 19px;
-    background: #ddd;
-    border-radius: 999px;
-    position: relative;
-    transition: background .15s;
-    flex-shrink: 0;
+    width: 32px; height: 18px; background: #e3e1d8; border-radius: 999px;
+    position: relative; transition: background .15s; flex-shrink: 0;
   }
   .switch .track::after {
-    content: "";
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    width: 15px;
-    height: 15px;
-    background: #fff;
-    border-radius: 50%;
-    transition: right .15s;
+    content: ""; position: absolute; top: 2px; inset-inline-start: 2px;
+    width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: inset-inline-start .15s;
   }
-  .switch input:checked + .track { background: #A3E635; }
-  .switch input:checked + .track::after { right: 17px; }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after { inset-inline-start: 16px; }
 
-  .row-actions { display: flex; flex-direction: column; gap: 6px; }
-  .save-msg { font-size: 11.5px; color: #16a34a; font-weight: bold; }
-  .save-msg.err { color: #dc2626; }
+  .row-actions { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+  .save-msg { font-size: 11.5px; color: var(--success); font-weight: bold; }
+  .save-msg.err { color: var(--danger); }
 
-  .empty { text-align: center; color: #999; padding: 30px 0; font-size: 13.5px; }
+  .empty { text-align: center; color: var(--ink-faint); padding: 34px 0; font-size: 13.5px; }
+
+  /* ===== جلسات واتساب ===== */
+  .sessions-grid { display: grid; grid-template-columns: repeat(3, minmax(220px,1fr)); gap: 16px; }
+  .session-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: 20px; }
+  .session-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+  .session-id { font-size: 15px; font-weight: 800; direction: ltr; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .status-pill.open { background: var(--success-bg); color: var(--success); }
+  .status-pill.open .dot { background: var(--success); }
+  .status-pill.qr { background: var(--warning-bg); color: var(--warning); }
+  .status-pill.qr .dot { background: var(--warning); }
+  .status-pill.connecting { background: #eef0f3; color: #666; }
+  .status-pill.connecting .dot { background: #999; }
+  .status-pill.closed { background: var(--danger-bg); color: var(--danger); }
+  .status-pill.closed .dot { background: var(--danger); }
+  .session-desc { font-size: 12px; color: var(--ink-faint); margin-bottom: 18px; min-height: 17px; }
+  .session-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .session-actions .btn { flex: 1; justify-content: center; }
+
+  /* ===== إعدادات AI ===== */
+  .ai-panel { max-width: 820px; }
+  .ai-panel label { display: block; font-size: 12.5px; font-weight: 800; color: var(--ink-soft); margin-bottom: 10px; }
+  .ai-panel textarea {
+    width: 100%; box-sizing: border-box; padding: 16px; min-height: 220px;
+    border: 1.5px solid var(--border); border-radius: 14px; font-size: 13.5px; line-height: 1.9;
+    text-align: right; direction: rtl; font-family: inherit; background: #fbfbf9; resize: vertical; outline: none;
+  }
+  .ai-panel textarea:focus { border-color: var(--accent-deep); }
+  .ai-panel-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+
+  /* ===== جوال ===== */
+  @media (max-width: 860px) {
+    #appScreen.open { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; align-items: center; padding: 14px 16px; border-inline-start: 0; border-bottom: 1px solid var(--border); }
+    .brand { padding: 0; margin-inline-end: 14px; }
+    .sidebar > div:not(.brand):not(.sidebar-footer) { display: flex; gap: 4px; }
+    .nav-item { margin-bottom: 0; padding: 9px 12px; font-size: 12.5px; }
+    .nav-item .nav-icon { font-size: 14px; }
+    .sidebar-footer { display: none; }
+    .content { padding: 20px 16px; }
+    .stats-row { grid-template-columns: 1fr; }
+    .sessions-grid { grid-template-columns: 1fr; }
+    .tool-details-body { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -220,101 +342,160 @@
     <div class="login-card">
       <div class="icon">🔐</div>
       <h1>لوحة إدارة المستخدمين</h1>
-      <p>هذي الصفحة مخصصة للمدير فقط.<br>أدخل إيميلك للدخول.</p>
+      <p>هذي الصفحة مخصصة للمدير فقط<br>سجّل الدخول بإيميلك وكلمة المرور</p>
       <div class="error" id="loginError">تم رفض الدخول - هذا الحساب ليس أدمن أو غير مفعّل.</div>
-      <input type="email" id="loginEmail" placeholder="admin@example.com" autocomplete="off">
-      <div class="password-field">
-        <input type="password" id="loginPassword" placeholder="كلمة المرور" autocomplete="off">
-        <button type="button" class="toggle-pw" id="togglePasswordBtn" aria-label="إظهار/إخفاء كلمة المرور">👁</button>
+      <div class="field">
+        <label>الإيميل</label>
+        <input type="email" id="loginEmail" placeholder="admin@example.com" autocomplete="off">
       </div>
-      <button class="btn" style="width:100%" id="loginBtn">دخول</button>
+      <div class="field">
+        <label>كلمة المرور</label>
+        <div class="password-field">
+          <input type="password" id="loginPassword" placeholder="كلمة المرور" autocomplete="off">
+          <button type="button" class="toggle-pw" id="togglePasswordBtn" aria-label="إظهار/إخفاء كلمة المرور">👁</button>
+        </div>
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;" id="loginBtn">دخول</button>
+      <div class="login-footnote">محمي بتوكن جلسة مؤقت · صالح 8 ساعات</div>
     </div>
   </div>
 
   <!-- ===== لوحة الإدارة ===== -->
   <div id="appScreen">
 
-    <div class="topbar">
-      <h1>🛠 إدارة مستخدمي أدوات يقين</h1>
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🛠</div>
+        <div>
+          <div class="brand-title">أدوات يقين</div>
+          <div class="brand-sub">لوحة التحكم</div>
+        </div>
+      </div>
+
       <div>
-        <span class="who" id="whoLabel"></span>
-        <button class="btn secondary small" id="logoutBtn" style="margin-inline-start:10px;">تسجيل خروج</button>
+        <div class="nav-item active" data-tab="users"><span class="nav-icon">👥</span> المستخدمين</div>
+        <div class="nav-item" data-tab="whatsapp"><span class="nav-icon">📱</span> جلسات واتساب</div>
+        <div class="nav-item" data-tab="ai"><span class="nav-icon">🤖</span> إعدادات AI</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="who-label">مسجّل الدخول</div>
+        <div class="who-email" id="whoLabel"></div>
+        <div class="logout-row" id="logoutBtn"><span>🚪</span> تسجيل خروج</div>
       </div>
     </div>
 
-    <div class="panel">
-      <h2>➕ إضافة مستخدم جديد</h2>
-      <div class="add-form">
-        <input type="email" id="newEmail" placeholder="الإيميل">
-        <input type="text" id="newName" placeholder="الاسم (اختياري)">
-        <button class="btn" id="addBtn">إضافة</button>
-        <span class="add-msg" id="addMsg"></span>
+    <div class="content">
+
+      <!-- ===== تبويب المستخدمين ===== -->
+      <div class="tab-panel active" id="tab-users">
+        <div class="page-head">
+          <h1>👥 إدارة المستخدمين</h1>
+          <p>تحكم بصلاحيات الموظفين وأدواتهم المتاحة بأدوات يقين</p>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">موظفون فعّالون</div>
+            <div class="stat-value" id="statActive">0</div>
+          </div>
+          <div class="stat-card warning">
+            <div class="stat-label">⏳ بانتظار التفعيل</div>
+            <div class="stat-value" id="statPending">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">أدمنية النظام</div>
+            <div class="stat-value" id="statAdmins">0</div>
+          </div>
+        </div>
+
+        <div class="add-bar">
+          <input type="email" id="newEmail" placeholder="إيميل الموظف الجديد">
+          <input type="text" id="newName" placeholder="الاسم (اختياري)">
+          <button class="btn" id="addBtn">➕ إضافة موظف</button>
+          <span class="add-msg" id="addMsg"></span>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-wrap">
+            <input type="text" id="searchInput" placeholder="بحث بالإيميل...">
+            <span class="search-icon">🔍</span>
+          </div>
+          <div class="toolbar-spacer"></div>
+          <button class="btn secondary small" id="refreshBtn">🔄 تحديث</button>
+        </div>
+
+        <div class="panel table-panel">
+          <table id="usersTable">
+            <thead>
+              <tr>
+                <th style="width:26%;">الموظف</th>
+                <th style="width:18%;">الاسم</th>
+                <th style="width:16%;">الأدوات</th>
+                <th style="width:18%;">الحالة</th>
+                <th style="width:22%;"></th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+          <div class="empty" id="emptyMsg" style="display:none;">لا يوجد مستخدمون مطابقون.</div>
+        </div>
       </div>
-    </div>
 
-    <div class="panel">
-      <h2>🤖 تعليمات شات AI</h2>
-      <textarea id="aiPromptInput" rows="5" style="width:100%;box-sizing:border-box;padding:10px 12px;
-        border:1px solid #ccc;border-radius:8px;font-size:13.5px;text-align:right;direction:rtl;
-        font-family:inherit;resize:vertical;" placeholder="النص اللي يوجّه رد الذكاء الاصطناعي..."></textarea>
-      <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
-        <button class="btn small" id="aiPromptSaveBtn">💾 حفظ التعليمات</button>
-        <span class="add-msg" id="aiPromptMsg"></span>
+      <!-- ===== تبويب جلسات واتساب ===== -->
+      <div class="tab-panel" id="tab-whatsapp">
+        <div class="page-head">
+          <h1>📱 جلسات واتساب</h1>
+          <p>إدارة أرقام الواتساب المرتبطة بالبوت وربط أرقام جديدة</p>
+        </div>
+
+        <div class="add-bar">
+          <input type="text" id="newSessionId" placeholder="معرّف الجلسة الجديدة (حروف/أرقام/شرطة فقط)" style="flex:1;">
+          <button class="btn" id="addSessionBtn">➕ إضافة جلسة</button>
+          <button class="btn secondary small" id="refreshSessionsBtn">🔄 تحديث</button>
+          <span class="add-msg" id="sessionMsg"></span>
+        </div>
+
+        <div class="sessions-grid" id="sessionsList"></div>
       </div>
-    </div>
 
-    <div class="panel">
-      <h2>📱 جلسات واتساب</h2>
-      <div class="toolbar">
-        <input type="text" id="newSessionId" placeholder="معرّف الجلسة الجديدة (حروف/أرقام/شرطة فقط)">
-        <button class="btn small" id="addSessionBtn">➕ إضافة جلسة</button>
-        <button class="btn secondary small" id="refreshSessionsBtn">🔄 تحديث</button>
-        <span class="add-msg" id="sessionMsg"></span>
+      <!-- ===== تبويب إعدادات AI ===== -->
+      <div class="tab-panel" id="tab-ai">
+        <div class="page-head">
+          <h1>🤖 إعدادات شات AI</h1>
+          <p>النص اللي يوجّه ردود مساعد الذكاء الاصطناعي لموظفي يقين</p>
+        </div>
+
+        <div class="panel ai-panel">
+          <label>تعليمات النظام (System Prompt)</label>
+          <textarea id="aiPromptInput" rows="8" placeholder="النص اللي يوجّه رد الذكاء الاصطناعي..."></textarea>
+          <div class="ai-panel-footer">
+            <span class="add-msg" id="aiPromptMsg"></span>
+            <button class="btn" id="aiPromptSaveBtn">💾 حفظ التعليمات</button>
+          </div>
+        </div>
       </div>
-      <div id="sessionsList" style="margin-top:14px;"></div>
-    </div>
 
-    <div class="panel">
-      <div class="toolbar">
-        <input type="text" id="searchInput" placeholder="بحث بالإيميل...">
-        <button class="btn secondary small" id="refreshBtn">🔄 تحديث</button>
-      </div>
     </div>
-
-    <div class="panel" style="overflow-x:auto;">
-      <table id="usersTable">
-        <thead>
-          <tr>
-            <th>الإيميل</th>
-            <th>الاسم</th>
-            <th>الأدوات</th>
-            <th>الحالة</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="usersBody"></tbody>
-      </table>
-      <div class="empty" id="emptyMsg" style="display:none;">لا يوجد مستخدمون مطابقون.</div>
-    </div>
-
   </div>
 
   <!-- ===== نافذة عرض QR كود ربط جلسة واتساب ===== -->
-  <div id="qrModal" style="display:none;position:fixed;inset:0;background:rgba(20,26,10,.45);z-index:999999;align-items:center;justify-content:center;padding:16px;">
-    <div style="background:#fff;border-radius:16px;padding:26px;text-align:center;max-width:320px;width:100%;">
-      <h3 style="margin:0 0 6px;font-size:16px;">امسح الكود بواتساب</h3>
-      <p style="margin:0 0 14px;color:#666;font-size:12.5px;">القائمة ⋮ ← الأجهزة المرتبطة ← ربط جهاز</p>
-      <img id="qrModalImg" alt="QR" style="width:220px;height:220px;object-fit:contain;border:1px solid #eee;border-radius:8px;">
-      <p id="qrModalStatus" style="font-size:13px;color:#666;font-weight:bold;margin-top:12px;"></p>
-      <button class="btn secondary small" id="qrModalCloseBtn" style="margin-top:6px;">إغلاق</button>
+  <div id="qrModal" style="display:none;position:fixed;inset:0;background:rgba(28,26,20,.5);z-index:999999;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#fff;border-radius:22px;padding:30px;text-align:center;max-width:340px;width:100%;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);">
+      <h3 style="margin:0 0 6px;font-size:16px;font-weight:800;">امسح الكود بواتساب</h3>
+      <p style="margin:0 0 16px;color:var(--ink-soft);font-size:12.5px;">القائمة ⋮ ← الأجهزة المرتبطة ← ربط جهاز</p>
+      <img id="qrModalImg" alt="QR" style="width:220px;height:220px;object-fit:contain;border:1.5px solid var(--border);border-radius:12px;">
+      <p id="qrModalStatus" style="font-size:13px;color:var(--accent-deep);font-weight:800;margin-top:14px;"></p>
+      <button class="btn secondary small" id="qrModalCloseBtn" style="margin-top:8px;">إغلاق</button>
     </div>
   </div>
 
 <script>
   const API_BASE = "https://api.yaqeen-vip.space";
 
-  // نفس مفاتيح tool_key الموجودة فعلياً بجدول tools بقاعدة البيانات -
-  // أي تعديل بمفاتيح الجدول لازم ينعكس هنا يدوياً
+  // نفس مفاتيح tool_key الموجودة فعلياً بجدول tools بقاعدة البيانات، ونفس
+  // تصنيفات TOOL_GROUPS/GROUP_META بـyaqeen-core.user.js - أي تعديل بأي
+  // طرف (أداة جديدة، تصنيف جديد) لازم ينعكس بالطرف الثاني يدوياً
   const TOOL_CATALOG = [
     { key: "fleet-inventory", label: "🚗 جرد الأسطول" },
     { key: "available-vehicles", label: "🚗 السيارات المتوفرة" },
@@ -332,6 +513,31 @@
     { key: "ai-chat", label: "🤖 شات AI" },
     { key: "shift-report", label: "📋 تقرير الشفت" },
   ];
+
+  const TOOL_GROUPS = {
+    "fleet-inventory": "fleet",
+    "available-vehicles": "fleet",
+    "late-payments": "debt",
+    "late-payments-branches": "debt",
+    "company-extension": "debt",
+    "company-extension-branches": "debt",
+    "closed-as-debt": "debt",
+    "closed-as-debt-branches": "debt",
+    "airport-report": "reports",
+    "booking-report": "reports",
+    "shift-report": "reports",
+    "vip-booking-add": "reports",
+    "email-tools": "other",
+    "customer-whatsapp-messages": "other",
+    "ai-chat": "other",
+  };
+  const GROUP_META = {
+    fleet: { glyph: "🚗", label: "الأسطول" },
+    debt: { glyph: "💰", label: "الدفع والمديونية" },
+    reports: { glyph: "📊", label: "التقارير والحجوزات" },
+    other: { glyph: "🛠️", label: "أدوات أخرى" },
+  };
+  const GROUP_ORDER = ["fleet", "debt", "reports", "other"];
 
   function formatLastSeen(iso) {
     if (!iso) return "—";
@@ -410,12 +616,12 @@
 
   function showApp() {
     loginScreen.style.display = "none";
-    appScreen.style.display = "block";
-    document.getElementById("whoLabel").textContent = "مسجّل الدخول: " + adminEmail;
+    appScreen.classList.add("open");
+    document.getElementById("whoLabel").textContent = adminEmail;
   }
 
   function showLogin() {
-    appScreen.style.display = "none";
+    appScreen.classList.remove("open");
     loginScreen.style.display = "flex";
   }
 
@@ -463,6 +669,15 @@
   // يعكس أي قطع اتصال يصير من طرف واتساب نفسه بدون ما يحتاج المدير يضغط تحديث يدوياً
   setInterval(() => { if (sessionToken) loadSessions(); }, 30000);
 
+  // ===== التبويبات =====
+  document.querySelectorAll(".nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const tab = item.getAttribute("data-tab");
+      document.querySelectorAll(".nav-item").forEach(i => i.classList.toggle("active", i === item));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-" + tab));
+    });
+  });
+
   // ===== تعليمات شات AI =====
   function loadAiPrompt() {
     return adminGet("/api/admin/ai-settings").then(data => {
@@ -494,11 +709,17 @@
   });
 
   // ===== جلسات واتساب =====
-  const SESSION_STATUS_LABELS = {
-    open: { text: "متصلة ✓", color: "#16a34a" },
-    qr: { text: "بانتظار مسح QR", color: "#ca8a04" },
-    connecting: { text: "يتصل...", color: "#666" },
-    closed: { text: "منقطعة", color: "#dc2626" },
+  const SESSION_STATUS_META = {
+    open: { text: "متصلة", cls: "open" },
+    qr: { text: "بانتظار QR", cls: "qr" },
+    connecting: { text: "يتصل...", cls: "connecting" },
+    closed: { text: "منقطعة", cls: "closed" },
+  };
+  const SESSION_STATUS_DESC = {
+    open: "الجلسة متصلة وجاهزة للإرسال",
+    qr: "لسا ما اتربط برقم واتساب",
+    connecting: "جاري محاولة الاتصال...",
+    closed: "انقطع الاتصال، تحتاج إعادة ربط",
   };
 
   function loadSessions() {
@@ -518,18 +739,30 @@
     }
 
     sessions.forEach(s => {
-      const label = SESSION_STATUS_LABELS[s.status] || { text: s.status, color: "#666" };
+      const meta = SESSION_STATUS_META[s.status] || { text: s.status, cls: "closed" };
 
-      const row = document.createElement("div");
-      row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 4px;border-bottom:1px solid #eee;flex-wrap:wrap;";
+      const card = document.createElement("div");
+      card.className = "session-card";
 
-      const left = document.createElement("div");
-      left.innerHTML = '<b style="font-size:13.5px;">' + s.id + '</b>' +
-        '&nbsp;&nbsp;<span style="font-size:12px;font-weight:bold;color:' + label.color + ';">' + label.text + '</span>';
-      row.appendChild(left);
+      const head = document.createElement("div");
+      head.className = "session-card-head";
+      const idEl = document.createElement("div");
+      idEl.className = "session-id";
+      idEl.textContent = s.id;
+      const pill = document.createElement("div");
+      pill.className = "status-pill " + meta.cls;
+      pill.innerHTML = '<span class="dot"></span>' + meta.text;
+      head.appendChild(idEl);
+      head.appendChild(pill);
+      card.appendChild(head);
 
-      const right = document.createElement("div");
-      right.style.cssText = "display:flex;gap:8px;";
+      const desc = document.createElement("div");
+      desc.className = "session-desc";
+      desc.textContent = SESSION_STATUS_DESC[s.status] || "";
+      card.appendChild(desc);
+
+      const actions = document.createElement("div");
+      actions.className = "session-actions";
 
       const renameBtn = document.createElement("button");
       renameBtn.className = "btn secondary small";
@@ -545,19 +778,19 @@
           loadSessions();
         });
       });
-      right.appendChild(renameBtn);
+      actions.appendChild(renameBtn);
 
       if (s.status !== "open") {
         const qrBtn = document.createElement("button");
         qrBtn.className = "btn small";
         qrBtn.textContent = "📷 عرض QR";
         qrBtn.addEventListener("click", () => openQrModal(s.id));
-        right.appendChild(qrBtn);
+        actions.appendChild(qrBtn);
       }
 
       const delBtn = document.createElement("button");
       delBtn.className = "btn small danger";
-      delBtn.textContent = "🗑 حذف";
+      delBtn.textContent = "🗑";
       delBtn.addEventListener("click", () => {
         const ok = confirm('متأكد تبي تحذف جلسة "' + s.id + '"؟ لازم تربطها من جديد بمسح QR لو تبيها ترجع.');
         if (!ok) return;
@@ -569,10 +802,10 @@
           loadSessions();
         });
       });
-      right.appendChild(delBtn);
+      actions.appendChild(delBtn);
 
-      row.appendChild(right);
-      wrap.appendChild(row);
+      card.appendChild(actions);
+      wrap.appendChild(card);
     });
   }
 
@@ -683,11 +916,22 @@
     });
   }
 
+  function updateStats() {
+    const active = allUsers.filter(u => u.active).length;
+    const pending = allUsers.filter(u => !u.active).length;
+    const admins = allUsers.filter(u => u.is_admin).length;
+    document.getElementById("statActive").textContent = active;
+    document.getElementById("statPending").textContent = pending;
+    document.getElementById("statAdmins").textContent = admins;
+  }
+
   function renderUsers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const body = document.getElementById("usersBody");
     const emptyMsg = document.getElementById("emptyMsg");
     body.innerHTML = "";
+
+    updateStats();
 
     const filtered = allUsers.filter(u => !query || (u.email || "").toLowerCase().includes(query));
 
@@ -698,31 +942,39 @@
     emptyMsg.style.display = "none";
 
     filtered.forEach(user => {
-      body.appendChild(buildRow(user));
+      const rows = buildRow(user);
+      body.appendChild(rows.summaryRow);
+      body.appendChild(rows.detailsRow);
     });
   }
 
+  /** يبني صف الملخص + صف التفاصيل (الأدوات مقسّمة حسب التصنيف، مخفي افتراضياً) لموظف وحد */
   function buildRow(user) {
     const tr = document.createElement("tr");
+    const checkboxes = {};
 
     // الإيميل (+ رقم إصدار السكربت وآخر ظهور تحته)
     const tdEmail = document.createElement("td");
     tdEmail.className = "email";
-    tdEmail.appendChild(document.createTextNode(user.email));
+    const emailMain = document.createElement("div");
+    emailMain.className = "email-main";
+    emailMain.textContent = user.email;
+    tdEmail.appendChild(emailMain);
+
     const versionMeta = document.createElement("div");
-    let versionColor = "#999";
-    let versionLabel = "—";
+    let versionCls = "";
+    let versionLabel = "لسا ما فتح الأداة";
     if (user.script_version) {
       if (latestScriptVersion && user.script_version === latestScriptVersion) {
-        versionColor = "#16a34a";
-        versionLabel = user.script_version + " ✓";
+        versionCls = "fresh";
+        versionLabel = "الإصدار: " + user.script_version + " ✓ · " + formatLastSeen(user.last_seen_at);
       } else {
-        versionColor = "#dc2626";
-        versionLabel = user.script_version + " ⚠";
+        versionCls = "stale";
+        versionLabel = "الإصدار: " + user.script_version + " ⚠ · " + formatLastSeen(user.last_seen_at);
       }
     }
-    versionMeta.style.cssText = "font-size:10.5px;margin-top:3px;font-weight:600;color:" + versionColor + ";";
-    versionMeta.textContent = "الإصدار: " + versionLabel + " · آخر ظهور: " + formatLastSeen(user.last_seen_at);
+    versionMeta.className = "email-meta" + (versionCls ? " " + versionCls : "");
+    versionMeta.textContent = versionLabel;
     tdEmail.appendChild(versionMeta);
     tr.appendChild(tdEmail);
 
@@ -734,22 +986,14 @@
     tdName.appendChild(nameInput);
     tr.appendChild(tdName);
 
-    // الأدوات (checkboxes)
+    // الأدوات (شارة ملخّصة تفتح/تقفل صف التفاصيل)
     const tdTools = document.createElement("td");
-    const grid = document.createElement("div");
-    grid.className = "tools-grid";
-    const checkboxes = {};
-    TOOL_CATALOG.forEach(tool => {
-      const label = document.createElement("label");
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = (user.tools || []).includes(tool.key);
-      checkboxes[tool.key] = cb;
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(tool.label));
-      grid.appendChild(label);
-    });
-    tdTools.appendChild(grid);
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "tools-chip";
+    const toolCount = (user.tools || []).length;
+    chip.innerHTML = toolCount + (toolCount === 1 ? ' أداة' : ' أدوات') + ' <span class="chip-arrow">▾</span>';
+    tdTools.appendChild(chip);
     tr.appendChild(tdTools);
 
     // الحالة (مفعّل / أدمن)
@@ -764,6 +1008,7 @@
       }).then(res => {
         if (!res || !res.success) { loadUsers(); return; }
         user.active = checked;
+        updateStats();
       });
     });
 
@@ -778,6 +1023,7 @@
           return;
         }
         user.is_admin = checked;
+        updateStats();
       });
     });
 
@@ -818,6 +1064,7 @@
         }
         user.name = nameInput.value.trim();
         user.tools = selectedTools;
+        chip.innerHTML = selectedTools.length + (selectedTools.length === 1 ? ' أداة' : ' أدوات') + ' <span class="chip-arrow">' + (detailsRow.style.display === "none" ? "▾" : "▴") + '</span>';
         saveMsg.textContent = "تم الحفظ ✓";
         setTimeout(() => { saveMsg.textContent = ""; }, 2000);
       });
@@ -855,7 +1102,80 @@
     tdActions.appendChild(actionsWrap);
     tr.appendChild(tdActions);
 
-    return tr;
+    // ===== صف التفاصيل: قائمة الأدوات مقسّمة حسب التصنيف =====
+    const detailsRow = document.createElement("tr");
+    detailsRow.className = "details-row";
+    detailsRow.style.display = "none";
+    const detailsTd = document.createElement("td");
+    detailsTd.colSpan = 5;
+
+    const detailsBox = document.createElement("div");
+    detailsBox.className = "tool-details";
+    const detailsBody = document.createElement("div");
+    detailsBody.className = "tool-details-body";
+
+    const toolsByGroup = {};
+    TOOL_CATALOG.forEach(tool => {
+      const groupKey = TOOL_GROUPS[tool.key] || "other";
+      if (!toolsByGroup[groupKey]) toolsByGroup[groupKey] = [];
+      toolsByGroup[groupKey].push(tool);
+    });
+
+    GROUP_ORDER.forEach(groupKey => {
+      const tools = toolsByGroup[groupKey];
+      if (!tools || !tools.length) return;
+      const meta = GROUP_META[groupKey];
+
+      const groupBox = document.createElement("div");
+      groupBox.className = "tool-group";
+
+      const groupHead = document.createElement("div");
+      groupHead.className = "tool-group-head";
+      const groupTitle = document.createElement("div");
+      groupTitle.className = "tool-group-title";
+      groupTitle.textContent = meta.glyph + " " + meta.label;
+      const selectAllBtn = document.createElement("button");
+      selectAllBtn.type = "button";
+      selectAllBtn.className = "tool-group-selectall";
+      selectAllBtn.textContent = "تحديد الكل";
+      groupHead.appendChild(groupTitle);
+      groupHead.appendChild(selectAllBtn);
+      groupBox.appendChild(groupHead);
+
+      const list = document.createElement("div");
+      list.className = "tool-list";
+      const groupCheckboxes = [];
+      tools.forEach(tool => {
+        const label = document.createElement("label");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = (user.tools || []).includes(tool.key);
+        checkboxes[tool.key] = cb;
+        groupCheckboxes.push(cb);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(tool.label));
+        list.appendChild(label);
+      });
+      groupBox.appendChild(list);
+      detailsBody.appendChild(groupBox);
+
+      selectAllBtn.addEventListener("click", () => {
+        const allChecked = groupCheckboxes.every(cb => cb.checked);
+        groupCheckboxes.forEach(cb => { cb.checked = !allChecked; });
+      });
+    });
+
+    detailsBox.appendChild(detailsBody);
+    detailsTd.appendChild(detailsBox);
+    detailsRow.appendChild(detailsTd);
+
+    chip.addEventListener("click", () => {
+      const opening = detailsRow.style.display === "none";
+      detailsRow.style.display = opening ? "table-row" : "none";
+      chip.querySelector(".chip-arrow").textContent = opening ? "▴" : "▾";
+    });
+
+    return { summaryRow: tr, detailsRow: detailsRow };
   }
 
   function buildSwitch(label, checked, onChange) {
