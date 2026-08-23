@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0823.1900
+// @version      2026.0823.2241
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -639,6 +639,17 @@
             return;
 
 
+        // خط Tajawal - يُحمَّل مرة وحدة هنا (الـCore يشتغل أول شي دايماً) عشان
+        // كل الأدوات الثانية تقدر تستخدمه مباشرة بدون ما كل وحدة تحمّله لحالها
+        if (!document.getElementById("yt-font-tajawal")) {
+            const fontLink = document.createElement("link");
+            fontLink.id = "yt-font-tajawal";
+            fontLink.rel = "stylesheet";
+            fontLink.href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap";
+            document.head.appendChild(fontLink);
+        }
+
+
         // زر الليمونة العائم
 
         const fab = document.createElement("div");
@@ -972,60 +983,54 @@
     // اختيار الفرع
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        var style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
     function chooseBranch() {
 
         document.getElementById("fleet-box")?.remove();
+        injectYqStyles();
 
         let box = document.createElement("div");
         box.id = "fleet-box";
-
-        box.style = `
-        position:fixed;
-        inset:0;
-        background:#0008;
-        z-index:999999999;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-family:Arial;
-        `;
+        box.className = "yq-overlay";
 
         box.innerHTML = `
-        <div style="
-        background:white;
-        padding:25px;
-        border-radius:15px;
-        width:300px;
-        text-align:center">
+        <div class="yq-card" style="max-width:300px;">
 
         <h3>🚗 جرد الأسطول</h3>
 
-        <button id="airport">✈️ المطار</button>
-        <button id="yard">🏢 الساحة</button>
-        <button id="all">📍 الكل</button>
+        <button id="airport" class="yq-menu-btn">✈️ المطار</button>
+        <button id="yard" class="yq-menu-btn">🏢 الساحة</button>
+        <button id="all" class="yq-menu-btn">📍 الكل</button>
 
-        <button id="cancel" style="
-                    margin-top:10px;
-                    background:#eee;
-                    color:#333;
-                ">إلغاء</button>
+        <button id="cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
         </div>
         `;
 
         document.body.appendChild(box);
-
-        box.querySelectorAll("button").forEach(btn => {
-            btn.style.cssText += `
-            width:100%;
-            padding:12px;
-            margin-top:8px;
-            border:0;
-            border-radius:8px;
-            cursor:pointer;
-            background:#A3E635;
-            font-size:16px;
-            `;
-        });
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
@@ -1328,12 +1333,12 @@
 
     function showLoading(text) {
         document.getElementById("fleet-box")?.remove();
+        injectYqStyles();
         const html = `
-<div id="fleet-box" style="
-position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;
-z-index:999999999;font-family:Arial;">
-<div style="width:300px;background:white;border-radius:16px;padding:30px;text-align:center;direction:rtl;">
-${text}
+<div id="fleet-box" class="yq-overlay">
+<div class="yq-card" style="max-width:300px;padding:30px;">
+<div class="yq-spinner"></div>
+<div style="font-size:13.5px;font-weight:700;">${text}</div>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);
@@ -1341,14 +1346,12 @@ ${text}
 
     function showMessage(text) {
         document.getElementById("fleet-box")?.remove();
+        injectYqStyles();
         const html = `
-<div id="fleet-box" style="
-position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;
-z-index:999999999;font-family:Arial;">
-<div style="width:300px;background:white;border-radius:16px;padding:25px;text-align:center;direction:rtl;">
-<div style="margin-bottom:15px">${text}</div>
-<button id="close-fleet-message" style="
-padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>
+<div id="fleet-box" class="yq-overlay">
+<div class="yq-card" style="max-width:300px;">
+<div style="margin-bottom:15px;font-size:13.5px;font-weight:700;">${text}</div>
+<button id="close-fleet-message" class="yq-btn yq-btn-primary">إغلاق</button>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);
@@ -1469,61 +1472,66 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
             .trim();
     }
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-big{font-size:40px;font-weight:800;margin-top:4px;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
     function chooseBranch() {
 
         document.getElementById("available-box")?.remove();
+        injectYqStyles();
 
         const box = document.createElement("div");
         box.id = "available-box";
-
-        box.style = `
-            position:fixed;
-            inset:0;
-            background:#0008;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            z-index:999999999;
-            font-family:Arial;
-        `;
+        box.className = "yq-overlay";
 
         box.innerHTML = `
-        <div style="
-            width:300px;
-            background:#fff;
-            border-radius:16px;
-            padding:25px;
-            text-align:center;
-        ">
-            <h3 style="margin-top:0">🚗 السيارات المتوفرة</h3>
+        <div class="yq-card" style="max-width:300px;">
+            <h3>🚗 السيارات المتوفرة</h3>
 
-            <button id="airport">✈️ المطار</button>
-            <button id="yard">🏢 الساحة</button>
-            <button id="all">📍 الكل</button>
+            <button id="airport" class="yq-menu-btn">✈️ المطار</button>
+            <button id="yard" class="yq-menu-btn">🏢 الساحة</button>
+            <button id="all" class="yq-menu-btn">📍 الكل</button>
 
-            <button id="cancel" style="
-                margin-top:10px;
-                background:#eee;
-                color:#333;
-            ">إلغاء</button>
+            <button id="cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
         </div>`;
 
         document.body.appendChild(box);
-
-        box.querySelectorAll("button").forEach(btn => {
-
-            btn.style.cssText += `
-                width:100%;
-                padding:12px;
-                margin-top:8px;
-                border:none;
-                border-radius:8px;
-                cursor:pointer;
-                background:#A3E635;
-                font-size:15px;
-            `;
-
-        });
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
@@ -1762,27 +1770,13 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
 
     function showLoading() {
         document.getElementById("available-report")?.remove();
+        injectYqStyles();
 
         const html = `
-<div id="available-report" style="
-position:fixed;
-inset:0;
-background:#0008;
-display:flex;
-justify-content:center;
-align-items:center;
-z-index:999999999;
-font-family:Arial;
-">
-<div style="
-width:280px;
-background:white;
-border-radius:16px;
-padding:30px;
-text-align:center;
-direction:rtl;
-">
-جارٍ جلب السيارات المتوفرة...
+<div id="available-report" class="yq-overlay">
+<div class="yq-card" style="max-width:280px;padding:30px;">
+<div class="yq-spinner"></div>
+<div style="font-size:13.5px;font-weight:700;">جارٍ جلب السيارات المتوفرة...</div>
 </div>
 </div>`;
 
@@ -1791,34 +1785,13 @@ direction:rtl;
 
     function showMessage(text) {
         document.getElementById("available-report")?.remove();
+        injectYqStyles();
 
         const html = `
-<div id="available-report" style="
-position:fixed;
-inset:0;
-background:#0008;
-display:flex;
-justify-content:center;
-align-items:center;
-z-index:999999999;
-font-family:Arial;
-">
-<div style="
-width:300px;
-background:white;
-border-radius:16px;
-padding:25px;
-text-align:center;
-direction:rtl;
-">
-<div style="margin-bottom:15px">${text}</div>
-<button id="close-report" style="
-padding:10px 18px;
-border:none;
-border-radius:8px;
-background:#A3E635;
-cursor:pointer;
-">إغلاق</button>
+<div id="available-report" class="yq-overlay">
+<div class="yq-card" style="max-width:300px;">
+<div style="margin-bottom:15px;font-size:13.5px;font-weight:700;">${text}</div>
+<button id="close-report" class="yq-btn yq-btn-primary">إغلاق</button>
 </div>
 </div>`;
 
@@ -1840,64 +1813,23 @@ cursor:pointer;
         });
 
         document.getElementById("available-report")?.remove();
+        injectYqStyles();
 
         let html = `
-<div id="available-report"
-style="
-position:fixed;
-inset:0;
-background:#0008;
-display:flex;
-justify-content:center;
-align-items:center;
-z-index:999999999;
-font-family:Arial;
-padding:24px;
-box-sizing:border-box;
-">
+<div id="available-report" class="yq-overlay">
 
-<div style="
-width:380px;
-max-height:85vh;
-background:white;
-border-radius:16px;
-overflow:hidden;
-direction:rtl;
-display:flex;
-flex-direction:column;
-">
+<div style="width:min(380px,95vw);max-height:85vh;background:#fff;border-radius:22px;
+overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 
-<div style="
-background:#A3E635;
-padding:18px;
-text-align:center;
-flex-shrink:0;
-">
-
-<div style="font-size:16px">
-إجمالي السيارات المتوفرة
+<div class="yq-report-header">
+<div class="yq-report-title">إجمالي السيارات المتوفرة</div>
+<div class="yq-report-big">${total}</div>
 </div>
 
-<div style="
-font-size:42px;
-font-weight:bold;
-margin-top:6px;
-">
-${total}
-</div>
+<div style="overflow:auto;flex:1;padding:0 10px;">
+<table class="yq-report-table">
 
-</div>
-
-<div style="overflow:auto;flex:1;">
-<table style="
-width:100%;
-border-collapse:collapse;
-">
-
-<tr style="background:#f5f5f5">
-<th style="padding:10px">القروب</th>
-<th>العدد</th>
-</tr>
+<tr><th>القروب</th><th>العدد</th></tr>
 `;
 
         Object.keys(groups)
@@ -1906,22 +1838,8 @@ border-collapse:collapse;
 
                 html += `
 <tr>
-<td style="
-padding:9px;
-border-top:1px solid #eee;
-text-align:center;
-">
-${group}
-</td>
-
-<td style="
-border-top:1px solid #eee;
-text-align:center;
-font-weight:bold;
-">
-${groups[group]}
-</td>
-
+<td style="text-align:center;">${group}</td>
+<td style="text-align:center;font-weight:800;">${groups[group]}</td>
 </tr>`;
 
             });
@@ -1930,46 +1848,10 @@ ${groups[group]}
 </table>
 </div>
 
-<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">
-
-<button id="print-report"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:8px;
-background:#eee;
-color:#333;
-cursor:pointer;
-">
-🖨️ طباعة
-</button>
-
-<button id="refresh-report"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:8px;
-background:#eee;
-color:#333;
-cursor:pointer;
-">
-🔄 تحديث
-</button>
-
-<button id="close-report"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:8px;
-background:#A3E635;
-cursor:pointer;
-">
-إغلاق
-</button>
-
+<div class="yq-report-actions">
+<button id="print-report">🖨️ طباعة</button>
+<button id="refresh-report">🔄 تحديث</button>
+<button id="close-report" class="yq-primary">إغلاق</button>
 </div>
 
 </div>
@@ -2074,64 +1956,107 @@ ${rowsHtml}
     }
 
     // ==========================================================
+    // نظام تصميم موحّد (YQ) - نفس المستخدم بباقي الأدوات
+    // ==========================================================
+
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;max-height:90vh;overflow-y:auto;box-sizing:border-box;}' +
+        '.yq-card.yq-pad{padding:28px 26px;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-card-header{border-radius:22px 22px 0 0;padding:20px 24px;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;font-size:16px;font-weight:800;}' +
+        '.yq-card-body{padding:24px;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-field-wrap{text-align:right;margin-bottom:12px;}' +
+        '.yq-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:5px;}' +
+        '.yq-field{width:100%;padding:12px;border:1.5px solid #e9e7df;border-radius:12px;font-size:14px;' +
+        'box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        'textarea.yq-field{resize:vertical;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
+    // ==========================================================
     // قائمة اختيار نوع الإيميل
     // ==========================================================
 
     function chooseEmailType() {
 
         document.getElementById("email-box")?.remove();
+        injectYqStyles();
 
         const box = document.createElement("div");
         box.id = "email-box";
-
-        box.style = `
-        position:fixed;
-        inset:0;
-        background:#0008;
-        z-index:999999999;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-family:Arial;
-        `;
+        box.className = "yq-overlay";
 
         box.innerHTML = `
-        <div style="
-        background:white;
-        padding:25px;
-        border-radius:15px;
-        width:300px;
-        text-align:center;
-        direction:rtl;
-        ">
-        <h3 style="margin-top:0">📧 إيميل</h3>
+        <div class="yq-card yq-pad">
+        <h3>📧 إيميل</h3>
 
-        <button id="close-agreement">🔒 إغلاق عقد</button>
-        <button id="accident">🚗 حادث</button>
-        <button id="open-agreement">📄 فتح اتفاقية</button>
+        <button id="close-agreement" class="yq-menu-btn">🔒 إغلاق عقد</button>
+        <button id="accident" class="yq-menu-btn">🚗 حادث</button>
+        <button id="open-agreement" class="yq-menu-btn">📄 فتح اتفاقية</button>
 
-        <button id="cancel" style="
-                    margin-top:10px;
-                    background:#eee;
-                    color:#333;
-                ">إلغاء</button>
+        <button id="cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
         </div>
         `;
 
         document.body.appendChild(box);
-
-        box.querySelectorAll("button").forEach(btn => {
-            btn.style.cssText += `
-            width:100%;
-            padding:12px;
-            margin-top:8px;
-            border:0;
-            border-radius:8px;
-            cursor:pointer;
-            background:#A3E635;
-            font-size:15px;
-            `;
-        });
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
@@ -2160,26 +2085,22 @@ ${rowsHtml}
     function showCloseAgreementForm() {
         return new Promise(resolve => {
             document.getElementById("email-box")?.remove();
+            injectYqStyles();
 
             const box = document.createElement("div");
             box.id = "email-box";
-            box.style.cssText = `
-                position:fixed;inset:0;background:#0008;z-index:999999999;
-                display:flex;align-items:center;justify-content:center;font-family:Arial;
-            `;
+            box.className = "yq-overlay";
 
             box.innerHTML = `
-            <div style="background:white;border-radius:15px;width:360px;overflow:hidden;direction:rtl;">
-                <div style="background:#A3E635;padding:18px;text-align:center;">
-                    <div style="font-size:16px;font-weight:bold;">🔒 إغلاق عقد</div>
-                </div>
-                <div style="padding:20px;">
-                    <div style="text-align:right;margin-bottom:14px;">
-                        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">سبب إغلاق العقد</label>
-                        <textarea id="close-reason" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+            <div class="yq-card" style="max-width:360px;">
+                <div class="yq-card-header">🔒 إغلاق عقد</div>
+                <div class="yq-card-body">
+                    <div class="yq-field-wrap">
+                        <label>سبب إغلاق العقد</label>
+                        <textarea id="close-reason" rows="3" class="yq-field"></textarea>
                     </div>
-                    <button id="close-submit" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">نسخ الإيميل</button>
-                    <button id="close-cancel" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">إلغاء</button>
+                    <button id="close-submit" class="yq-btn yq-btn-primary">نسخ الإيميل</button>
+                    <button id="close-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
                 </div>
             </div>`;
 
@@ -2202,27 +2123,9 @@ ${rowsHtml}
         });
     }
 
-    /** رسالة نجاح/خطأ مخصصة (بنفس تصميم باقي الأدوات) بدل alert() المتصفح */
+    /** إشعار خفيف (توست) - بديل alert() المتصفح */
     function showEmailMessage(text, isError) {
-        document.getElementById("email-message-box")?.remove();
-        const headerColor = isError ? "#dc2626" : "#A3E635";
-        const headerText = isError ? "#fff" : "#1a1a1a";
-        const html = `
-        <div id="email-message-box" style="position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:999999999;font-family:Arial;">
-            <div style="width:320px;background:white;border-radius:16px;overflow:hidden;text-align:center;direction:rtl;">
-                <div style="background:${headerColor};color:${headerText};padding:18px;font-size:16px;font-weight:bold;">
-                    ${isError ? "⚠️ تنبيه" : "✅ تم بنجاح"}
-                </div>
-                <div style="padding:20px;">
-                    <div style="margin-bottom:16px;white-space:pre-line;">${text}</div>
-                    <button id="email-message-close" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">إغلاق</button>
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML("beforeend", html);
-        document.getElementById("email-message-close").onclick = () => {
-            document.getElementById("email-message-box")?.remove();
-        };
+        showToast(text, isError ? "error" : "success");
     }
 
     async function closeAgreementEmail() {
@@ -2274,35 +2177,33 @@ ${rowsHtml}
     function showAccidentInputForm() {
         return new Promise(resolve => {
             document.getElementById("email-box")?.remove();
+            injectYqStyles();
 
             const box = document.createElement("div");
             box.id = "email-box";
-            box.style.cssText = `
-                position:fixed;inset:0;background:#0008;z-index:999999999;
-                display:flex;align-items:center;justify-content:center;font-family:Arial;
-            `;
+            box.className = "yq-overlay";
 
             box.innerHTML = `
-            <div style="background:white;padding:25px;border-radius:15px;width:340px;text-align:center;direction:rtl;">
-                <h3 style="margin-top:0">🚗 بيانات الحادث</h3>
-                <div style="text-align:right;margin-bottom:10px;">
-                    <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">رقم عقد التأجير</label>
-                    <input id="acc-agreement" type="text" placeholder="A1780008085" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+            <div class="yq-card yq-pad" style="max-width:340px;">
+                <h3>🚗 بيانات الحادث</h3>
+                <div class="yq-field-wrap">
+                    <label>رقم عقد التأجير</label>
+                    <input id="acc-agreement" type="text" placeholder="A1780008085" class="yq-field" />
                 </div>
-                <div style="text-align:right;margin-bottom:10px;">
-                    <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">نسبة الإدانة</label>
-                    <input id="acc-guilt" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+                <div class="yq-field-wrap">
+                    <label>نسبة الإدانة</label>
+                    <input id="acc-guilt" type="text" class="yq-field" />
                 </div>
-                <div style="text-align:right;margin-bottom:10px;">
-                    <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">موقع الحادث</label>
-                    <input id="acc-location" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+                <div class="yq-field-wrap">
+                    <label>موقع الحادث</label>
+                    <input id="acc-location" type="text" class="yq-field" />
                 </div>
-                <div style="text-align:right;margin-bottom:14px;">
-                    <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">رقم الحادث</label>
-                    <input id="acc-number" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+                <div class="yq-field-wrap">
+                    <label>رقم الحادث</label>
+                    <input id="acc-number" type="text" class="yq-field" />
                 </div>
-                <button id="acc-submit" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">متابعة</button>
-                <button id="acc-cancel" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">إلغاء</button>
+                <button id="acc-submit" class="yq-btn yq-btn-primary">متابعة</button>
+                <button id="acc-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
             </div>`;
 
             document.body.appendChild(box);
@@ -2313,7 +2214,7 @@ ${rowsHtml}
             function submit() {
                 const agreementNo = agreementInput.value.trim();
                 if (!agreementNo) {
-                    agreementInput.style.border = "1px solid #dc2626";
+                    agreementInput.classList.add("yq-field-err");
                     return;
                 }
                 const result = {
@@ -2484,15 +2385,15 @@ ${rowsHtml}
             await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }) })]);
 
             if (downloadIssues.length > 0) {
-                alert("تم نسخ ايميل الحادث بنجاح\n\n⚠️ تعذّر تحميل:\n" + downloadIssues.join("\n"));
+                showToast("تم نسخ ايميل الحادث بنجاح، لكن تعذّر تحميل: " + downloadIssues.join("، "), "error");
             } else {
-                alert("تم نسخ ايميل الحادث بنجاح");
+                showToast("تم نسخ ايميل الحادث بنجاح", "success");
             }
 
         } catch (err) {
             try { frame.remove(); } catch (err2) { /* تجاهل */ }
             hideAgreementStatus();
-            alert("تعذّر إنشاء إيميل الحادث: " + err.message);
+            showToast("تعذّر إنشاء إيميل الحادث: " + err.message, "error");
         }
 
     }
@@ -2687,25 +2588,22 @@ ${rowsHtml}
     function showPhotoPicker(images) {
         return new Promise(resolve => {
             document.getElementById("email-photo-picker")?.remove();
+            injectYqStyles();
 
             const selected = new Set();
 
             const box = document.createElement("div");
             box.id = "email-photo-picker";
-            box.style.cssText = `
-                position:fixed;inset:0;background:#0008;z-index:999999999;
-                display:flex;align-items:center;justify-content:center;font-family:Arial;
-            `;
+            box.className = "yq-overlay";
 
             box.innerHTML = `
-            <div style="background:white;padding:20px;border-radius:15px;width:min(640px,92vw);max-height:85vh;
-            display:flex;flex-direction:column;direction:rtl;">
-                <h3 style="margin:0 0 12px">📷 اختر صور الفحص اللي تبغى تحمّلها</h3>
+            <div class="yq-card" style="max-width:640px;padding:22px;display:flex;flex-direction:column;">
+                <h3 style="margin-bottom:12px;">📷 اختر صور الفحص اللي تبغى تحمّلها</h3>
                 <div id="photo-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;overflow:auto;padding:4px;"></div>
                 <div style="display:flex;gap:8px;margin-top:14px;">
-                    <button id="photo-download" style="flex:1;padding:10px;border:0;border-radius:8px;background:#A3E635;cursor:pointer;">تحميل ومتابعة</button>
-                    <button id="photo-skip" style="flex:1;padding:10px;border:0;border-radius:8px;background:#eee;color:#333;cursor:pointer;">تخطي بدون تحميل</button>
-                    <button id="photo-cancel" style="flex:1;padding:10px;border:0;border-radius:8px;background:#eee;color:#333;cursor:pointer;">إلغاء</button>
+                    <button id="photo-download" class="yq-btn yq-btn-primary" style="margin-top:0;flex:1;">تحميل ومتابعة</button>
+                    <button id="photo-skip" class="yq-btn yq-btn-secondary" style="margin-top:0;flex:1;">تخطي بدون تحميل</button>
+                    <button id="photo-cancel" class="yq-btn yq-btn-secondary" style="margin-top:0;flex:1;">إلغاء</button>
                 </div>
             </div>`;
 
@@ -2972,12 +2870,12 @@ ${rowsHtml}
 
     function showAgreementStatus(text) {
         document.getElementById("email-status-box")?.remove();
+        injectYqStyles();
         const html = `
-<div id="email-status-box" style="
-position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;
-z-index:999999999;font-family:Arial;">
-<div style="width:300px;background:white;border-radius:16px;padding:30px;text-align:center;direction:rtl;">
-${text}
+<div id="email-status-box" class="yq-overlay">
+<div class="yq-card" style="max-width:300px;padding:30px;">
+<div class="yq-spinner"></div>
+<div style="font-size:13.5px;font-weight:700;">${text}</div>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);
@@ -3003,24 +2901,23 @@ ${text}
 
             function render() {
                 document.getElementById("email-status-box")?.remove();
+                injectYqStyles();
 
                 const ok = currentResult && currentResult.ok;
                 const statusLine = ok
-                    ? '<div style="color:#16a34a;margin-bottom:10px;">✅ تم فتح نافذة طباعة الاتفاقية</div>'
-                    : '<div style="color:#dc2626;margin-bottom:10px;">⚠️ ' + (currentResult ? currentResult.reason : "تعذّر فتح نافذة الطباعة") + '</div>';
+                    ? '<div style="color:#16a34a;font-weight:700;margin-bottom:10px;">✅ تم فتح نافذة طباعة الاتفاقية</div>'
+                    : '<div style="color:#dc2626;font-weight:700;margin-bottom:10px;">⚠️ ' + (currentResult ? currentResult.reason : "تعذّر فتح نافذة الطباعة") + '</div>';
 
                 const html = `
-                <div id="email-status-box" style="position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;z-index:999999999;font-family:Arial;">
-                    <div style="width:340px;background:white;border-radius:16px;overflow:hidden;text-align:center;direction:rtl;">
-                        <div style="background:#A3E635;padding:18px;">
-                            <div style="font-size:16px;font-weight:bold;">📄 تنزيل الاتفاقية</div>
-                        </div>
-                        <div style="padding:20px;">
+                <div id="email-status-box" class="yq-overlay">
+                    <div class="yq-card" style="max-width:340px;">
+                        <div class="yq-card-header">📄 تنزيل الاتفاقية</div>
+                        <div class="yq-card-body">
                             ${statusLine}
-                            <div style="margin-bottom:16px;">اختر "حفظ كـ PDF" من نافذة الطباعة واحفظ الملف، ثم اضغط "التالي" للمتابعة.</div>
-                            <button id="agreement-next" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">التالي</button>
-                            ${!ok ? '<button id="agreement-retry" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">🔄 إعادة المحاولة</button>' : ''}
-                            <button id="agreement-skip" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">تخطي هذي الخطوة</button>
+                            <div class="yq-desc" style="text-align:center;">اختر "حفظ كـ PDF" من نافذة الطباعة واحفظ الملف، ثم اضغط "التالي" للمتابعة.</div>
+                            <button id="agreement-next" class="yq-btn yq-btn-primary">التالي</button>
+                            ${!ok ? '<button id="agreement-retry" class="yq-btn yq-btn-secondary">🔄 إعادة المحاولة</button>' : ''}
+                            <button id="agreement-skip" class="yq-btn yq-btn-secondary">تخطي هذي الخطوة</button>
                         </div>
                     </div>
                 </div>`;
@@ -3054,34 +2951,30 @@ ${text}
     function showOpenAgreementForm() {
         return new Promise(resolve => {
             document.getElementById("email-box")?.remove();
+            injectYqStyles();
 
             const box = document.createElement("div");
             box.id = "email-box";
-            box.style.cssText = `
-                position:fixed;inset:0;background:#0008;z-index:999999999;
-                display:flex;align-items:center;justify-content:center;font-family:Arial;
-            `;
+            box.className = "yq-overlay";
 
             box.innerHTML = `
-            <div style="background:white;border-radius:15px;width:340px;overflow:hidden;direction:rtl;">
-                <div style="background:#A3E635;padding:18px;text-align:center;">
-                    <div style="font-size:16px;font-weight:bold;">📄 فتح اتفاقية</div>
-                </div>
-                <div style="padding:20px;">
-                    <div style="text-align:right;margin-bottom:10px;">
-                        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">رقم الحجز</label>
-                        <input id="open-booking" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+            <div class="yq-card" style="max-width:340px;">
+                <div class="yq-card-header">📄 فتح اتفاقية</div>
+                <div class="yq-card-body">
+                    <div class="yq-field-wrap">
+                        <label>رقم الحجز</label>
+                        <input id="open-booking" type="text" class="yq-field" />
                     </div>
-                    <div style="text-align:right;margin-bottom:10px;">
-                        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">رقم عقد التأجير</label>
-                        <input id="open-contract" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+                    <div class="yq-field-wrap">
+                        <label>رقم عقد التأجير</label>
+                        <input id="open-contract" type="text" class="yq-field" />
                     </div>
-                    <div style="text-align:right;margin-bottom:14px;">
-                        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">الملاحظات</label>
-                        <textarea id="open-notes" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+                    <div class="yq-field-wrap">
+                        <label>الملاحظات</label>
+                        <textarea id="open-notes" rows="3" class="yq-field"></textarea>
                     </div>
-                    <button id="open-submit" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">التالي</button>
-                    <button id="open-cancel" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">إلغاء</button>
+                    <button id="open-submit" class="yq-btn yq-btn-primary">التالي</button>
+                    <button id="open-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
                 </div>
             </div>`;
 
@@ -3093,7 +2986,7 @@ ${text}
             function submit() {
                 const bookingNo = bookingInput.value.trim();
                 if (!bookingNo) {
-                    bookingInput.style.border = "1px solid #dc2626";
+                    bookingInput.classList.add("yq-field-err");
                     return;
                 }
                 const result = {
@@ -3642,14 +3535,91 @@ ${text}
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
+        '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        var style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        var wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        var toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        var remove = function () { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="airport-hours-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;padding:24px;box-sizing:border-box;">' +
-            '<div style="width:' + width + 'px;max-width:100%;max-height:85vh;overflow:auto;' +
-            'background:#fff;border-radius:16px;padding:25px;box-sizing:border-box;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="airport-hours-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -3657,17 +3627,11 @@ ${text}
         document.getElementById('airport-hours-box')?.remove();
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">🛫 حجوزات المطار القادمة</h3>' +
-            '<div style="margin:15px 0;text-align:right">كم ساعة قدام تبغى تشوف الحجوزات؟</div>' +
-            '<input id="airport-hours-input" type="number" min="1" step="1" value="6" style="' +
-            'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
-            'text-align:center;box-sizing:border-box;" />' +
-            '<button id="airport-hours-submit" style="' +
-            'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:15px;">عرض التقرير</button>' +
-            '<button id="airport-hours-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
+            '<h3>🛫 حجوزات المطار القادمة</h3>' +
+            '<div class="yq-desc">كم ساعة قدام تبغى تشوف الحجوزات؟</div>' +
+            '<input id="airport-hours-input" type="number" min="1" step="1" value="6" class="yq-field" />' +
+            '<button id="airport-hours-submit" class="yq-btn yq-btn-primary">عرض التقرير</button>' +
+            '<button id="airport-hours-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
             300
         ));
 
@@ -3678,7 +3642,7 @@ ${text}
         function submit() {
             var hours = parseFloat(input.value);
             if (!hours || hours <= 0) {
-                input.style.border = '1px solid #dc2626';
+                input.classList.add('yq-field-err');
                 return;
             }
             runReport(hours);
@@ -3695,24 +3659,20 @@ ${text}
 
     function showLoading() {
         document.getElementById('airport-hours-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell('جارٍ جلب الحجوزات والسيارات المتاحة...', 280));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">جارٍ جلب الحجوزات والسيارات المتاحة...</div>',
+            280
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('airport-hours-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="airport-hours-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            300
-        ));
-        document.getElementById('airport-hours-close').onclick = function () {
-            document.getElementById('airport-hours-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function showReport(hours, bookingCounts, vehicleCounts, yardVehicleCounts, totalBookings, totalVehicles) {
         document.getElementById('airport-hours-box')?.remove();
+        injectYqStyles();
 
         // اتحاد كل القروبات (حجوزات + سيارات مطار + سيارات حوش) عشان أي قروب
         // له حوش فقط بدون سيارات مطار ولا حجوزات يظل يظهر بالتقرير
@@ -3726,52 +3686,44 @@ ${text}
             var diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#b45309';
             return (
                 '<tr>' +
-                '<td style="padding:9px;border-top:1px solid #eee;text-align:center;font-weight:bold;">' + escapeHtml(group) + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;">' + vehicles + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;">' + bookings + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;font-weight:bold;color:' + diffColor + '">' +
+                '<td style="text-align:center;font-weight:800;">' + escapeHtml(group) + '</td>' +
+                '<td style="text-align:center;">' + vehicles + '</td>' +
+                '<td style="text-align:center;">' + bookings + '</td>' +
+                '<td style="text-align:center;font-weight:800;color:' + diffColor + '">' +
                 (diff > 0 ? '+' + diff : diff) + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;padding:4px;">' +
+                '<td style="text-align:center;padding:6px;">' +
                 '<input type="number" min="0" class="yard-vehicle-input" data-group="' + escapeHtml(group) + '" value="' + yardVehicles + '" style="' +
-                'width:52px;padding:5px 3px;border:1px solid #ddd;border-radius:6px;text-align:center;font:inherit;font-weight:bold;">' +
+                'width:52px;padding:5px 3px;border:1.5px solid #e9e7df;border-radius:8px;text-align:center;font:inherit;font-weight:800;">' +
                 '</td>' +
                 '</tr>'
             );
         }).join('');
 
         if (groups.length === 0) {
-            rowsHtml = '<tr><td colspan="5" style="padding:15px;text-align:center;color:#777;">لا توجد بيانات ضمن هذه المدة</td></tr>';
+            rowsHtml = '<tr><td colspan="5" style="padding:22px;text-align:center;color:#a19c92;">لا توجد بيانات ضمن هذه المدة</td></tr>';
         }
 
         var html =
-            '<div id="airport-hours-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;padding:24px;box-sizing:border-box;">' +
-            '<div style="width:420px;max-width:100%;max-height:85vh;background:white;border-radius:16px;' +
+            '<div id="airport-hours-box" class="yq-overlay">' +
+            '<div style="width:min(460px,95vw);max-height:85vh;background:#fff;border-radius:22px;' +
             'overflow:hidden;direction:rtl;display:flex;flex-direction:column;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px">حجوزات المطار خلال ' + hours + ' ساعة القادمة</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">إجمالي الحجوزات: ' + totalBookings +
-            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</div>' +
+            '<div class="yq-report-sub">إجمالي الحجوزات: ' + totalBookings +
+            ' · إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;">' +
-            '<tr style="background:#f5f5f5">' +
-            '<th style="padding:10px">القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th>' +
             '<th>سيارات الحوش (53)</th>' +
             '</tr>' + rowsHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="airport-hours-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="airport-hours-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="airport-hours-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="airport-hours-change" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">تغيير المدة</button>' +
-            '<button id="airport-hours-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="airport-hours-refresh">🔄 تحديث</button>' +
+            '<button id="airport-hours-print">🖨️ طباعة</button>' +
+            '<button id="airport-hours-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="airport-hours-change">تغيير المدة</button>' +
+            '<button id="airport-hours-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -4055,7 +4007,7 @@ ${text}
                     }),
                     onload: function (response) {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[حجوزات المطار] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -4641,7 +4593,7 @@ ${text}
     /** زر الصف الواحد - يسأل تأكيد فردي ثم ينفّذ */
     async function handleSendFromBranch(record, idx) {
         if (!record.phone) {
-            alert('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة');
+            showToast('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة', 'error');
             return;
         }
         if (!confirm('سيتم إنشاء رابط دفع (إن لم يوجد رابط نشط) للعقد ' + record.agreementNo + ' وإرساله للعميل (' + record.name + ') من رقم واتساب الفرع.\nمتابعة؟')) {
@@ -4662,7 +4614,7 @@ ${text}
             await sendPaymentLinkForRecord(records[i], i);
         }
         if (allBtn) allBtn.disabled = false;
-        alert('انتهى إرسال روابط السداد لجميع العملاء.');
+        showToast('انتهى إرسال روابط السداد لجميع العملاء.', 'success');
     }
 
     // ==========================================================
@@ -4809,13 +4761,91 @@ ${text}
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
+        '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="late-payments-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="late-payments-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -4823,18 +4853,12 @@ ${text}
         document.getElementById('late-payments-box')?.remove();
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">💰 العقود المتأخرة في السداد</h3>' +
-            '<div style="margin:15px 0;text-align:right">بيفلتر أول شي من نفس القائمة (المسدَّدة وتحت الحد ما تُفتح)، وبيفتح بس العقود المرشّحة للتأكد من التفاصيل.<br>أقل مبلغ تأخير تبغى تشوفه (ريال):</div>' +
-            '<input id="late-payments-input" type="number" min="1" step="1" value="500" style="' +
-            'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
-            'text-align:center;box-sizing:border-box;" />' +
-            '<button id="late-payments-submit" style="' +
-            'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:15px;">فحص العقود</button>' +
-            '<button id="late-payments-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
-            320
+            '<h3>💰 العقود المتأخرة في السداد</h3>' +
+            '<div class="yq-desc">بيفلتر أول شي من نفس القائمة (المسدَّدة وتحت الحد ما تُفتح)، وبيفتح بس العقود المرشّحة للتأكد من التفاصيل.<br>أقل مبلغ تأخير تبغى تشوفه (ريال):</div>' +
+            '<input id="late-payments-input" type="number" min="1" step="1" value="500" class="yq-field" />' +
+            '<button id="late-payments-submit" class="yq-btn yq-btn-primary">فحص العقود</button>' +
+            '<button id="late-payments-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
+            340
         ));
 
         const input = document.getElementById('late-payments-input');
@@ -4844,7 +4868,7 @@ ${text}
         function submit() {
             const threshold = parseFloat(input.value);
             if (!threshold || threshold <= 0) {
-                input.style.border = '1px solid #dc2626';
+                input.classList.add('yq-field-err');
                 return;
             }
             runReport(threshold);
@@ -4859,20 +4883,15 @@ ${text}
 
     function showProgress(text) {
         document.getElementById('late-payments-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('late-payments-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="late-payments-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            320
-        ));
-        document.getElementById('late-payments-close').onclick = () => {
-            document.getElementById('late-payments-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function tableToTsv(records) {
@@ -5103,7 +5122,7 @@ ${text}
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[العقود المتأخرة] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -5151,67 +5170,53 @@ ${text}
 
     function showReport(records, threshold, checkedCount, totalCandidates) {
         document.getElementById('late-payments-box')?.remove();
+        injectYqStyles();
 
         const rowsHtml = records.map((r, idx) => (
             '<tr>' +
-            '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
-            '<td style="border-top:1px solid #eee;" dir="ltr">' + r.phone + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.idNumber + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.total + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.paid + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.remaining + '</td>' +
-            '<td style="border-top:1px solid #eee;">' +
-            '<button class="late-payments-send-branch-btn" data-idx="' + idx + '" style="' +
-            'padding:6px 10px;border:none;border-radius:6px;background:#25D366;color:#fff;' +
-            'cursor:pointer;font-size:12px;white-space:nowrap;">📤 إرسال رابط سداد</button>' +
-            '</td>' +
-            '<td style="border-top:1px solid #eee;">' +
-            '<span id="late-payments-status-' + idx + '" style="font-size:12px;color:#999;">—</span>' +
-            '</td>' +
+            '<td>' + r.agreementNo + '</td>' +
+            '<td>' + r.name + '</td>' +
+            '<td dir="ltr">' + r.phone + '</td>' +
+            '<td>' + r.idNumber + '</td>' +
+            '<td>' + r.total + '</td>' +
+            '<td>' + r.paid + '</td>' +
+            '<td style="font-weight:800;color:#dc2626;">' + r.remaining + '</td>' +
+            '<td><button class="late-payments-send-branch-btn yq-row-send-btn" data-idx="' + idx + '">📤 إرسال رابط سداد</button></td>' +
+            '<td><span id="late-payments-status-' + idx + '" style="font-size:12px;color:#a19c92;">—</span></td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="9" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
+            : '<tr><td colspan="9" style="padding:22px;text-align:center;color:#a19c92;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
 
         const html =
-            '<div id="late-payments-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
-            '<div style="width:min(960px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
+            '<div id="late-payments-box" class="yq-overlay">' +
+            '<div style="width:min(980px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">💰 العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
+            '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' | عدد العقود المطابقة: ' + records.length +
+            ' · عدد العقود المطابقة: ' + records.length +
             '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-            '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th>' +
             '<th id="late-payments-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
             '<th>إرسال رابط سداد</th><th>الحالة</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="late-payments-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="late-payments-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="late-payments-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="late-payments-send-all" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#25D366;color:#fff;cursor:pointer;">📤 إرسال للجميع</button>' +
-            '<button id="late-payments-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="late-payments-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="late-payments-copy">📋 نسخ</button>' +
+            '<button id="late-payments-print">🖨️ طباعة</button>' +
+            '<button id="late-payments-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="late-payments-send-all" class="yq-send">📤 إرسال للجميع</button>' +
+            '<button id="late-payments-refresh">🔄 تحديث</button>' +
+            '<button id="late-payments-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -5239,9 +5244,9 @@ ${text}
         document.getElementById('late-payments-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
-                alert('تم نسخ الجدول');
+                showToast('تم نسخ الجدول', 'success');
             } catch (err) {
-                alert('تعذّر النسخ: ' + err.message);
+                showToast('تعذّر النسخ: ' + err.message, 'error');
             }
         };
         document.querySelectorAll('.late-payments-send-branch-btn').forEach(btn => {
@@ -5866,7 +5871,7 @@ ${text}
     /** زر الصف الواحد - يسأل تأكيد فردي ثم ينفّذ */
     async function handleSendFromBranch(record, idx) {
         if (!record.phone) {
-            alert('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة');
+            showToast('لا يوجد رقم جوال لهذا العميل بالبيانات المسحوبة', 'error');
             return;
         }
         if (!confirm('سيتم إنشاء رابط دفع (إن لم يوجد رابط نشط) للعقد ' + record.agreementNo + ' (' + record.branchName + ') وإرساله للعميل (' + record.name + ') من رقم واتساب الفرع.\nمتابعة؟')) {
@@ -5887,7 +5892,7 @@ ${text}
             await sendPaymentLinkForRecord(records[i], i);
         }
         if (allBtn) allBtn.disabled = false;
-        alert('انتهى إرسال روابط السداد لجميع العملاء.');
+        showToast('انتهى إرسال روابط السداد لجميع العملاء.', 'success');
     }
 
     // ==========================================================
@@ -6026,13 +6031,97 @@ ${text}
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-branch-list{text-align:right;max-height:200px;overflow:auto;border:1.5px solid #e9e7df;' +
+        'border-radius:12px;padding:10px 14px;background:#fbfbf9;}' +
+        '.yq-branch-list label{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:14px;cursor:pointer;}' +
+        '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
+        '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#767068;font-weight:700;}' +
+        '.yq-link-row a{color:#79a916;text-decoration:none;font-size:12.5px;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
+        '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="late-payments-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="late-payments-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -6042,35 +6131,24 @@ ${text}
 
         const preselected = (defaultBranchIds && defaultBranchIds.length) ? defaultBranchIds : BRANCHES.map(b => b.id);
         const branchCheckboxesHtml = BRANCHES.map(b => (
-            '<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:15px;cursor:pointer;">' +
-            '<input type="checkbox" class="late-payments-branch-cb" value="' + b.id + '"' +
+            '<label><input type="checkbox" class="late-payments-branch-cb" value="' + b.id + '"' +
             (preselected.indexOf(b.id) !== -1 ? ' checked' : '') + '> ' + b.name +
             '</label>'
         )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">💰 العقود المتأخرة في السداد</h3>' +
-            '<div style="margin:15px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;">' +
-            '<span>الفروع:</span>' +
-            '<span>' +
-            '<a href="#" id="late-payments-select-all" style="font-size:12.5px;color:#2563eb;text-decoration:none;">تحديد الكل</a>' +
-            ' | <a href="#" id="late-payments-select-none" style="font-size:12.5px;color:#2563eb;text-decoration:none;">إلغاء الكل</a>' +
-            '</span>' +
+            '<h3>💰 العقود المتأخرة في السداد</h3>' +
+            '<div class="yq-link-row">' +
+            '<span>الفروع</span>' +
+            '<span><a href="#" id="late-payments-select-all">تحديد الكل</a> · ' +
+            '<a href="#" id="late-payments-select-none">إلغاء الكل</a></span>' +
             '</div>' +
-            '<div id="late-payments-branches-list" style="' +
-            'text-align:right;max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:8px 12px;">' +
-            branchCheckboxesHtml + '</div>' +
-            '<div style="margin:15px 0;text-align:right">بيفلتر أول شي من نفس القائمة (المسدَّدة وتحت الحد ما تُفتح)، وبيفتح بس العقود المرشّحة للتأكد من التفاصيل.<br>أقل مبلغ تأخير تبغى تشوفه (ريال):</div>' +
-            '<input id="late-payments-input" type="number" min="1" step="1" value="500" style="' +
-            'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
-            'text-align:center;box-sizing:border-box;" />' +
-            '<button id="late-payments-submit" style="' +
-            'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:15px;">فحص العقود</button>' +
-            '<button id="late-payments-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
-            340
+            '<div id="late-payments-branches-list" class="yq-branch-list">' + branchCheckboxesHtml + '</div>' +
+            '<div class="yq-desc">بيفلتر أول شي من نفس القائمة (المسدَّدة وتحت الحد ما تُفتح)، وبيفتح بس العقود المرشّحة للتأكد من التفاصيل.<br>أقل مبلغ تأخير تبغى تشوفه (ريال):</div>' +
+            '<input id="late-payments-input" type="number" min="1" step="1" value="500" class="yq-field" />' +
+            '<button id="late-payments-submit" class="yq-btn yq-btn-primary">فحص العقود</button>' +
+            '<button id="late-payments-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
+            360
         ));
 
         const input = document.getElementById('late-payments-input');
@@ -6089,12 +6167,12 @@ ${text}
         function submit() {
             const threshold = parseFloat(input.value);
             if (!threshold || threshold <= 0) {
-                input.style.border = '1px solid #dc2626';
+                input.classList.add('yq-field-err');
                 return;
             }
             const branchIds = Array.from(document.querySelectorAll('.late-payments-branch-cb:checked')).map(cb => parseInt(cb.value, 10));
             if (branchIds.length === 0) {
-                alert('اختر فرع واحد على الأقل');
+                showToast('اختر فرع واحد على الأقل', 'error');
                 return;
             }
             runReport(branchIds, threshold);
@@ -6109,20 +6187,15 @@ ${text}
 
     function showProgress(text) {
         document.getElementById('late-payments-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('late-payments-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="late-payments-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            320
-        ));
-        document.getElementById('late-payments-close').onclick = () => {
-            document.getElementById('late-payments-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function tableToTsv(records) {
@@ -6353,7 +6426,7 @@ ${text}
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[العقود المتأخرة] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -6401,74 +6474,57 @@ ${text}
 
     function showReport(records, branchIds, threshold, checkedCount, totalCandidates) {
         document.getElementById('late-payments-box')?.remove();
+        injectYqStyles();
         const branchesLabel = branchIds.map(branchNameById).join('، ');
 
         const rowsHtml = records.map((r, idx) => (
             '<tr>' +
-            '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.branchName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
-            '<td style="border-top:1px solid #eee;" dir="ltr">' + r.phone + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.idNumber + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.total + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.paid + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.remaining + '</td>' +
-            '<td style="border-top:1px solid #eee;">' +
-            '<button class="late-payments-send-branch-btn" data-idx="' + idx + '" style="' +
-            'padding:6px 10px;border:none;border-radius:6px;background:#25D366;color:#fff;' +
-            'cursor:pointer;font-size:12px;white-space:nowrap;">📤 إرسال رابط سداد</button>' +
-            '</td>' +
-            '<td style="border-top:1px solid #eee;">' +
-            '<span id="late-payments-status-' + idx + '" style="font-size:12px;color:#999;">—</span>' +
-            '</td>' +
+            '<td>' + r.agreementNo + '</td>' +
+            '<td>' + r.branchName + '</td>' +
+            '<td>' + r.name + '</td>' +
+            '<td dir="ltr">' + r.phone + '</td>' +
+            '<td>' + r.idNumber + '</td>' +
+            '<td>' + r.total + '</td>' +
+            '<td>' + r.paid + '</td>' +
+            '<td style="font-weight:800;color:#dc2626;">' + r.remaining + '</td>' +
+            '<td><button class="late-payments-send-branch-btn yq-row-send-btn" data-idx="' + idx + '">📤 إرسال رابط سداد</button></td>' +
+            '<td><span id="late-payments-status-' + idx + '" style="font-size:12px;color:#a19c92;">—</span></td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="10" style="padding:20px;text-align:center;color:#777;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
+            : '<tr><td colspan="10" style="padding:22px;text-align:center;color:#a19c92;">لا توجد عقود متأخرة بهذا المبلغ أو أكثر</td></tr>';
 
         const html =
-            '<div id="late-payments-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
-            '<div style="width:min(960px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
-            'الفروع: ' + branchesLabel +
-            '</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
+            '<div id="late-payments-box" class="yq-overlay">' +
+            '<div style="width:min(1000px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">💰 العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
+            '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
+            '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' | عدد العقود المطابقة: ' + records.length +
+            ' · عدد العقود المطابقة: ' + records.length +
             '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-            '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th>' +
             '<th id="late-payments-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
             '<th>إرسال رابط سداد</th><th>الحالة</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="late-payments-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="late-payments-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="late-payments-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="late-payments-send-all" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#25D366;color:#fff;cursor:pointer;">📤 إرسال للجميع</button>' +
-            '<button id="late-payments-change-branch" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🏢 تغيير الفروع</button>' +
-            '<button id="late-payments-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="late-payments-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="late-payments-copy">📋 نسخ</button>' +
+            '<button id="late-payments-print">🖨️ طباعة</button>' +
+            '<button id="late-payments-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="late-payments-send-all" class="yq-send">📤 إرسال للجميع</button>' +
+            '<button id="late-payments-change-branch">🏢 تغيير الفروع</button>' +
+            '<button id="late-payments-refresh">🔄 تحديث</button>' +
+            '<button id="late-payments-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -6499,9 +6555,9 @@ ${text}
         document.getElementById('late-payments-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
-                alert('تم نسخ الجدول');
+                showToast('تم نسخ الجدول', 'success');
             } catch (err) {
-                alert('تعذّر النسخ: ' + err.message);
+                showToast('تعذّر النسخ: ' + err.message, 'error');
             }
         };
         document.querySelectorAll('.late-payments-send-branch-btn').forEach(btn => {
@@ -6886,32 +6942,96 @@ ${text}
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
+        '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="company-ext-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="company-ext-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
     function showProgress(text) {
         document.getElementById('company-ext-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('company-ext-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="company-ext-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            320
-        ));
-        document.getElementById('company-ext-close').onclick = () => {
-            document.getElementById('company-ext-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function tableToTsv(records) {
@@ -7135,7 +7255,7 @@ ${text}
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[عقود الشركات] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -7187,58 +7307,51 @@ ${text}
 
     function showReport(records, checkedCount, totalCandidates) {
         document.getElementById('company-ext-box')?.remove();
+        injectYqStyles();
         lastCheckedCount = checkedCount;
         lastTotalCandidates = totalCandidates;
 
         const rowsHtml = records.map(r => (
             '<tr>' +
-            '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.personName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.debtorName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.actualDuration + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.plannedPlusExtension + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td>' +
+            '<td>' + r.agreementNo + '</td>' +
+            '<td>' + r.personName + '</td>' +
+            '<td>' + r.debtorName + '</td>' +
+            '<td>' + r.actualDuration + '</td>' +
+            '<td>' + r.plannedPlusExtension + '</td>' +
+            '<td style="font-weight:800;color:#dc2626;">' + r.lateDuration + '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#777;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
+            : '<tr><td colspan="6" style="padding:22px;text-align:center;color:#a19c92;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
 
         const html =
-            '<div id="company-ext-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
+            '<div id="company-ext-box" class="yq-overlay">' +
             '<div style="width:min(1040px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">🏢 عقود الشركات غير الممددة</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">🏢 عقود الشركات غير الممددة</div>' +
+            '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد شركة بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' | عدد العقود المحتاجة تمديد: ' + records.length +
+            ' · عدد العقود المحتاجة تمديد: ' + records.length +
             '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-            '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>اسم الشخص</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>رقم العقد</th><th>اسم الشخص</th>' +
             '<th id="company-ext-sort-debtor" style="cursor:pointer;user-select:none;">اسم المدين' + sortIndicator('debtorName') + '</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th>' +
             '<th id="company-ext-sort-late" style="cursor:pointer;user-select:none;">متأخر بـ' + sortIndicator('lateHours') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="company-ext-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="company-ext-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="company-ext-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="company-ext-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="company-ext-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="company-ext-copy">📋 نسخ</button>' +
+            '<button id="company-ext-print">🖨️ طباعة</button>' +
+            '<button id="company-ext-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="company-ext-refresh">🔄 تحديث</button>' +
+            '<button id="company-ext-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -7260,9 +7373,9 @@ ${text}
         document.getElementById('company-ext-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
-                alert('تم نسخ الجدول');
+                showToast('تم نسخ الجدول', 'success');
             } catch (err) {
-                alert('تعذّر النسخ: ' + err.message);
+                showToast('تعذّر النسخ: ' + err.message, 'error');
             }
         };
         document.getElementById('company-ext-sort-debtor').onclick = () => handleSortClick(records, 'debtorName');
@@ -7687,13 +7800,90 @@ ${text}
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-branch-list{text-align:right;max-height:200px;overflow:auto;border:1.5px solid #e9e7df;' +
+        'border-radius:12px;padding:10px 14px;background:#fbfbf9;}' +
+        '.yq-branch-list label{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:14px;cursor:pointer;}' +
+        '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
+        '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#767068;font-weight:700;}' +
+        '.yq-link-row a{color:#79a916;text-decoration:none;font-size:12.5px;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="company-ext-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="company-ext-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -7703,31 +7893,22 @@ ${text}
 
         const preselected = (defaultBranchIds && defaultBranchIds.length) ? defaultBranchIds : BRANCHES.map(b => b.id);
         const branchCheckboxesHtml = BRANCHES.map(b => (
-            '<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:15px;cursor:pointer;">' +
-            '<input type="checkbox" class="company-ext-branch-cb" value="' + b.id + '"' +
+            '<label><input type="checkbox" class="company-ext-branch-cb" value="' + b.id + '"' +
             (preselected.indexOf(b.id) !== -1 ? ' checked' : '') + '> ' + b.name +
             '</label>'
         )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">🏢 عقود الشركات غير الممددة</h3>' +
-            '<div style="margin:15px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;">' +
-            '<span>الفروع:</span>' +
-            '<span>' +
-            '<a href="#" id="company-ext-select-all" style="font-size:12.5px;color:#2563eb;text-decoration:none;">تحديد الكل</a>' +
-            ' | <a href="#" id="company-ext-select-none" style="font-size:12.5px;color:#2563eb;text-decoration:none;">إلغاء الكل</a>' +
-            '</span>' +
+            '<h3>🏢 عقود الشركات غير الممددة</h3>' +
+            '<div class="yq-link-row">' +
+            '<span>الفروع</span>' +
+            '<span><a href="#" id="company-ext-select-all">تحديد الكل</a> · ' +
+            '<a href="#" id="company-ext-select-none">إلغاء الكل</a></span>' +
             '</div>' +
-            '<div id="company-ext-branches-list" style="' +
-            'text-align:right;max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:8px 12px;">' +
-            branchCheckboxesHtml + '</div>' +
-            '<button id="company-ext-submit" style="' +
-            'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:15px;">فحص العقود</button>' +
-            '<button id="company-ext-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
-            340
+            '<div id="company-ext-branches-list" class="yq-branch-list">' + branchCheckboxesHtml + '</div>' +
+            '<button id="company-ext-submit" class="yq-btn yq-btn-primary">فحص العقود</button>' +
+            '<button id="company-ext-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
+            360
         ));
 
         document.getElementById('company-ext-select-all').onclick = e => {
@@ -7742,7 +7923,7 @@ ${text}
         document.getElementById('company-ext-submit').onclick = () => {
             const branchIds = Array.from(document.querySelectorAll('.company-ext-branch-cb:checked')).map(cb => parseInt(cb.value, 10));
             if (branchIds.length === 0) {
-                alert('اختر فرع واحد على الأقل');
+                showToast('اختر فرع واحد على الأقل', 'error');
                 return;
             }
             runReport(branchIds);
@@ -7754,20 +7935,15 @@ ${text}
 
     function showProgress(text) {
         document.getElementById('company-ext-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('company-ext-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="company-ext-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            320
-        ));
-        document.getElementById('company-ext-close').onclick = () => {
-            document.getElementById('company-ext-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function tableToTsv(records) {
@@ -7991,7 +8167,7 @@ ${text}
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[عقود الشركات] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -8043,63 +8219,55 @@ ${text}
 
     function showReport(records, branchIds, checkedCount, totalCandidates) {
         document.getElementById('company-ext-box')?.remove();
+        injectYqStyles();
         lastCheckedCount = checkedCount;
         lastTotalCandidates = totalCandidates;
         const branchesLabel = branchIds.map(branchNameById).join('، ');
 
         const rowsHtml = records.map(r => (
             '<tr>' +
-            '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.branchName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.personName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.debtorName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.actualDuration + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.plannedPlusExtension + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td>' +
+            '<td>' + r.agreementNo + '</td>' +
+            '<td>' + r.branchName + '</td>' +
+            '<td>' + r.personName + '</td>' +
+            '<td>' + r.debtorName + '</td>' +
+            '<td>' + r.actualDuration + '</td>' +
+            '<td>' + r.plannedPlusExtension + '</td>' +
+            '<td style="font-weight:800;color:#dc2626;">' + r.lateDuration + '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#777;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
+            : '<tr><td colspan="7" style="padding:22px;text-align:center;color:#a19c92;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
 
         const html =
-            '<div id="company-ext-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
+            '<div id="company-ext-box" class="yq-overlay">' +
             '<div style="width:min(1040px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">🏢 عقود الشركات غير الممددة</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">الفروع: ' + branchesLabel + '</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">🏢 عقود الشركات غير الممددة</div>' +
+            '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
+            '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد شركة بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' | عدد العقود المحتاجة تمديد: ' + records.length +
+            ' · عدد العقود المحتاجة تمديد: ' + records.length +
             '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-            '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>اسم الشخص</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>رقم العقد</th><th>الفرع</th><th>اسم الشخص</th>' +
             '<th id="company-ext-sort-debtor" style="cursor:pointer;user-select:none;">اسم المدين' + sortIndicator('debtorName') + '</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th>' +
             '<th id="company-ext-sort-late" style="cursor:pointer;user-select:none;">متأخر بـ' + sortIndicator('lateHours') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="company-ext-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="company-ext-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="company-ext-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="company-ext-change-branch" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🏢 تغيير الفروع</button>' +
-            '<button id="company-ext-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="company-ext-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="company-ext-copy">📋 نسخ</button>' +
+            '<button id="company-ext-print">🖨️ طباعة</button>' +
+            '<button id="company-ext-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="company-ext-change-branch">🏢 تغيير الفروع</button>' +
+            '<button id="company-ext-refresh">🔄 تحديث</button>' +
+            '<button id="company-ext-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -8124,9 +8292,9 @@ ${text}
         document.getElementById('company-ext-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
-                alert('تم نسخ الجدول');
+                showToast('تم نسخ الجدول', 'success');
             } catch (err) {
-                alert('تعذّر النسخ: ' + err.message);
+                showToast('تعذّر النسخ: ' + err.message, 'error');
             }
         };
         document.getElementById('company-ext-sort-debtor').onclick = () => handleSortClick(records, branchIds, 'debtorName');
@@ -8701,32 +8869,108 @@ ${text}
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-branch-list{text-align:right;max-height:280px;overflow:auto;border:1.5px solid #e9e7df;' +
+        'border-radius:12px;padding:10px 14px;background:#fbfbf9;}' +
+        '.yq-branch-list label{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:14px;cursor:pointer;}' +
+        '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
+        '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#767068;font-weight:700;}' +
+        '.yq-link-row a{color:#79a916;text-decoration:none;font-size:12.5px;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
+        '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="closed-debt-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="closed-debt-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
     function showProgress(text) {
         document.getElementById('closed-debt-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 340));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('closed-debt-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="closed-debt-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            320
-        ));
-        document.getElementById('closed-debt-close').onclick = () => {
-            document.getElementById('closed-debt-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     /**
@@ -8739,28 +8983,21 @@ ${text}
             document.getElementById('closed-debt-box')?.remove();
 
             const checkboxesHtml = months.map(m => (
-                '<label style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #eee;cursor:pointer;">' +
-                '<input type="checkbox" class="closed-debt-month-cb" value="' + m.key + '" checked style="width:18px;height:18px;">' +
-                '<span>' + m.label + '</span>' +
-                '</label>'
+                '<label><input type="checkbox" class="closed-debt-month-cb" value="' + m.key + '" checked> ' +
+                '<span>' + m.label + '</span></label>'
             )).join('');
 
             const html =
-                '<div style="font-size:16px;font-weight:bold;margin-bottom:6px;">📕 عقود أغلقت كمديونية</div>' +
-                '<div style="font-size:13px;color:#555;margin-bottom:10px;">اختر الشهر/الأشهر اللي تبي تطلع عقودها (حسب تاريخ التسليم بالقائمة):</div>' +
-                '<div style="text-align:left;margin-bottom:8px;font-size:13px;">' +
-                '<a href="#" id="closed-debt-select-all" style="color:#166534;text-decoration:underline;margin-left:12px;">تحديد الكل</a>' +
-                '<a href="#" id="closed-debt-select-none" style="color:#dc2626;text-decoration:underline;">إلغاء الكل</a>' +
+                '<h3>📕 عقود أغلقت كمديونية</h3>' +
+                '<div class="yq-desc">اختر الشهر/الأشهر اللي تبي تطلع عقودها (حسب تاريخ التسليم بالقائمة):</div>' +
+                '<div class="yq-link-row">' +
+                '<span>الشهور</span>' +
+                '<span><a href="#" id="closed-debt-select-all">تحديد الكل</a> · ' +
+                '<a href="#" id="closed-debt-select-none">إلغاء الكل</a></span>' +
                 '</div>' +
-                '<div style="max-height:280px;overflow:auto;border:1px solid #eee;border-radius:8px;margin-bottom:14px;text-align:right;">' +
-                checkboxesHtml +
-                '</div>' +
-                '<div style="display:flex;gap:8px;">' +
-                '<button id="closed-debt-month-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-                'cursor:pointer;background:#eee;color:#333;font-size:14px;">إلغاء</button>' +
-                '<button id="closed-debt-month-go" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-                'cursor:pointer;background:#A3E635;font-size:14px;">عرض العقود</button>' +
-                '</div>';
+                '<div class="yq-branch-list">' + checkboxesHtml + '</div>' +
+                '<button id="closed-debt-month-go" class="yq-btn yq-btn-primary">عرض العقود</button>' +
+                '<button id="closed-debt-month-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>';
 
             document.body.insertAdjacentHTML('beforeend', overlayShell(html, 380));
 
@@ -9012,7 +9249,7 @@ ${text}
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[عقود أغلقت كمديونية] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -9065,60 +9302,49 @@ ${text}
 
     function showReport(records, visitedCount, monthsLabel) {
         document.getElementById('closed-debt-box')?.remove();
+        injectYqStyles();
         lastVisitedCount = visitedCount;
         lastMonthsLabel = monthsLabel;
 
         const rowsHtml = records.map(r => (
             '<tr>' +
-            '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
-            '<td style="border-top:1px solid #eee;" dir="ltr">' + r.phone + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.idNumber + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.monthLabel + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td>' +
+            '<td>' + r.agreementNo + '</td>' +
+            '<td>' + r.name + '</td>' +
+            '<td dir="ltr">' + r.phone + '</td>' +
+            '<td>' + r.idNumber + '</td>' +
+            '<td>' + r.monthLabel + '</td>' +
+            '<td style="font-weight:800;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#777;">لا توجد عقود مطابقة حالياً</td></tr>';
+            : '<tr><td colspan="6" style="padding:22px;text-align:center;color:#a19c92;">لا توجد عقود مطابقة حالياً</td></tr>';
 
         const html =
-            '<div id="closed-debt-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
+            '<div id="closed-debt-box" class="yq-overlay">' +
             '<div style="width:min(960px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">📕 عقود أغلقت كمديونية</div>' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">📕 عقود أغلقت كمديونية</div>' +
             (monthsLabel ? (
-                '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">' +
-                'الشهور المحددة: ' + monthsLabel +
-                '</div>'
+                '<div class="yq-report-sub">الشهور المحددة: ' + monthsLabel + '</div>'
             ) : '') +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
-            'تم فحص ' + visitedCount + ' عقد | عدد العقود المطابقة: ' + records.length +
+            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد · عدد العقود المطابقة: ' + records.length + '</div>' +
             '</div>' +
-            '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-            '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th id="closed-debt-sort-month" style="cursor:pointer;user-select:none;">شهر التسليم' + sortIndicator('month') + '</th>' +
             '<th id="closed-debt-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="closed-debt-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="closed-debt-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="closed-debt-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="closed-debt-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="closed-debt-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="closed-debt-copy">📋 نسخ</button>' +
+            '<button id="closed-debt-print">🖨️ طباعة</button>' +
+            '<button id="closed-debt-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="closed-debt-refresh">🔄 تحديث</button>' +
+            '<button id="closed-debt-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -9146,9 +9372,9 @@ ${text}
         document.getElementById('closed-debt-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
-                alert('تم نسخ الجدول');
+                showToast('تم نسخ الجدول', 'success');
             } catch (err) {
-                alert('تعذّر النسخ: ' + err.message);
+                showToast('تعذّر النسخ: ' + err.message, 'error');
             }
         };
     }
@@ -9719,13 +9945,94 @@ ${text}
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-branch-list{text-align:right;max-height:280px;overflow:auto;border:1.5px solid #e9e7df;' +
+        'border-radius:12px;padding:10px 14px;background:#fbfbf9;}' +
+        '.yq-branch-list label{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:14px;cursor:pointer;}' +
+        '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
+        '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#767068;font-weight:700;}' +
+        '.yq-link-row a{color:#79a916;text-decoration:none;font-size:12.5px;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
+        '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="closed-debt-branches-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="closed-debt-branches-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -9735,30 +10042,21 @@ ${text}
 
         const preselected = (defaultBranchIds && defaultBranchIds.length) ? defaultBranchIds : BRANCHES.map(b => b.id);
         const branchCheckboxesHtml = BRANCHES.map(b => (
-            '<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:15px;cursor:pointer;">' +
-            '<input type="checkbox" class="closed-debt-branch-cb" value="' + b.id + '"' +
+            '<label><input type="checkbox" class="closed-debt-branch-cb" value="' + b.id + '"' +
             (preselected.indexOf(b.id) !== -1 ? ' checked' : '') + '> ' + b.name +
             '</label>'
         )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">📕 عقود أغلقت كمديونية</h3>' +
-            '<div style="margin:15px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;">' +
-            '<span>الفروع:</span>' +
-            '<span>' +
-            '<a href="#" id="closed-debt-branch-select-all" style="font-size:12.5px;color:#2563eb;text-decoration:none;">تحديد الكل</a>' +
-            ' | <a href="#" id="closed-debt-branch-select-none" style="font-size:12.5px;color:#2563eb;text-decoration:none;">إلغاء الكل</a>' +
-            '</span>' +
+            '<h3>📕 عقود أغلقت كمديونية</h3>' +
+            '<div class="yq-link-row">' +
+            '<span>الفروع</span>' +
+            '<span><a href="#" id="closed-debt-branch-select-all">تحديد الكل</a> · ' +
+            '<a href="#" id="closed-debt-branch-select-none">إلغاء الكل</a></span>' +
             '</div>' +
-            '<div id="closed-debt-branches-list" style="' +
-            'text-align:right;max-height:220px;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:8px 12px;margin-bottom:14px;">' +
-            branchCheckboxesHtml + '</div>' +
-            '<button id="closed-debt-branch-submit" style="' +
-            'width:100%;padding:12px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:15px;">التالي - اختيار الشهر</button>' +
-            '<button id="closed-debt-branch-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
+            '<div id="closed-debt-branches-list" class="yq-branch-list">' + branchCheckboxesHtml + '</div>' +
+            '<button id="closed-debt-branch-submit" class="yq-btn yq-btn-primary">التالي - اختيار الشهر</button>' +
+            '<button id="closed-debt-branch-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
             340
         ));
 
@@ -9776,7 +10074,7 @@ ${text}
         document.getElementById('closed-debt-branch-submit').onclick = () => {
             const branchIds = Array.from(document.querySelectorAll('.closed-debt-branch-cb:checked')).map(cb => parseInt(cb.value, 10));
             if (branchIds.length === 0) {
-                alert('اختر فرع واحد على الأقل');
+                showToast('اختر فرع واحد على الأقل', 'error');
                 return;
             }
             document.getElementById('closed-debt-branches-box')?.remove();
@@ -9786,20 +10084,15 @@ ${text}
 
     function showProgress(text) {
         document.getElementById('closed-debt-branches-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 340));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('closed-debt-branches-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="closed-debt-branches-close-msg" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            320
-        ));
-        document.getElementById('closed-debt-branches-close-msg').onclick = () => {
-            document.getElementById('closed-debt-branches-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     /** نفس عرض اختيار الشهر بالأداة الأصلية بالضبط */
@@ -9808,28 +10101,21 @@ ${text}
             document.getElementById('closed-debt-branches-box')?.remove();
 
             const checkboxesHtml = months.map(m => (
-                '<label style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #eee;cursor:pointer;">' +
-                '<input type="checkbox" class="closed-debt-branches-month-cb" value="' + m.key + '" checked style="width:18px;height:18px;">' +
-                '<span>' + m.label + '</span>' +
-                '</label>'
+                '<label><input type="checkbox" class="closed-debt-branches-month-cb" value="' + m.key + '" checked> ' +
+                '<span>' + m.label + '</span></label>'
             )).join('');
 
             const html =
-                '<div style="font-size:16px;font-weight:bold;margin-bottom:6px;">📕 عقود أغلقت كمديونية</div>' +
-                '<div style="font-size:13px;color:#555;margin-bottom:10px;">اختر الشهر/الأشهر اللي تبي تطلع عقودها (حسب تاريخ التسليم بالقائمة):</div>' +
-                '<div style="text-align:left;margin-bottom:8px;font-size:13px;">' +
-                '<a href="#" id="closed-debt-branches-select-all" style="color:#166534;text-decoration:underline;margin-left:12px;">تحديد الكل</a>' +
-                '<a href="#" id="closed-debt-branches-select-none" style="color:#dc2626;text-decoration:underline;">إلغاء الكل</a>' +
+                '<h3>📕 عقود أغلقت كمديونية</h3>' +
+                '<div class="yq-desc">اختر الشهر/الأشهر اللي تبي تطلع عقودها (حسب تاريخ التسليم بالقائمة):</div>' +
+                '<div class="yq-link-row">' +
+                '<span>الشهور</span>' +
+                '<span><a href="#" id="closed-debt-branches-select-all">تحديد الكل</a> · ' +
+                '<a href="#" id="closed-debt-branches-select-none">إلغاء الكل</a></span>' +
                 '</div>' +
-                '<div style="max-height:280px;overflow:auto;border:1px solid #eee;border-radius:8px;margin-bottom:14px;text-align:right;">' +
-                checkboxesHtml +
-                '</div>' +
-                '<div style="display:flex;gap:8px;">' +
-                '<button id="closed-debt-branches-month-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-                'cursor:pointer;background:#eee;color:#333;font-size:14px;">إلغاء</button>' +
-                '<button id="closed-debt-branches-month-go" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-                'cursor:pointer;background:#A3E635;font-size:14px;">عرض العقود</button>' +
-                '</div>';
+                '<div class="yq-branch-list">' + checkboxesHtml + '</div>' +
+                '<button id="closed-debt-branches-month-go" class="yq-btn yq-btn-primary">عرض العقود</button>' +
+                '<button id="closed-debt-branches-month-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>';
 
             document.body.insertAdjacentHTML('beforeend', overlayShell(html, 380));
 
@@ -10081,7 +10367,7 @@ ${text}
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[عقود أغلقت كمديونية] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -10134,6 +10420,7 @@ ${text}
 
     function showReport(records, visitedCount, monthsLabel, branchIds) {
         document.getElementById('closed-debt-branches-box')?.remove();
+        injectYqStyles();
         lastVisitedCount = visitedCount;
         lastMonthsLabel = monthsLabel;
         lastBranchIds = branchIds || [];
@@ -10141,59 +10428,46 @@ ${text}
 
         const rowsHtml = records.map(r => (
             '<tr>' +
-            '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.branchName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
-            '<td style="border-top:1px solid #eee;" dir="ltr">' + r.phone + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.idNumber + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.monthLabel + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td>' +
+            '<td>' + r.agreementNo + '</td>' +
+            '<td>' + r.branchName + '</td>' +
+            '<td>' + r.name + '</td>' +
+            '<td dir="ltr">' + r.phone + '</td>' +
+            '<td>' + r.idNumber + '</td>' +
+            '<td>' + r.monthLabel + '</td>' +
+            '<td style="font-weight:800;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#777;">لا توجد عقود مطابقة حالياً</td></tr>';
+            : '<tr><td colspan="7" style="padding:22px;text-align:center;color:#a19c92;">لا توجد عقود مطابقة حالياً</td></tr>';
 
         const html =
-            '<div id="closed-debt-branches-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
+            '<div id="closed-debt-branches-box" class="yq-overlay">' +
             '<div style="width:min(1000px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">📕 عقود أغلقت كمديونية</div>' +
-            '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">الفروع: ' + branchesLabel + '</div>' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">📕 عقود أغلقت كمديونية</div>' +
+            '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
             (monthsLabel ? (
-                '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">' +
-                'الشهور المحددة: ' + monthsLabel +
-                '</div>'
+                '<div class="yq-report-sub">الشهور المحددة: ' + monthsLabel + '</div>'
             ) : '') +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
-            'تم فحص ' + visitedCount + ' عقد | عدد العقود المطابقة: ' + records.length +
+            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد · عدد العقود المطابقة: ' + records.length + '</div>' +
             '</div>' +
-            '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-            '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th id="closed-debt-branches-sort-month" style="cursor:pointer;user-select:none;">شهر التسليم' + sortIndicator('month') + '</th>' +
             '<th id="closed-debt-branches-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;">' +
-            '<button id="closed-debt-branches-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="closed-debt-branches-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="closed-debt-branches-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="closed-debt-branches-change" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🏢 تغيير الفروع</button>' +
-            '<button id="closed-debt-branches-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="closed-debt-branches-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="closed-debt-branches-copy">📋 نسخ</button>' +
+            '<button id="closed-debt-branches-print">🖨️ طباعة</button>' +
+            '<button id="closed-debt-branches-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="closed-debt-branches-change">🏢 تغيير الفروع</button>' +
+            '<button id="closed-debt-branches-refresh">🔄 تحديث</button>' +
+            '<button id="closed-debt-branches-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -10224,9 +10498,9 @@ ${text}
         document.getElementById('closed-debt-branches-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
-                alert('تم نسخ الجدول');
+                showToast('تم نسخ الجدول', 'success');
             } catch (err) {
-                alert('تعذّر النسخ: ' + err.message);
+                showToast('تعذّر النسخ: ' + err.message, 'error');
             }
         };
     }
@@ -10438,37 +10712,52 @@ ${text}
     }
 
     // ==========================================================
-    // واجهة العرض
+    // واجهة العرض (نظام يقين الموحّد - نفس هوية لوحة التحكم)
     // ==========================================================
 
-    function overlayShell(innerHtml, width) {
-        return (
-            '<div id="customer-msg-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:22px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
-        );
-    }
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-info-box{font-size:12.5px;color:#767068;line-height:1.9;margin-bottom:18px;padding:12px 14px;' +
+        'background:#fbfbf7;border-radius:12px;border:1px solid #e9e7df;text-align:right;}' +
+        '.yq-info-box strong{color:#1c1c1a;}' +
+        '.yq-btn{width:100%;padding:13px;margin-bottom:9px;border:1.5px solid #e9e7df;border-radius:13px;' +
+        'cursor:pointer;background:#fff;color:#1c1c1a;font-size:13.5px;font-weight:700;font-family:inherit;' +
+        'text-align:right;display:block;}' +
+        '.yq-btn-primary{border:0;background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'font-weight:800;box-shadow:0 8px 16px -8px rgba(121,169,22,.55);text-align:center;}' +
+        '.yq-btn-secondary{background:#f1f0ea;border:0;color:#767068;text-align:center;}' +
+        '.yq-btn-row{display:flex;gap:8px;}' +
+        '.yq-btn-row .yq-btn{margin-bottom:0;}' +
+        '.yq-textarea{width:100%;height:220px;box-sizing:border-box;padding:14px;border:1.5px solid #e9e7df;' +
+        'border-radius:14px;font-size:13px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf9;' +
+        'line-height:1.8;}' +
+        '.yq-meta-line{font-size:12px;color:#767068;margin:10px 0 16px;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,400px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}';
 
-    function closeBox() {
-        document.getElementById('customer-msg-box')?.remove();
-    }
-
-    function showMessage(text) {
-        closeBox();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px;white-space:pre-line;">' + text + '</div>' +
-            '<button id="customer-msg-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            340
-        ));
-        document.getElementById('customer-msg-close').onclick = closeBox;
-    }
-
-    function showLoading(text) {
-        closeBox();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
     }
 
     function escapeHtml(text) {
@@ -10477,25 +10766,66 @@ ${text}
         return div.innerHTML;
     }
 
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ المزعجة القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
+    function overlayShell(innerHtml, width) {
+        injectYqStyles();
+        return (
+            '<div id="customer-msg-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
+        );
+    }
+
+    function closeBox() {
+        document.getElementById('customer-msg-box')?.remove();
+    }
+
+    function showLoading(text) {
+        closeBox();
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + escapeHtml(text) + '</div>',
+            300
+        ));
+    }
+
     function showChoicePrompt(customer) {
         closeBox();
         const templateButtonsHtml = Object.keys(MESSAGE_TEMPLATES).map(key => (
-            '<button data-template="' + key + '" class="customer-msg-tpl-btn" style="' +
-            'width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:14px;">' + MESSAGE_TEMPLATES[key].label + '</button>'
+            '<button data-template="' + key + '" class="customer-msg-tpl-btn yq-btn">' +
+            MESSAGE_TEMPLATES[key].label + '</button>'
         )).join('');
         const html =
-            '<div style="font-size:16px;font-weight:bold;margin-bottom:6px;">💬 رسائل واتساب للعميل</div>' +
-            '<div style="font-size:13px;color:#555;margin-bottom:16px;">' +
-            'الاسم: ' + escapeHtml(customer.name || 'غير معروف') + '<br>' +
-            'الجوال: <span dir="ltr">' + escapeHtml(customer.phone || 'غير معروف') + '</span>' +
+            '<h3>💬 رسائل واتساب للعميل</h3>' +
+            '<div class="yq-info-box">' +
+            'الاسم: <strong>' + escapeHtml(customer.name || 'غير معروف') + '</strong><br>' +
+            'الجوال: <span dir="ltr"><strong>' + escapeHtml(customer.phone || 'غير معروف') + '</strong></span>' +
             '</div>' +
             templateButtonsHtml +
-            '<button id="customer-msg-cancel" style="' +
-            'width:100%;padding:10px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:14px;">إلغاء</button>';
+            '<button id="customer-msg-cancel" class="yq-btn yq-btn-secondary" style="margin-top:6px;">إلغاء</button>';
 
-        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 360));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 400));
 
         document.querySelectorAll('.customer-msg-tpl-btn').forEach(btn => {
             btn.onclick = () => {
@@ -10513,34 +10843,31 @@ ${text}
         const message = template.build(name);
 
         const html =
-            '<div style="font-size:15px;font-weight:bold;margin-bottom:10px;">معاينة الرسالة</div>' +
-            '<textarea id="customer-msg-preview" readonly style="' +
-            'width:100%;height:220px;box-sizing:border-box;padding:10px;border:1px solid #ddd;' +
-            'border-radius:8px;font-size:13px;text-align:right;resize:vertical;">' + escapeHtml(message) + '</textarea>' +
-            '<div style="font-size:12px;color:#777;margin:8px 0 14px;">سيُرسل إلى: <span dir="ltr">' +
-            escapeHtml(customer.phone || '') + '</span></div>' +
-            '<div style="display:flex;gap:8px;">' +
-            '<button id="customer-msg-back" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#eee;color:#333;font-size:14px;">رجوع</button>' +
-            '<button id="customer-msg-send" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#A3E635;font-size:14px;">✅ إرسال</button>' +
+            '<h3 style="margin-bottom:12px;">معاينة الرسالة</h3>' +
+            '<textarea id="customer-msg-preview" readonly class="yq-textarea">' + escapeHtml(message) + '</textarea>' +
+            '<div class="yq-meta-line">سيُرسل إلى: <span dir="ltr"><strong>' + escapeHtml(customer.phone || '') + '</strong></span></div>' +
+            '<div class="yq-btn-row">' +
+            '<button id="customer-msg-back" class="yq-btn yq-btn-secondary">رجوع</button>' +
+            '<button id="customer-msg-send" class="yq-btn yq-btn-primary">✅ إرسال</button>' +
             '</div>';
 
-        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 380));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 420));
 
         document.getElementById('customer-msg-back').onclick = () => showChoicePrompt(customer);
         document.getElementById('customer-msg-send').onclick = async () => {
             if (!customer.phone) {
-                showMessage('تعذّر الإرسال: ما قدرنا نقرأ رقم جوال العميل من الصفحة.');
+                showToast('تعذّر الإرسال: ما قدرنا نقرأ رقم جوال العميل من الصفحة.', 'error');
                 return;
             }
             showLoading('جارٍ إرسال الرسالة...');
             try {
                 const jid = normalizePhoneToJid(customer.phone);
                 await sendWhatsAppText(jid, message);
-                showMessage('✅ تم إرسال الرسالة بنجاح.');
+                closeBox();
+                showToast('تم إرسال الرسالة بنجاح.', 'success');
             } catch (err) {
-                showMessage('تعذّر إرسال الرسالة: ' + err.message);
+                closeBox();
+                showToast('تعذّر إرسال الرسالة: ' + err.message, 'error');
             }
         };
     }
@@ -10551,10 +10878,8 @@ ${text}
         const customer = await extractCustomerInfo();
 
         if (!customer.name && !customer.phone) {
-            showMessage(
-                'ما قدرنا نقرأ اسم أو جوال العميل من هذي الصفحة.\n\n' +
-                'تأكد إنك فاتح صفحة تفاصيل عقد معيّن (فيها بيانات العميل) قبل تشغيل الأداة.'
-            );
+            closeBox();
+            showToast('ما قدرنا نقرأ اسم أو جوال العميل من هذي الصفحة - تأكد إنك فاتح صفحة تفاصيل عقد معيّن.', 'error');
             return;
         }
 
@@ -12317,57 +12642,60 @@ ${text}
   // ==========================================================
   var MODAL_CSS =
     '.yqn-overlay{position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;' +
-    'background:#0008;padding:24px;font-family:Arial,Tahoma,sans-serif;font-size:16px;}' +
+    'background:rgba(20,18,12,.42);padding:24px;font-family:"Tajawal",Arial,Tahoma,sans-serif;font-size:16px;}' +
     '.yqn-overlay--open{display:flex;}' +
-    '.yqn-modal{background:#fff;color:#1a1a1a;border-radius:16px;position:relative;' +
+    '.yqn-modal{background:#fff;color:#1c1c1a;border-radius:22px;position:relative;' +
+    'box-shadow:0 30px 60px -20px rgba(0,0,0,.35);' +
     'width:min(1560px,97vw);height:min(920px,94vh);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;}' +
-    // --- الرأس: بنفس أسلوب أداة "العقود المتأخرة في السداد" - خلفية خضراء، عنوان + سطر إحصائي تحته ---
-    '.yqn-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 28px;' +
-    'background:#A3E635;color:#1a1a1a;}' +
-    '.yqn-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}' +
-    '.yqn-header h2{margin:0;font-size:20px;font-weight:bold;}' +
-    '.yqn-stat-badge{font-size:13px;opacity:.85;}' +
-    '.yqn-stat-badge strong{font-weight:bold;}' +
-    '.yqn-close{background:transparent;border:0;font-size:20px;cursor:pointer;color:inherit;line-height:1;padding:8px;border-radius:8px;flex-shrink:0;}' +
-    '.yqn-close:hover{background:rgba(0,0,0,.08);}' +
+    // --- الرأس: بنفس أسلوب باقي الأدوات - تدرّج أخضر، عنوان + سطر إحصائي تحته ---
+    '.yqn-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 28px;' +
+    'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+    '.yqn-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:5px;}' +
+    '.yqn-header h2{margin:0;font-size:17px;font-weight:800;}' +
+    '.yqn-stat-badge{font-size:12.5px;opacity:.85;}' +
+    '.yqn-stat-badge strong{font-weight:800;}' +
+    '.yqn-close{background:transparent;border:0;font-size:18px;cursor:pointer;color:inherit;line-height:1;padding:8px;border-radius:9px;flex-shrink:0;opacity:.75;}' +
+    '.yqn-close:hover{background:rgba(0,0,0,.08);opacity:1;}' +
     // --- شريط الأدوات: أزرار الإجراءات فقط، بمسافات متساوية بدون فراغ زائد ---
-    '.yqn-toolbar{display:flex;align-items:center;padding:14px 28px;border-bottom:1px solid #eee;}' +
-    '.yqn-actions{display:flex;flex-wrap:wrap;gap:8px;}' +
-    '.yqn-actions button{cursor:pointer;border:none;background:#eee;color:#333;' +
-    'padding:10px 16px;border-radius:8px;font-size:14px;transition:background .15s;}' +
-    '.yqn-actions button:hover{background:#e2e2e2;}' +
+    '.yqn-toolbar{display:flex;align-items:center;padding:14px 28px;border-bottom:1px solid #e9e7df;}' +
+    '.yqn-actions{display:flex;flex-wrap:wrap;gap:9px;}' +
+    '.yqn-actions button{cursor:pointer;border:0;background:#f1f0ea;color:#1c1c1a;font-family:inherit;' +
+    'padding:11px 16px;border-radius:11px;font-size:12.5px;font-weight:800;transition:background .15s;}' +
+    '.yqn-actions button:hover{background:#e9e7df;}' +
+    '.yqn-actions button[data-action="whatsapp"]{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
     // --- لوحة الفلاتر: قسمين واضحين (مصدر السيارات / الأيام) مع عنوان وفاصل بينهما ---
     '.yqn-filters{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding:16px 28px;' +
-    'background:#fafafa;border-bottom:1px solid #eee;}' +
+    'background:#fbfbf9;border-bottom:1px solid #e9e7df;}' +
     '.yqn-filter-group{display:flex;flex-direction:column;gap:8px;}' +
     '.yqn-filter-group--grow{flex:1;min-width:260px;}' +
-    '.yqn-filter-label{font-size:12.5px;font-weight:bold;opacity:.6;text-transform:uppercase;letter-spacing:.02em;}' +
-    '.yqn-filter-divider{align-self:stretch;width:1px;background:#e2e2e2;}' +
+    '.yqn-filter-label{font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
+    '.yqn-filter-divider{align-self:stretch;width:1px;background:#e9e7df;}' +
     '.yqn-source-filter{display:flex;align-items:center;gap:14px;border:0;padding:0;margin:0;flex-wrap:wrap;}' +
-    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:15px;cursor:pointer;}' +
-    '.yqn-source-filter input[type="radio"]{width:16px;height:16px;accent-color:#78B500;}' +
+    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;}' +
+    '.yqn-source-filter input[type="radio"]{width:16px;height:16px;accent-color:#79a916;}' +
     '.yqn-day-chips{display:flex;flex-wrap:wrap;gap:8px;}' +
-    '.yqn-chip{cursor:pointer;border:1px solid #ddd;background:#fff;color:#333;' +
-    'padding:8px 16px;border-radius:999px;font-size:14px;transition:all .15s;}' +
-    '.yqn-chip--active{background:#A3E635;border-color:#A3E635;color:#1a1a1a;font-weight:bold;}' +
+    '.yqn-chip{cursor:pointer;border:1.5px solid #e9e7df;background:#fff;color:#1c1c1a;font-family:inherit;' +
+    'padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;transition:all .15s;}' +
+    '.yqn-chip--active{background:linear-gradient(160deg,#A3E635,#79a916);border-color:transparent;color:#3c4a10;font-weight:800;}' +
     // --- الجدول ---
     // تمرير مرئي بوضوح (سماكة ولون واضحين) حتى يظهر جلياً إن المنطقة قابلة
     // للتمرير حتى بدون تحريك الماوس فوقها - يحل مشكلة عدم ملاحظة إمكانية
     // النزول/الصعود داخل الجدول عند طول قائمة المجموعات
     '.yqn-table-wrapper{overflow:auto;flex:1;padding:0 28px;position:relative;' +
-    'scrollbar-width:auto;scrollbar-color:#9CA3AF #f0f0f0;}' +
+    'scrollbar-width:auto;scrollbar-color:#c7c3b8 #f0efe9;}' +
     '.yqn-table-wrapper::-webkit-scrollbar{width:14px;height:14px;}' +
-    '.yqn-table-wrapper::-webkit-scrollbar-track{background:#f0f0f0;}' +
-    '.yqn-table-wrapper::-webkit-scrollbar-thumb{background:#9CA3AF;border-radius:8px;border:3px solid #f0f0f0;}' +
-    '.yqn-table-wrapper::-webkit-scrollbar-thumb:hover{background:#6B7280;}' +
-    '.yqn-loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.9);display:none;' +
-    'flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;font-size:14px;color:#333;}' +
+    '.yqn-table-wrapper::-webkit-scrollbar-track{background:#f0efe9;}' +
+    '.yqn-table-wrapper::-webkit-scrollbar-thumb{background:#c7c3b8;border-radius:8px;border:3px solid #f0efe9;}' +
+    '.yqn-table-wrapper::-webkit-scrollbar-thumb:hover{background:#a19c92;}' +
+    '.yqn-loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.92);display:none;' +
+    'flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;font-size:13.5px;font-weight:700;color:#1c1c1a;}' +
     '.yqn-loading-overlay--visible{display:flex;}' +
-    '.yqn-spinner-lg{width:36px;height:36px;border:4px solid #A3E635;border-left-color:transparent;' +
+    '.yqn-spinner-lg{width:32px;height:32px;border:3px solid #A3E635;border-left-color:transparent;' +
     'border-radius:50%;animation:yqn-spin .8s linear infinite;}' +
-    '.yqn-table{width:100%;border-collapse:collapse;font-size:15px;min-width:760px;}' +
-    '.yqn-table th,.yqn-table td{padding:12px 16px;text-align:center;border-bottom:1px solid #eee;white-space:nowrap;}' +
-    '.yqn-table thead th{position:sticky;top:0;background:#f5f5f5;cursor:pointer;user-select:none;z-index:3;font-weight:bold;font-size:14px;}' +
+    '.yqn-table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px;}' +
+    '.yqn-table th,.yqn-table td{padding:12px 16px;text-align:center;border-bottom:1px solid #e9e7df;white-space:nowrap;}' +
+    '.yqn-table thead th{position:sticky;top:0;background:#fafaf6;cursor:pointer;user-select:none;z-index:3;' +
+    'font-weight:800;font-size:11px;color:#a19c92;text-transform:uppercase;letter-spacing:.02em;}' +
     // تثبيت أول ٣ أعمدة (المجموعة/السيارات/الحجوزات) عند التمرير الأفقي حتى تبقى هوية الصف ظاهرة دائماً
     '.yqn-table th:nth-child(1),.yqn-table td:nth-child(1){position:sticky;inset-inline-start:0;width:120px;min-width:120px;}' +
     '.yqn-table th:nth-child(2),.yqn-table td:nth-child(2){position:sticky;inset-inline-start:120px;width:96px;min-width:96px;}' +
@@ -12376,16 +12704,17 @@ ${text}
     '.yqn-table th:nth-child(-n+3){z-index:4;}' +
     '.yqn-table td:nth-child(-n+3){z-index:2;background-color:inherit;}' +
     // فاصل بصري بين مجموعات الأعمدة (أعمدة الأيام) وأعمدة النتيجة (نسبة الإشغال/الفرق)
-    '.yqn-col-divider{border-inline-start:2px solid #eee;}' +
+    '.yqn-col-divider{border-inline-start:2px solid #e9e7df;}' +
     '.yqn-table tbody tr{background-color:#fff;}' +
-    '.yqn-table tbody tr:hover{background-color:#f5f5f5;}' +
-    '.yqn-group-cell{font-weight:bold;font-size:16px;}' +
-    '.yqn-totals-row{font-weight:bold;background-color:#f5f5f5 !important;position:sticky;bottom:0;z-index:2;}' +
-    '.yqn-empty{padding:32px !important;opacity:.7;font-size:16px;}' +
+    '.yqn-table tbody tr:nth-child(even){background-color:#fafaf6;}' +
+    '.yqn-table tbody tr:hover{background-color:#f1f0ea;}' +
+    '.yqn-group-cell{font-weight:800;font-size:15px;}' +
+    '.yqn-totals-row{font-weight:800;background-color:#fafaf6 !important;position:sticky;bottom:0;z-index:2;}' +
+    '.yqn-empty{padding:32px !important;opacity:.6;font-size:14px;}' +
     '.yqn-vehicles-cell{padding:4px 8px !important;}' +
-    '.yqn-vehicle-input{width:56px;padding:6px 4px;border:1px solid #ddd;border-radius:6px;text-align:center;' +
-    'font:inherit;font-weight:bold;color:inherit;background:#fff;}' +
-    '.yqn-vehicle-input:focus{outline:2px solid #78B500;border-color:#78B500;}' +
+    '.yqn-vehicle-input{width:56px;padding:6px 4px;border:1.5px solid #e9e7df;border-radius:8px;text-align:center;' +
+    'font:inherit;font-weight:800;color:inherit;background:#fbfbf9;}' +
+    '.yqn-vehicle-input:focus{outline:2px solid #79a916;border-color:#79a916;}' +
     '.yqn-vehicles-total{font-weight:bold;font-size:15px;line-height:1.3;}' +
     '.yqn-yard-edit{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:3px;}' +
     '.yqn-yard-edit .yqn-vehicle-input{width:40px;padding:3px 2px;font-size:12px;}' +
@@ -12402,7 +12731,7 @@ ${text}
     '.yqn-diff-positive{color:#16a34a;}' +
     '.yqn-diff-negative{color:#dc2626;}' +
     '.yqn-diff-zero{color:#b45309;}' +
-    '.yqn-status{padding:12px 28px;font-size:13px;min-height:20px;opacity:.85;display:flex;align-items:center;gap:8px;}' +
+    '.yqn-status{padding:12px 28px;font-size:12.5px;font-weight:700;min-height:20px;opacity:.9;display:flex;align-items:center;gap:8px;}' +
     '.yqn-status--loading{color:#2563eb;}' +
     '.yqn-status--success{color:#16a34a;}' +
     '.yqn-status--error{color:#dc2626;}' +
@@ -12633,13 +12962,83 @@ ${text}
         return div.innerHTML;
     }
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;max-height:90vh;overflow-y:auto;box-sizing:border-box;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.vip-field-wrap{text-align:right;margin-bottom:10px;}' +
+        '.vip-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:5px;}' +
+        '.vip-field-wrap select,.vip-field-wrap input,.vip-field-wrap textarea{width:100%;padding:10px;' +
+        'border:1.5px solid #e9e7df;border-radius:10px;font-size:13px;box-sizing:border-box;font-family:inherit;' +
+        'background:#fbfbf9;color:#1c1c1a;}' +
+        '.vip-field-wrap textarea{resize:vertical;}' +
+        '.vip-form-actions{display:flex;gap:8px;}' +
+        '.vip-form-actions button{flex:1;padding:12px;border:0;border-radius:12px;cursor:pointer;' +
+        'font-size:13px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        '.vip-form-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="vip-booking-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;max-height:90vh;overflow-y:auto;background:#fff;border-radius:16px;padding:22px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="vip-booking-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -12647,20 +13046,17 @@ ${text}
         document.getElementById('vip-booking-box')?.remove();
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         closeBox();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px;white-space:pre-line;">' + text + '</div>' +
-            '<button id="vip-booking-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            340
-        ));
-        document.getElementById('vip-booking-close').onclick = closeBox;
+        showToast(text, type || 'error');
     }
 
     function showLoading(text) {
         closeBox();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
     function selectHtml(id, label, options, selected) {
@@ -12668,30 +13064,30 @@ ${text}
             options.map(o => '<option value="' + escapeHtml(o) + '"' + (o === selected ? ' selected' : '') + '>' + escapeHtml(o) + '</option>')
         ).join('');
         return (
-            '<div style="text-align:right;margin-bottom:10px;">' +
-            '<label style="display:block;font-size:12.5px;color:#555;margin-bottom:4px;">' + label + '</label>' +
-            '<select id="' + id + '" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;">' + opts + '</select>' +
+            '<div class="vip-field-wrap">' +
+            '<label>' + label + '</label>' +
+            '<select id="' + id + '">' + opts + '</select>' +
             '</div>'
         );
     }
 
     function textHtml(id, label, type, required) {
         return (
-            '<div style="text-align:right;margin-bottom:10px;">' +
-            '<label style="display:block;font-size:12.5px;color:#555;margin-bottom:4px;">' + label + '</label>' +
-            '<input id="' + id + '" type="' + type + '"' + (required ? ' required' : '') + ' style="' +
-            'width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;" />' +
+            '<div class="vip-field-wrap">' +
+            '<label>' + label + '</label>' +
+            '<input id="' + id + '" type="' + type + '"' + (required ? ' required' : '') + ' />' +
             '</div>'
         );
     }
 
     function showForm() {
         closeBox();
+        injectYqStyles();
 
         const grid2 = 'display:grid;grid-template-columns:1fr 1fr;gap:0 10px;';
 
         const html =
-            '<div style="font-size:16px;font-weight:bold;margin-bottom:14px;">⭐ إضافة حجز VIP</div>' +
+            '<h3 style="margin-bottom:14px;">⭐ إضافة حجز VIP</h3>' +
             '<div style="' + grid2 + '">' +
             textHtml('vip-f-name', 'اسم العميل *', 'text', true) +
             textHtml('vip-f-id_num', 'رقم الهوية', 'text', false) +
@@ -12708,19 +13104,15 @@ ${text}
             textHtml('vip-f-date', 'تاريخ الاستلام *', 'datetime-local', true) +
             selectHtml('vip-f-mgr', 'المدير', MGR_LIST, '') +
             '</div>' +
-            '<div style="text-align:right;margin-bottom:14px;">' +
-            '<label style="display:block;font-size:12.5px;color:#555;margin-bottom:4px;">ملاحظات</label>' +
-            '<textarea id="vip-f-notes" rows="2" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;' +
-            'font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>' +
+            '<div class="vip-field-wrap">' +
+            '<label>ملاحظات</label>' +
+            '<textarea id="vip-f-notes" rows="2"></textarea>' +
             '</div>' +
             '<div id="vip-form-err" style="color:#dc2626;font-size:12.5px;font-weight:bold;margin-bottom:10px;display:none;"></div>' +
-            '<div style="display:flex;gap:8px;">' +
-            '<button id="vip-form-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#eee;color:#333;font-size:14px;">إلغاء</button>' +
-            '<button id="vip-form-save" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#ddd;color:#333;font-size:13.5px;">💾 حفظ فقط</button>' +
-            '<button id="vip-form-save-send" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#A3E635;font-size:13.5px;">📩 حفظ وإرسال للقروب</button>' +
+            '<div class="vip-form-actions">' +
+            '<button id="vip-form-cancel">إلغاء</button>' +
+            '<button id="vip-form-save">💾 حفظ فقط</button>' +
+            '<button id="vip-form-save-send" class="yq-primary">📩 حفظ وإرسال للقروب</button>' +
             '</div>';
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(html, 480));
@@ -12809,14 +13201,14 @@ ${text}
                 try {
                     await sendToBot(buildWaMessage(record), WHATSAPP_CONFIG.defaultTarget);
                 } catch (waErr) {
-                    showMessage('✅ تم إنشاء الحجز ' + id + ' بنجاح.\n\n⚠️ لكن تعذّر إرسال رسالة الواتساب: ' + waErr.message);
+                    showMessage('تم إنشاء الحجز ' + id + ' بنجاح، لكن تعذّر إرسال رسالة الواتساب: ' + waErr.message, 'error');
                     return;
                 }
-                showMessage('✅ تم إنشاء الحجز ' + id + ' وإرسال الرسالة للقروب بنجاح.');
+                showMessage('تم إنشاء الحجز ' + id + ' وإرسال الرسالة للقروب بنجاح.', 'success');
                 return;
             }
 
-            showMessage('✅ تم إنشاء الحجز ' + id + ' بنجاح.');
+            showMessage('تم إنشاء الحجز ' + id + ' بنجاح.', 'success');
 
         } catch (err) {
             showMessage('تعذّر حفظ الحجز: ' + err.message);
@@ -12972,12 +13364,12 @@ ${text}
     function bubbleHtml(m) {
         const isUser = m.role === 'user';
         const imageHtml = m.image
-            ? '<img src="' + m.image + '" style="max-width:100%;border-radius:8px;margin-bottom:6px;display:block;" />'
+            ? '<img src="' + m.image + '" style="max-width:100%;border-radius:10px;margin-bottom:6px;display:block;" />'
             : '';
         return (
             '<div style="display:flex;' + (isUser ? 'justify-content:flex-start;' : 'justify-content:flex-end;') + 'margin-bottom:10px;">' +
-            '<div style="max-width:80%;padding:10px 13px;border-radius:12px;font-size:13.5px;line-height:1.7;white-space:pre-wrap;text-align:right;' +
-            (isUser ? 'background:#f0f0f0;color:#111;' : 'background:#A3E635;color:#1a1a1a;') +
+            '<div style="max-width:80%;padding:11px 14px;border-radius:14px;font-size:13.5px;font-weight:500;line-height:1.7;white-space:pre-wrap;text-align:right;' +
+            (isUser ? 'background:#f1f0ea;color:#1c1c1a;' : 'background:linear-gradient(160deg,#A3E635,#b8ec52);color:#3c4a10;font-weight:700;') +
             '">' + imageHtml + escapeHtml(m.content) + '</div></div>'
         );
     }
@@ -13006,8 +13398,8 @@ ${text}
         }
         box.style.display = 'flex';
         box.innerHTML =
-            '<img src="' + pendingImage + '" style="height:44px;border-radius:6px;" />' +
-            '<span id="ai-chat-remove-image" style="cursor:pointer;font-size:13px;color:#dc2626;margin-inline-start:8px;">✕ إزالة</span>';
+            '<img src="' + pendingImage + '" style="height:44px;border-radius:9px;" />' +
+            '<span id="ai-chat-remove-image" style="cursor:pointer;font-size:12.5px;font-weight:700;color:#dc2626;margin-inline-start:8px;">✕ إزالة</span>';
         document.getElementById('ai-chat-remove-image').onclick = () => {
             pendingImage = null;
             renderPreview();
@@ -13065,21 +13457,24 @@ ${text}
         pendingImage = null;
 
         const html =
-            '<div id="ai-chat-header" style="background:#A3E635;padding:14px 18px;text-align:center;font-weight:bold;' +
-            'font-size:16px;border-radius:14px 14px 0 0;position:relative;cursor:move;user-select:none;">🤖 شات AI' +
-            '<span id="ai-chat-close" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;">✕</span>' +
+            '<div id="ai-chat-header" style="background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;padding:16px 18px;' +
+            'text-align:center;font-weight:800;font-size:15px;position:relative;cursor:move;user-select:none;">🤖 شات AI' +
+            '<span id="ai-chat-close" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;opacity:.75;">✕</span>' +
             '</div>' +
-            '<div style="padding:10px 14px 0;font-size:11.5px;color:#777;text-align:center;">' +
+            '<div style="padding:10px 16px 0;font-size:11px;font-weight:600;color:#a19c92;text-align:center;">' +
             'يقرأ الصفحة المفتوحة حالياً - اسأل عنها أو أي سؤال عام يخص التأجير، وممكن ترفقين صورة' +
             '</div>' +
-            '<div id="ai-chat-messages" style="height:320px;overflow-y:auto;padding:14px;"></div>' +
-            '<div id="ai-chat-typing" style="display:none;padding:0 14px 8px;font-size:12px;color:#999;text-align:right;">... يكتب</div>' +
-            '<div id="ai-chat-preview" style="display:none;align-items:center;padding:0 14px 10px;"></div>' +
-            '<div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid #eee;align-items:center;">' +
-            '<button id="ai-chat-send" style="padding:0 18px;height:38px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;font-size:14px;">إرسال</button>' +
+            '<div id="ai-chat-messages" style="height:320px;overflow-y:auto;padding:16px;"></div>' +
+            '<div id="ai-chat-typing" style="display:none;padding:0 16px 8px;font-size:12px;font-weight:700;color:#a19c92;text-align:right;">... يكتب</div>' +
+            '<div id="ai-chat-preview" style="display:none;align-items:center;padding:0 16px 10px;"></div>' +
+            '<div style="display:flex;gap:8px;padding:14px 16px;border-top:1px solid #e9e7df;align-items:center;">' +
+            '<button id="ai-chat-send" style="padding:0 18px;height:40px;border:0;border-radius:11px;' +
+            'background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;cursor:pointer;font-size:13.5px;font-weight:800;font-family:inherit;">إرسال</button>' +
             '<input id="ai-chat-input" type="text" placeholder="اكتب سؤالك..." style="' +
-            'flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:13.5px;text-align:right;direction:rtl;" />' +
-            '<button id="ai-chat-attach" title="إرفاق صورة" style="width:38px;height:38px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:16px;">📎</button>' +
+            'flex:1;padding:10px 13px;border:1.5px solid #e9e7df;border-radius:11px;font-size:13.5px;' +
+            'text-align:right;direction:rtl;font-family:inherit;background:#fbfbf9;color:#1c1c1a;box-sizing:border-box;" />' +
+            '<button id="ai-chat-attach" title="إرفاق صورة" style="width:40px;height:40px;border:1.5px solid #e9e7df;' +
+            'border-radius:11px;background:#fbfbf9;cursor:pointer;font-size:15px;">📎</button>' +
             '<input id="ai-chat-file" type="file" accept="image/*" style="display:none;" />' +
             '</div>';
 
@@ -13088,8 +13483,8 @@ ${text}
         // تفضل قابلة للتفاعل الكامل حواليها وتحتها
         document.body.insertAdjacentHTML('beforeend',
             '<div id="ai-chat-box" style="' +
-            'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:14px;' +
-            'overflow:hidden;direction:rtl;font-family:Arial;box-shadow:0 10px 30px rgba(0,0,0,.35);' +
+            'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:20px;' +
+            'overflow:hidden;direction:rtl;font-family:"Tajawal",Arial,Tahoma,sans-serif;box-shadow:0 20px 50px -12px rgba(0,0,0,.35);' +
             'z-index:999999999;">' + html + '</div>'
         );
 
@@ -13538,32 +13933,112 @@ ${text}
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.shift-section-label{font-weight:800;font-size:13px;margin-bottom:6px;color:#1c1c1a;}' +
+        '.shift-mini-field{width:100%;padding:9px;border:1.5px solid #e9e7df;border-radius:10px;font-size:14px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.shift-add-emp-btn{width:100%;padding:9px;margin-top:6px;border:0;border-radius:10px;cursor:pointer;' +
+        'background:#f1f0ea;color:#767068;font-size:12px;font-weight:700;font-family:inherit;}' +
+        '.shift-emp-name,.shift-emp-count{padding:8px;border:1.5px solid #e9e7df;border-radius:9px;font-size:13px;' +
+        'text-align:center;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.shift-emp-name{text-align:right;flex:2;}' +
+        '.shift-emp-count{flex:1;}' +
+        '.shift-emp-remove{padding:0 12px;border:0;border-radius:9px;background:#fdecec;color:#dc2626;cursor:pointer;font-family:inherit;}' +
+        '.shift-preview{width:100%;height:170px;box-sizing:border-box;padding:12px;border:1.5px solid #e9e7df;' +
+        'border-radius:12px;font-size:13px;text-align:left;resize:vertical;white-space:pre;background:#fbfbf9;color:#1c1c1a;font-family:inherit;}' +
+        '.shift-pick-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        '.shift-pick-btn.current{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="shift-report-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="shift-report-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
     function showProgress(text) {
         document.getElementById('shift-report-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 340));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('shift-report-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px;white-space:pre-line;">' + text + '</div>' +
-            '<button id="shift-report-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            340
-        ));
-        document.getElementById('shift-report-close').onclick = () => {
-            document.getElementById('shift-report-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function showShiftPrompt() {
@@ -13571,19 +14046,15 @@ ${text}
         const current = currentShiftKey();
 
         const buttonsHtml = SHIFTS.map(s => (
-            '<button class="shift-report-pick" data-shift="' + s.key + '" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'font-size:15px;' + (s.key === current ? 'background:#A3E635;font-weight:bold;' : 'background:#eee;color:#333;') + '">' +
+            '<button class="shift-report-pick shift-pick-btn' + (s.key === current ? ' current' : '') + '" data-shift="' + s.key + '">' +
             s.label + (s.key === current ? ' (الحالي)' : '') + '</button>'
         )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">📋 تقرير الشفت</h3>' +
-            '<div style="margin:10px 0;text-align:right">اختر الشفت اللي تبي تسحب أرقامه:</div>' +
+            '<h3>📋 تقرير الشفت</h3>' +
+            '<div class="yq-desc">اختر الشفت اللي تبي تسحب أرقامه:</div>' +
             buttonsHtml +
-            '<button id="shift-report-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
+            '<button id="shift-report-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
             320
         ));
 
@@ -13608,12 +14079,9 @@ ${text}
     function empRowHtml(section) {
         return (
             '<div class="shift-emp-row" data-section="' + section + '" style="display:flex;gap:6px;margin-top:6px;">' +
-            '<input type="text" class="shift-emp-name" placeholder="اسم الموظف" style="' +
-            'flex:2;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:right;" />' +
-            '<input type="number" class="shift-emp-count" placeholder="العدد" style="' +
-            'flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center;" />' +
-            '<button class="shift-emp-remove" style="' +
-            'padding:0 12px;border:none;border-radius:6px;background:#eee;color:#c00;cursor:pointer;">✕</button>' +
+            '<input type="text" class="shift-emp-name" placeholder="اسم الموظف" />' +
+            '<input type="number" class="shift-emp-count" placeholder="العدد" />' +
+            '<button class="shift-emp-remove">✕</button>' +
             '</div>'
         );
     }
@@ -13679,66 +14147,51 @@ ${text}
 
     function showForm(shiftKey, numbers) {
         document.getElementById('shift-report-box')?.remove();
+        injectYqStyles();
         const shift = shiftByKey(shiftKey);
 
         const html =
-            '<div id="shift-report-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
+            '<div id="shift-report-box" class="yq-overlay">' +
             '<div style="width:min(480px,95vw);max-height:92vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:16px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">📋 تقرير الشفت - ' + shift.label + '</div>' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">📋 تقرير الشفت - ' + shift.label + '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;padding:16px;text-align:right;">' +
+            '<div style="overflow:auto;flex:1;padding:20px;text-align:right;">' +
 
-            '<div style="font-weight:bold;margin-bottom:4px;">Opened (إجمالي من الموقع)</div>' +
-            '<input id="shift-report-opened-total" type="number" value="' + (numbers.opened ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label">Opened (إجمالي من الموقع)</div>' +
+            '<input id="shift-report-opened-total" type="number" value="' + (numbers.opened ?? '') + '" class="shift-mini-field" />' +
             '<div id="shift-report-opened-employees"></div>' +
-            '<button id="shift-report-add-opened" style="' +
-            'width:100%;padding:8px;margin-top:6px;border:none;border-radius:6px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:12.5px;">+ إضافة موظف</button>' +
+            '<button id="shift-report-add-opened" class="shift-add-emp-btn">+ إضافة موظف</button>' +
 
-            '<div style="font-weight:bold;margin:16px 0 4px;">Closed (إجمالي من الموقع)</div>' +
-            '<input id="shift-report-closed-total" type="number" value="' + (numbers.closed ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label" style="margin-top:16px;">Closed (إجمالي من الموقع)</div>' +
+            '<input id="shift-report-closed-total" type="number" value="' + (numbers.closed ?? '') + '" class="shift-mini-field" />' +
             '<div id="shift-report-closed-employees"></div>' +
-            '<button id="shift-report-add-closed" style="' +
-            'width:100%;padding:8px;margin-top:6px;border:none;border-radius:6px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:12.5px;">+ إضافة موظف</button>' +
+            '<button id="shift-report-add-closed" class="shift-add-emp-btn">+ إضافة موظف</button>' +
 
             '<div style="display:flex;gap:8px;margin-top:16px;">' +
             '<div style="flex:1;">' +
-            '<div style="font-weight:bold;margin-bottom:4px;font-size:13px;">Rented</div>' +
-            '<input id="shift-report-rented" type="number" value="' + (numbers.rented ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label" style="font-size:12.5px;">Rented</div>' +
+            '<input id="shift-report-rented" type="number" value="' + (numbers.rented ?? '') + '" class="shift-mini-field" />' +
             '</div>' +
             '<div style="flex:1;">' +
-            '<div style="font-weight:bold;margin-bottom:4px;font-size:13px;">Ready 138 (مطار)</div>' +
-            '<input id="shift-report-ready138" type="number" value="' + (numbers.ready138 ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label" style="font-size:12.5px;">Ready 138 (مطار)</div>' +
+            '<input id="shift-report-ready138" type="number" value="' + (numbers.ready138 ?? '') + '" class="shift-mini-field" />' +
             '</div>' +
             '<div style="flex:1;">' +
-            '<div style="font-weight:bold;margin-bottom:4px;font-size:13px;">Ready 162 (ساحة)</div>' +
-            '<input id="shift-report-ready162" type="number" value="' + (numbers.ready162 ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label" style="font-size:12.5px;">Ready 162 (ساحة)</div>' +
+            '<input id="shift-report-ready162" type="number" value="' + (numbers.ready162 ?? '') + '" class="shift-mini-field" />' +
             '</div>' +
             '</div>' +
 
-            '<div style="font-weight:bold;margin:16px 0 4px;">معاينة الرسالة</div>' +
-            '<textarea id="shift-report-preview" readonly dir="ltr" style="' +
-            'width:100%;height:170px;box-sizing:border-box;padding:10px;border:1px solid #ddd;' +
-            'border-radius:8px;font-size:13px;text-align:left;resize:vertical;white-space:pre;"></textarea>' +
+            '<div class="shift-section-label" style="margin-top:16px;">معاينة الرسالة</div>' +
+            '<textarea id="shift-report-preview" readonly dir="ltr" class="shift-preview"></textarea>' +
 
             '</div>' +
-            '<div style="padding:14px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="shift-report-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث الأرقام</button>' +
-            '<button id="shift-report-cancel2" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">إلغاء</button>' +
-            '<button id="shift-report-send" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#25D366;color:#fff;cursor:pointer;">📩 إرسال للقروب</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="shift-report-refresh">🔄 تحديث الأرقام</button>' +
+            '<button id="shift-report-cancel2">إلغاء</button>' +
+            '<button id="shift-report-send" class="yq-send">📩 إرسال للقروب</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -13769,11 +14222,11 @@ ${text}
             try {
                 await sendWhatsAppText(message);
                 document.getElementById('shift-report-box')?.remove();
-                showMessage('✅ تم إرسال تقرير الشفت للقروب بنجاح');
+                showMessage('تم إرسال تقرير الشفت للقروب بنجاح', 'success');
             } catch (err) {
                 btn.disabled = false;
                 btn.textContent = '📩 إرسال للقروب';
-                alert('تعذّر الإرسال: ' + err.message);
+                showToast('تعذّر الإرسال: ' + err.message, 'error');
             }
         };
     }

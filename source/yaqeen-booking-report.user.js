@@ -1761,57 +1761,60 @@
   // ==========================================================
   var MODAL_CSS =
     '.yqn-overlay{position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;' +
-    'background:#0008;padding:24px;font-family:Arial,Tahoma,sans-serif;font-size:16px;}' +
+    'background:rgba(20,18,12,.42);padding:24px;font-family:"Tajawal",Arial,Tahoma,sans-serif;font-size:16px;}' +
     '.yqn-overlay--open{display:flex;}' +
-    '.yqn-modal{background:#fff;color:#1a1a1a;border-radius:16px;position:relative;' +
+    '.yqn-modal{background:#fff;color:#1c1c1a;border-radius:22px;position:relative;' +
+    'box-shadow:0 30px 60px -20px rgba(0,0,0,.35);' +
     'width:min(1560px,97vw);height:min(920px,94vh);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;}' +
-    // --- الرأس: بنفس أسلوب أداة "العقود المتأخرة في السداد" - خلفية خضراء، عنوان + سطر إحصائي تحته ---
-    '.yqn-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 28px;' +
-    'background:#A3E635;color:#1a1a1a;}' +
-    '.yqn-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}' +
-    '.yqn-header h2{margin:0;font-size:20px;font-weight:bold;}' +
-    '.yqn-stat-badge{font-size:13px;opacity:.85;}' +
-    '.yqn-stat-badge strong{font-weight:bold;}' +
-    '.yqn-close{background:transparent;border:0;font-size:20px;cursor:pointer;color:inherit;line-height:1;padding:8px;border-radius:8px;flex-shrink:0;}' +
-    '.yqn-close:hover{background:rgba(0,0,0,.08);}' +
+    // --- الرأس: بنفس أسلوب باقي الأدوات - تدرّج أخضر، عنوان + سطر إحصائي تحته ---
+    '.yqn-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 28px;' +
+    'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+    '.yqn-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:5px;}' +
+    '.yqn-header h2{margin:0;font-size:17px;font-weight:800;}' +
+    '.yqn-stat-badge{font-size:12.5px;opacity:.85;}' +
+    '.yqn-stat-badge strong{font-weight:800;}' +
+    '.yqn-close{background:transparent;border:0;font-size:18px;cursor:pointer;color:inherit;line-height:1;padding:8px;border-radius:9px;flex-shrink:0;opacity:.75;}' +
+    '.yqn-close:hover{background:rgba(0,0,0,.08);opacity:1;}' +
     // --- شريط الأدوات: أزرار الإجراءات فقط، بمسافات متساوية بدون فراغ زائد ---
-    '.yqn-toolbar{display:flex;align-items:center;padding:14px 28px;border-bottom:1px solid #eee;}' +
-    '.yqn-actions{display:flex;flex-wrap:wrap;gap:8px;}' +
-    '.yqn-actions button{cursor:pointer;border:none;background:#eee;color:#333;' +
-    'padding:10px 16px;border-radius:8px;font-size:14px;transition:background .15s;}' +
-    '.yqn-actions button:hover{background:#e2e2e2;}' +
+    '.yqn-toolbar{display:flex;align-items:center;padding:14px 28px;border-bottom:1px solid #e9e7df;}' +
+    '.yqn-actions{display:flex;flex-wrap:wrap;gap:9px;}' +
+    '.yqn-actions button{cursor:pointer;border:0;background:#f1f0ea;color:#1c1c1a;font-family:inherit;' +
+    'padding:11px 16px;border-radius:11px;font-size:12.5px;font-weight:800;transition:background .15s;}' +
+    '.yqn-actions button:hover{background:#e9e7df;}' +
+    '.yqn-actions button[data-action="whatsapp"]{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
     // --- لوحة الفلاتر: قسمين واضحين (مصدر السيارات / الأيام) مع عنوان وفاصل بينهما ---
     '.yqn-filters{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding:16px 28px;' +
-    'background:#fafafa;border-bottom:1px solid #eee;}' +
+    'background:#fbfbf9;border-bottom:1px solid #e9e7df;}' +
     '.yqn-filter-group{display:flex;flex-direction:column;gap:8px;}' +
     '.yqn-filter-group--grow{flex:1;min-width:260px;}' +
-    '.yqn-filter-label{font-size:12.5px;font-weight:bold;opacity:.6;text-transform:uppercase;letter-spacing:.02em;}' +
-    '.yqn-filter-divider{align-self:stretch;width:1px;background:#e2e2e2;}' +
+    '.yqn-filter-label{font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
+    '.yqn-filter-divider{align-self:stretch;width:1px;background:#e9e7df;}' +
     '.yqn-source-filter{display:flex;align-items:center;gap:14px;border:0;padding:0;margin:0;flex-wrap:wrap;}' +
-    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:15px;cursor:pointer;}' +
-    '.yqn-source-filter input[type="radio"]{width:16px;height:16px;accent-color:#78B500;}' +
+    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;}' +
+    '.yqn-source-filter input[type="radio"]{width:16px;height:16px;accent-color:#79a916;}' +
     '.yqn-day-chips{display:flex;flex-wrap:wrap;gap:8px;}' +
-    '.yqn-chip{cursor:pointer;border:1px solid #ddd;background:#fff;color:#333;' +
-    'padding:8px 16px;border-radius:999px;font-size:14px;transition:all .15s;}' +
-    '.yqn-chip--active{background:#A3E635;border-color:#A3E635;color:#1a1a1a;font-weight:bold;}' +
+    '.yqn-chip{cursor:pointer;border:1.5px solid #e9e7df;background:#fff;color:#1c1c1a;font-family:inherit;' +
+    'padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;transition:all .15s;}' +
+    '.yqn-chip--active{background:linear-gradient(160deg,#A3E635,#79a916);border-color:transparent;color:#3c4a10;font-weight:800;}' +
     // --- الجدول ---
     // تمرير مرئي بوضوح (سماكة ولون واضحين) حتى يظهر جلياً إن المنطقة قابلة
     // للتمرير حتى بدون تحريك الماوس فوقها - يحل مشكلة عدم ملاحظة إمكانية
     // النزول/الصعود داخل الجدول عند طول قائمة المجموعات
     '.yqn-table-wrapper{overflow:auto;flex:1;padding:0 28px;position:relative;' +
-    'scrollbar-width:auto;scrollbar-color:#9CA3AF #f0f0f0;}' +
+    'scrollbar-width:auto;scrollbar-color:#c7c3b8 #f0efe9;}' +
     '.yqn-table-wrapper::-webkit-scrollbar{width:14px;height:14px;}' +
-    '.yqn-table-wrapper::-webkit-scrollbar-track{background:#f0f0f0;}' +
-    '.yqn-table-wrapper::-webkit-scrollbar-thumb{background:#9CA3AF;border-radius:8px;border:3px solid #f0f0f0;}' +
-    '.yqn-table-wrapper::-webkit-scrollbar-thumb:hover{background:#6B7280;}' +
-    '.yqn-loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.9);display:none;' +
-    'flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;font-size:14px;color:#333;}' +
+    '.yqn-table-wrapper::-webkit-scrollbar-track{background:#f0efe9;}' +
+    '.yqn-table-wrapper::-webkit-scrollbar-thumb{background:#c7c3b8;border-radius:8px;border:3px solid #f0efe9;}' +
+    '.yqn-table-wrapper::-webkit-scrollbar-thumb:hover{background:#a19c92;}' +
+    '.yqn-loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.92);display:none;' +
+    'flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;font-size:13.5px;font-weight:700;color:#1c1c1a;}' +
     '.yqn-loading-overlay--visible{display:flex;}' +
-    '.yqn-spinner-lg{width:36px;height:36px;border:4px solid #A3E635;border-left-color:transparent;' +
+    '.yqn-spinner-lg{width:32px;height:32px;border:3px solid #A3E635;border-left-color:transparent;' +
     'border-radius:50%;animation:yqn-spin .8s linear infinite;}' +
-    '.yqn-table{width:100%;border-collapse:collapse;font-size:15px;min-width:760px;}' +
-    '.yqn-table th,.yqn-table td{padding:12px 16px;text-align:center;border-bottom:1px solid #eee;white-space:nowrap;}' +
-    '.yqn-table thead th{position:sticky;top:0;background:#f5f5f5;cursor:pointer;user-select:none;z-index:3;font-weight:bold;font-size:14px;}' +
+    '.yqn-table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px;}' +
+    '.yqn-table th,.yqn-table td{padding:12px 16px;text-align:center;border-bottom:1px solid #e9e7df;white-space:nowrap;}' +
+    '.yqn-table thead th{position:sticky;top:0;background:#fafaf6;cursor:pointer;user-select:none;z-index:3;' +
+    'font-weight:800;font-size:11px;color:#a19c92;text-transform:uppercase;letter-spacing:.02em;}' +
     // تثبيت أول ٣ أعمدة (المجموعة/السيارات/الحجوزات) عند التمرير الأفقي حتى تبقى هوية الصف ظاهرة دائماً
     '.yqn-table th:nth-child(1),.yqn-table td:nth-child(1){position:sticky;inset-inline-start:0;width:120px;min-width:120px;}' +
     '.yqn-table th:nth-child(2),.yqn-table td:nth-child(2){position:sticky;inset-inline-start:120px;width:96px;min-width:96px;}' +
@@ -1820,16 +1823,17 @@
     '.yqn-table th:nth-child(-n+3){z-index:4;}' +
     '.yqn-table td:nth-child(-n+3){z-index:2;background-color:inherit;}' +
     // فاصل بصري بين مجموعات الأعمدة (أعمدة الأيام) وأعمدة النتيجة (نسبة الإشغال/الفرق)
-    '.yqn-col-divider{border-inline-start:2px solid #eee;}' +
+    '.yqn-col-divider{border-inline-start:2px solid #e9e7df;}' +
     '.yqn-table tbody tr{background-color:#fff;}' +
-    '.yqn-table tbody tr:hover{background-color:#f5f5f5;}' +
-    '.yqn-group-cell{font-weight:bold;font-size:16px;}' +
-    '.yqn-totals-row{font-weight:bold;background-color:#f5f5f5 !important;position:sticky;bottom:0;z-index:2;}' +
-    '.yqn-empty{padding:32px !important;opacity:.7;font-size:16px;}' +
+    '.yqn-table tbody tr:nth-child(even){background-color:#fafaf6;}' +
+    '.yqn-table tbody tr:hover{background-color:#f1f0ea;}' +
+    '.yqn-group-cell{font-weight:800;font-size:15px;}' +
+    '.yqn-totals-row{font-weight:800;background-color:#fafaf6 !important;position:sticky;bottom:0;z-index:2;}' +
+    '.yqn-empty{padding:32px !important;opacity:.6;font-size:14px;}' +
     '.yqn-vehicles-cell{padding:4px 8px !important;}' +
-    '.yqn-vehicle-input{width:56px;padding:6px 4px;border:1px solid #ddd;border-radius:6px;text-align:center;' +
-    'font:inherit;font-weight:bold;color:inherit;background:#fff;}' +
-    '.yqn-vehicle-input:focus{outline:2px solid #78B500;border-color:#78B500;}' +
+    '.yqn-vehicle-input{width:56px;padding:6px 4px;border:1.5px solid #e9e7df;border-radius:8px;text-align:center;' +
+    'font:inherit;font-weight:800;color:inherit;background:#fbfbf9;}' +
+    '.yqn-vehicle-input:focus{outline:2px solid #79a916;border-color:#79a916;}' +
     '.yqn-vehicles-total{font-weight:bold;font-size:15px;line-height:1.3;}' +
     '.yqn-yard-edit{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:3px;}' +
     '.yqn-yard-edit .yqn-vehicle-input{width:40px;padding:3px 2px;font-size:12px;}' +
@@ -1846,7 +1850,7 @@
     '.yqn-diff-positive{color:#16a34a;}' +
     '.yqn-diff-negative{color:#dc2626;}' +
     '.yqn-diff-zero{color:#b45309;}' +
-    '.yqn-status{padding:12px 28px;font-size:13px;min-height:20px;opacity:.85;display:flex;align-items:center;gap:8px;}' +
+    '.yqn-status{padding:12px 28px;font-size:12.5px;font-weight:700;min-height:20px;opacity:.9;display:flex;align-items:center;gap:8px;}' +
     '.yqn-status--loading{color:#2563eb;}' +
     '.yqn-status--success{color:#16a34a;}' +
     '.yqn-status--error{color:#dc2626;}' +

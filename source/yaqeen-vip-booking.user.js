@@ -217,13 +217,83 @@
         return div.innerHTML;
     }
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;max-height:90vh;overflow-y:auto;box-sizing:border-box;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.vip-field-wrap{text-align:right;margin-bottom:10px;}' +
+        '.vip-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:5px;}' +
+        '.vip-field-wrap select,.vip-field-wrap input,.vip-field-wrap textarea{width:100%;padding:10px;' +
+        'border:1.5px solid #e9e7df;border-radius:10px;font-size:13px;box-sizing:border-box;font-family:inherit;' +
+        'background:#fbfbf9;color:#1c1c1a;}' +
+        '.vip-field-wrap textarea{resize:vertical;}' +
+        '.vip-form-actions{display:flex;gap:8px;}' +
+        '.vip-form-actions button{flex:1;padding:12px;border:0;border-radius:12px;cursor:pointer;' +
+        'font-size:13px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        '.vip-form-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="vip-booking-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;max-height:90vh;overflow-y:auto;background:#fff;border-radius:16px;padding:22px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="vip-booking-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -231,20 +301,17 @@
         document.getElementById('vip-booking-box')?.remove();
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         closeBox();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px;white-space:pre-line;">' + text + '</div>' +
-            '<button id="vip-booking-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            340
-        ));
-        document.getElementById('vip-booking-close').onclick = closeBox;
+        showToast(text, type || 'error');
     }
 
     function showLoading(text) {
         closeBox();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
     function selectHtml(id, label, options, selected) {
@@ -252,30 +319,30 @@
             options.map(o => '<option value="' + escapeHtml(o) + '"' + (o === selected ? ' selected' : '') + '>' + escapeHtml(o) + '</option>')
         ).join('');
         return (
-            '<div style="text-align:right;margin-bottom:10px;">' +
-            '<label style="display:block;font-size:12.5px;color:#555;margin-bottom:4px;">' + label + '</label>' +
-            '<select id="' + id + '" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;">' + opts + '</select>' +
+            '<div class="vip-field-wrap">' +
+            '<label>' + label + '</label>' +
+            '<select id="' + id + '">' + opts + '</select>' +
             '</div>'
         );
     }
 
     function textHtml(id, label, type, required) {
         return (
-            '<div style="text-align:right;margin-bottom:10px;">' +
-            '<label style="display:block;font-size:12.5px;color:#555;margin-bottom:4px;">' + label + '</label>' +
-            '<input id="' + id + '" type="' + type + '"' + (required ? ' required' : '') + ' style="' +
-            'width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;" />' +
+            '<div class="vip-field-wrap">' +
+            '<label>' + label + '</label>' +
+            '<input id="' + id + '" type="' + type + '"' + (required ? ' required' : '') + ' />' +
             '</div>'
         );
     }
 
     function showForm() {
         closeBox();
+        injectYqStyles();
 
         const grid2 = 'display:grid;grid-template-columns:1fr 1fr;gap:0 10px;';
 
         const html =
-            '<div style="font-size:16px;font-weight:bold;margin-bottom:14px;">⭐ إضافة حجز VIP</div>' +
+            '<h3 style="margin-bottom:14px;">⭐ إضافة حجز VIP</h3>' +
             '<div style="' + grid2 + '">' +
             textHtml('vip-f-name', 'اسم العميل *', 'text', true) +
             textHtml('vip-f-id_num', 'رقم الهوية', 'text', false) +
@@ -292,19 +359,15 @@
             textHtml('vip-f-date', 'تاريخ الاستلام *', 'datetime-local', true) +
             selectHtml('vip-f-mgr', 'المدير', MGR_LIST, '') +
             '</div>' +
-            '<div style="text-align:right;margin-bottom:14px;">' +
-            '<label style="display:block;font-size:12.5px;color:#555;margin-bottom:4px;">ملاحظات</label>' +
-            '<textarea id="vip-f-notes" rows="2" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;' +
-            'font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>' +
+            '<div class="vip-field-wrap">' +
+            '<label>ملاحظات</label>' +
+            '<textarea id="vip-f-notes" rows="2"></textarea>' +
             '</div>' +
             '<div id="vip-form-err" style="color:#dc2626;font-size:12.5px;font-weight:bold;margin-bottom:10px;display:none;"></div>' +
-            '<div style="display:flex;gap:8px;">' +
-            '<button id="vip-form-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#eee;color:#333;font-size:14px;">إلغاء</button>' +
-            '<button id="vip-form-save" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#ddd;color:#333;font-size:13.5px;">💾 حفظ فقط</button>' +
-            '<button id="vip-form-save-send" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#A3E635;font-size:13.5px;">📩 حفظ وإرسال للقروب</button>' +
+            '<div class="vip-form-actions">' +
+            '<button id="vip-form-cancel">إلغاء</button>' +
+            '<button id="vip-form-save">💾 حفظ فقط</button>' +
+            '<button id="vip-form-save-send" class="yq-primary">📩 حفظ وإرسال للقروب</button>' +
             '</div>';
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(html, 480));
@@ -393,14 +456,14 @@
                 try {
                     await sendToBot(buildWaMessage(record), WHATSAPP_CONFIG.defaultTarget);
                 } catch (waErr) {
-                    showMessage('✅ تم إنشاء الحجز ' + id + ' بنجاح.\n\n⚠️ لكن تعذّر إرسال رسالة الواتساب: ' + waErr.message);
+                    showMessage('تم إنشاء الحجز ' + id + ' بنجاح، لكن تعذّر إرسال رسالة الواتساب: ' + waErr.message, 'error');
                     return;
                 }
-                showMessage('✅ تم إنشاء الحجز ' + id + ' وإرسال الرسالة للقروب بنجاح.');
+                showMessage('تم إنشاء الحجز ' + id + ' وإرسال الرسالة للقروب بنجاح.', 'success');
                 return;
             }
 
-            showMessage('✅ تم إنشاء الحجز ' + id + ' بنجاح.');
+            showMessage('تم إنشاء الحجز ' + id + ' بنجاح.', 'success');
 
         } catch (err) {
             showMessage('تعذّر حفظ الحجز: ' + err.message);

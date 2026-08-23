@@ -625,6 +625,17 @@
             return;
 
 
+        // خط Tajawal - يُحمَّل مرة وحدة هنا (الـCore يشتغل أول شي دايماً) عشان
+        // كل الأدوات الثانية تقدر تستخدمه مباشرة بدون ما كل وحدة تحمّله لحالها
+        if (!document.getElementById("yt-font-tajawal")) {
+            const fontLink = document.createElement("link");
+            fontLink.id = "yt-font-tajawal";
+            fontLink.rel = "stylesheet";
+            fontLink.href = "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap";
+            document.head.appendChild(fontLink);
+        }
+
+
         // زر الليمونة العائم
 
         const fab = document.createElement("div");

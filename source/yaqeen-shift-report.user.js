@@ -380,32 +380,112 @@
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.shift-section-label{font-weight:800;font-size:13px;margin-bottom:6px;color:#1c1c1a;}' +
+        '.shift-mini-field{width:100%;padding:9px;border:1.5px solid #e9e7df;border-radius:10px;font-size:14px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.shift-add-emp-btn{width:100%;padding:9px;margin-top:6px;border:0;border-radius:10px;cursor:pointer;' +
+        'background:#f1f0ea;color:#767068;font-size:12px;font-weight:700;font-family:inherit;}' +
+        '.shift-emp-name,.shift-emp-count{padding:8px;border:1.5px solid #e9e7df;border-radius:9px;font-size:13px;' +
+        'text-align:center;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.shift-emp-name{text-align:right;flex:2;}' +
+        '.shift-emp-count{flex:1;}' +
+        '.shift-emp-remove{padding:0 12px;border:0;border-radius:9px;background:#fdecec;color:#dc2626;cursor:pointer;font-family:inherit;}' +
+        '.shift-preview{width:100%;height:170px;box-sizing:border-box;padding:12px;border:1.5px solid #e9e7df;' +
+        'border-radius:12px;font-size:13px;text-align:left;resize:vertical;white-space:pre;background:#fbfbf9;color:#1c1c1a;font-family:inherit;}' +
+        '.shift-pick-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        '.shift-pick-btn.current{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="shift-report-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="shift-report-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
     function showProgress(text) {
         document.getElementById('shift-report-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 340));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('shift-report-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px;white-space:pre-line;">' + text + '</div>' +
-            '<button id="shift-report-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            340
-        ));
-        document.getElementById('shift-report-close').onclick = () => {
-            document.getElementById('shift-report-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function showShiftPrompt() {
@@ -413,19 +493,15 @@
         const current = currentShiftKey();
 
         const buttonsHtml = SHIFTS.map(s => (
-            '<button class="shift-report-pick" data-shift="' + s.key + '" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'font-size:15px;' + (s.key === current ? 'background:#A3E635;font-weight:bold;' : 'background:#eee;color:#333;') + '">' +
+            '<button class="shift-report-pick shift-pick-btn' + (s.key === current ? ' current' : '') + '" data-shift="' + s.key + '">' +
             s.label + (s.key === current ? ' (الحالي)' : '') + '</button>'
         )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">📋 تقرير الشفت</h3>' +
-            '<div style="margin:10px 0;text-align:right">اختر الشفت اللي تبي تسحب أرقامه:</div>' +
+            '<h3>📋 تقرير الشفت</h3>' +
+            '<div class="yq-desc">اختر الشفت اللي تبي تسحب أرقامه:</div>' +
             buttonsHtml +
-            '<button id="shift-report-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
+            '<button id="shift-report-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
             320
         ));
 
@@ -450,12 +526,9 @@
     function empRowHtml(section) {
         return (
             '<div class="shift-emp-row" data-section="' + section + '" style="display:flex;gap:6px;margin-top:6px;">' +
-            '<input type="text" class="shift-emp-name" placeholder="اسم الموظف" style="' +
-            'flex:2;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:right;" />' +
-            '<input type="number" class="shift-emp-count" placeholder="العدد" style="' +
-            'flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center;" />' +
-            '<button class="shift-emp-remove" style="' +
-            'padding:0 12px;border:none;border-radius:6px;background:#eee;color:#c00;cursor:pointer;">✕</button>' +
+            '<input type="text" class="shift-emp-name" placeholder="اسم الموظف" />' +
+            '<input type="number" class="shift-emp-count" placeholder="العدد" />' +
+            '<button class="shift-emp-remove">✕</button>' +
             '</div>'
         );
     }
@@ -521,66 +594,51 @@
 
     function showForm(shiftKey, numbers) {
         document.getElementById('shift-report-box')?.remove();
+        injectYqStyles();
         const shift = shiftByKey(shiftKey);
 
         const html =
-            '<div id="shift-report-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
+            '<div id="shift-report-box" class="yq-overlay">' +
             '<div style="width:min(480px,95vw);max-height:92vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:16px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">📋 تقرير الشفت - ' + shift.label + '</div>' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">📋 تقرير الشفت - ' + shift.label + '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;padding:16px;text-align:right;">' +
+            '<div style="overflow:auto;flex:1;padding:20px;text-align:right;">' +
 
-            '<div style="font-weight:bold;margin-bottom:4px;">Opened (إجمالي من الموقع)</div>' +
-            '<input id="shift-report-opened-total" type="number" value="' + (numbers.opened ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label">Opened (إجمالي من الموقع)</div>' +
+            '<input id="shift-report-opened-total" type="number" value="' + (numbers.opened ?? '') + '" class="shift-mini-field" />' +
             '<div id="shift-report-opened-employees"></div>' +
-            '<button id="shift-report-add-opened" style="' +
-            'width:100%;padding:8px;margin-top:6px;border:none;border-radius:6px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:12.5px;">+ إضافة موظف</button>' +
+            '<button id="shift-report-add-opened" class="shift-add-emp-btn">+ إضافة موظف</button>' +
 
-            '<div style="font-weight:bold;margin:16px 0 4px;">Closed (إجمالي من الموقع)</div>' +
-            '<input id="shift-report-closed-total" type="number" value="' + (numbers.closed ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label" style="margin-top:16px;">Closed (إجمالي من الموقع)</div>' +
+            '<input id="shift-report-closed-total" type="number" value="' + (numbers.closed ?? '') + '" class="shift-mini-field" />' +
             '<div id="shift-report-closed-employees"></div>' +
-            '<button id="shift-report-add-closed" style="' +
-            'width:100%;padding:8px;margin-top:6px;border:none;border-radius:6px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:12.5px;">+ إضافة موظف</button>' +
+            '<button id="shift-report-add-closed" class="shift-add-emp-btn">+ إضافة موظف</button>' +
 
             '<div style="display:flex;gap:8px;margin-top:16px;">' +
             '<div style="flex:1;">' +
-            '<div style="font-weight:bold;margin-bottom:4px;font-size:13px;">Rented</div>' +
-            '<input id="shift-report-rented" type="number" value="' + (numbers.rented ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label" style="font-size:12.5px;">Rented</div>' +
+            '<input id="shift-report-rented" type="number" value="' + (numbers.rented ?? '') + '" class="shift-mini-field" />' +
             '</div>' +
             '<div style="flex:1;">' +
-            '<div style="font-weight:bold;margin-bottom:4px;font-size:13px;">Ready 138 (مطار)</div>' +
-            '<input id="shift-report-ready138" type="number" value="' + (numbers.ready138 ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label" style="font-size:12.5px;">Ready 138 (مطار)</div>' +
+            '<input id="shift-report-ready138" type="number" value="' + (numbers.ready138 ?? '') + '" class="shift-mini-field" />' +
             '</div>' +
             '<div style="flex:1;">' +
-            '<div style="font-weight:bold;margin-bottom:4px;font-size:13px;">Ready 162 (ساحة)</div>' +
-            '<input id="shift-report-ready162" type="number" value="' + (numbers.ready162 ?? '') + '" style="' +
-            'width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;text-align:center;box-sizing:border-box;" />' +
+            '<div class="shift-section-label" style="font-size:12.5px;">Ready 162 (ساحة)</div>' +
+            '<input id="shift-report-ready162" type="number" value="' + (numbers.ready162 ?? '') + '" class="shift-mini-field" />' +
             '</div>' +
             '</div>' +
 
-            '<div style="font-weight:bold;margin:16px 0 4px;">معاينة الرسالة</div>' +
-            '<textarea id="shift-report-preview" readonly dir="ltr" style="' +
-            'width:100%;height:170px;box-sizing:border-box;padding:10px;border:1px solid #ddd;' +
-            'border-radius:8px;font-size:13px;text-align:left;resize:vertical;white-space:pre;"></textarea>' +
+            '<div class="shift-section-label" style="margin-top:16px;">معاينة الرسالة</div>' +
+            '<textarea id="shift-report-preview" readonly dir="ltr" class="shift-preview"></textarea>' +
 
             '</div>' +
-            '<div style="padding:14px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="shift-report-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث الأرقام</button>' +
-            '<button id="shift-report-cancel2" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">إلغاء</button>' +
-            '<button id="shift-report-send" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#25D366;color:#fff;cursor:pointer;">📩 إرسال للقروب</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="shift-report-refresh">🔄 تحديث الأرقام</button>' +
+            '<button id="shift-report-cancel2">إلغاء</button>' +
+            '<button id="shift-report-send" class="yq-send">📩 إرسال للقروب</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -611,11 +669,11 @@
             try {
                 await sendWhatsAppText(message);
                 document.getElementById('shift-report-box')?.remove();
-                showMessage('✅ تم إرسال تقرير الشفت للقروب بنجاح');
+                showMessage('تم إرسال تقرير الشفت للقروب بنجاح', 'success');
             } catch (err) {
                 btn.disabled = false;
                 btn.textContent = '📩 إرسال للقروب';
-                alert('تعذّر الإرسال: ' + err.message);
+                showToast('تعذّر الإرسال: ' + err.message, 'error');
             }
         };
     }

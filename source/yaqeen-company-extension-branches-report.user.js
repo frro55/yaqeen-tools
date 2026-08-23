@@ -423,13 +423,90 @@
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-branch-list{text-align:right;max-height:200px;overflow:auto;border:1.5px solid #e9e7df;' +
+        'border-radius:12px;padding:10px 14px;background:#fbfbf9;}' +
+        '.yq-branch-list label{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:14px;cursor:pointer;}' +
+        '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
+        '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#767068;font-weight:700;}' +
+        '.yq-link-row a{color:#79a916;text-decoration:none;font-size:12.5px;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="company-ext-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="company-ext-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -439,31 +516,22 @@
 
         const preselected = (defaultBranchIds && defaultBranchIds.length) ? defaultBranchIds : BRANCHES.map(b => b.id);
         const branchCheckboxesHtml = BRANCHES.map(b => (
-            '<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:15px;cursor:pointer;">' +
-            '<input type="checkbox" class="company-ext-branch-cb" value="' + b.id + '"' +
+            '<label><input type="checkbox" class="company-ext-branch-cb" value="' + b.id + '"' +
             (preselected.indexOf(b.id) !== -1 ? ' checked' : '') + '> ' + b.name +
             '</label>'
         )).join('');
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">🏢 عقود الشركات غير الممددة</h3>' +
-            '<div style="margin:15px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;">' +
-            '<span>الفروع:</span>' +
-            '<span>' +
-            '<a href="#" id="company-ext-select-all" style="font-size:12.5px;color:#2563eb;text-decoration:none;">تحديد الكل</a>' +
-            ' | <a href="#" id="company-ext-select-none" style="font-size:12.5px;color:#2563eb;text-decoration:none;">إلغاء الكل</a>' +
-            '</span>' +
+            '<h3>🏢 عقود الشركات غير الممددة</h3>' +
+            '<div class="yq-link-row">' +
+            '<span>الفروع</span>' +
+            '<span><a href="#" id="company-ext-select-all">تحديد الكل</a> · ' +
+            '<a href="#" id="company-ext-select-none">إلغاء الكل</a></span>' +
             '</div>' +
-            '<div id="company-ext-branches-list" style="' +
-            'text-align:right;max-height:200px;overflow:auto;border:1px solid #ddd;border-radius:8px;padding:8px 12px;">' +
-            branchCheckboxesHtml + '</div>' +
-            '<button id="company-ext-submit" style="' +
-            'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:15px;">فحص العقود</button>' +
-            '<button id="company-ext-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
-            340
+            '<div id="company-ext-branches-list" class="yq-branch-list">' + branchCheckboxesHtml + '</div>' +
+            '<button id="company-ext-submit" class="yq-btn yq-btn-primary">فحص العقود</button>' +
+            '<button id="company-ext-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
+            360
         ));
 
         document.getElementById('company-ext-select-all').onclick = e => {
@@ -478,7 +546,7 @@
         document.getElementById('company-ext-submit').onclick = () => {
             const branchIds = Array.from(document.querySelectorAll('.company-ext-branch-cb:checked')).map(cb => parseInt(cb.value, 10));
             if (branchIds.length === 0) {
-                alert('اختر فرع واحد على الأقل');
+                showToast('اختر فرع واحد على الأقل', 'error');
                 return;
             }
             runReport(branchIds);
@@ -490,20 +558,15 @@
 
     function showProgress(text) {
         document.getElementById('company-ext-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('company-ext-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="company-ext-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            320
-        ));
-        document.getElementById('company-ext-close').onclick = () => {
-            document.getElementById('company-ext-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function tableToTsv(records) {
@@ -727,7 +790,7 @@
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[عقود الشركات] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -779,63 +842,55 @@
 
     function showReport(records, branchIds, checkedCount, totalCandidates) {
         document.getElementById('company-ext-box')?.remove();
+        injectYqStyles();
         lastCheckedCount = checkedCount;
         lastTotalCandidates = totalCandidates;
         const branchesLabel = branchIds.map(branchNameById).join('، ');
 
         const rowsHtml = records.map(r => (
             '<tr>' +
-            '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.branchName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.personName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.debtorName + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.actualDuration + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.plannedPlusExtension + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:#dc2626;">' + r.lateDuration + '</td>' +
+            '<td>' + r.agreementNo + '</td>' +
+            '<td>' + r.branchName + '</td>' +
+            '<td>' + r.personName + '</td>' +
+            '<td>' + r.debtorName + '</td>' +
+            '<td>' + r.actualDuration + '</td>' +
+            '<td>' + r.plannedPlusExtension + '</td>' +
+            '<td style="font-weight:800;color:#dc2626;">' + r.lateDuration + '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="7" style="padding:20px;text-align:center;color:#777;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
+            : '<tr><td colspan="7" style="padding:22px;text-align:center;color:#a19c92;">لا توجد عقود شركات متأخرة حالياً</td></tr>';
 
         const html =
-            '<div id="company-ext-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
+            '<div id="company-ext-box" class="yq-overlay">' +
             '<div style="width:min(1040px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">🏢 عقود الشركات غير الممددة</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">الفروع: ' + branchesLabel + '</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">🏢 عقود الشركات غير الممددة</div>' +
+            '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
+            '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد شركة بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' | عدد العقود المحتاجة تمديد: ' + records.length +
+            ' · عدد العقود المحتاجة تمديد: ' + records.length +
             '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-            '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الفرع</th><th>اسم الشخص</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>رقم العقد</th><th>الفرع</th><th>اسم الشخص</th>' +
             '<th id="company-ext-sort-debtor" style="cursor:pointer;user-select:none;">اسم المدين' + sortIndicator('debtorName') + '</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th>' +
             '<th id="company-ext-sort-late" style="cursor:pointer;user-select:none;">متأخر بـ' + sortIndicator('lateHours') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="company-ext-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="company-ext-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="company-ext-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="company-ext-change-branch" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🏢 تغيير الفروع</button>' +
-            '<button id="company-ext-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="company-ext-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="company-ext-copy">📋 نسخ</button>' +
+            '<button id="company-ext-print">🖨️ طباعة</button>' +
+            '<button id="company-ext-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="company-ext-change-branch">🏢 تغيير الفروع</button>' +
+            '<button id="company-ext-refresh">🔄 تحديث</button>' +
+            '<button id="company-ext-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -860,9 +915,9 @@
         document.getElementById('company-ext-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
-                alert('تم نسخ الجدول');
+                showToast('تم نسخ الجدول', 'success');
             } catch (err) {
-                alert('تعذّر النسخ: ' + err.message);
+                showToast('تعذّر النسخ: ' + err.message, 'error');
             }
         };
         document.getElementById('company-ext-sort-debtor').onclick = () => handleSortClick(records, branchIds, 'debtorName');

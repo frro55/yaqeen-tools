@@ -51,60 +51,54 @@
     // اختيار الفرع
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        var style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
     function chooseBranch() {
 
         document.getElementById("fleet-box")?.remove();
+        injectYqStyles();
 
         let box = document.createElement("div");
         box.id = "fleet-box";
-
-        box.style = `
-        position:fixed;
-        inset:0;
-        background:#0008;
-        z-index:999999999;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-family:Arial;
-        `;
+        box.className = "yq-overlay";
 
         box.innerHTML = `
-        <div style="
-        background:white;
-        padding:25px;
-        border-radius:15px;
-        width:300px;
-        text-align:center">
+        <div class="yq-card" style="max-width:300px;">
 
         <h3>🚗 جرد الأسطول</h3>
 
-        <button id="airport">✈️ المطار</button>
-        <button id="yard">🏢 الساحة</button>
-        <button id="all">📍 الكل</button>
+        <button id="airport" class="yq-menu-btn">✈️ المطار</button>
+        <button id="yard" class="yq-menu-btn">🏢 الساحة</button>
+        <button id="all" class="yq-menu-btn">📍 الكل</button>
 
-        <button id="cancel" style="
-                    margin-top:10px;
-                    background:#eee;
-                    color:#333;
-                ">إلغاء</button>
+        <button id="cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
         </div>
         `;
 
         document.body.appendChild(box);
-
-        box.querySelectorAll("button").forEach(btn => {
-            btn.style.cssText += `
-            width:100%;
-            padding:12px;
-            margin-top:8px;
-            border:0;
-            border-radius:8px;
-            cursor:pointer;
-            background:#A3E635;
-            font-size:16px;
-            `;
-        });
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
@@ -407,12 +401,12 @@
 
     function showLoading(text) {
         document.getElementById("fleet-box")?.remove();
+        injectYqStyles();
         const html = `
-<div id="fleet-box" style="
-position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;
-z-index:999999999;font-family:Arial;">
-<div style="width:300px;background:white;border-radius:16px;padding:30px;text-align:center;direction:rtl;">
-${text}
+<div id="fleet-box" class="yq-overlay">
+<div class="yq-card" style="max-width:300px;padding:30px;">
+<div class="yq-spinner"></div>
+<div style="font-size:13.5px;font-weight:700;">${text}</div>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);
@@ -420,14 +414,12 @@ ${text}
 
     function showMessage(text) {
         document.getElementById("fleet-box")?.remove();
+        injectYqStyles();
         const html = `
-<div id="fleet-box" style="
-position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;
-z-index:999999999;font-family:Arial;">
-<div style="width:300px;background:white;border-radius:16px;padding:25px;text-align:center;direction:rtl;">
-<div style="margin-bottom:15px">${text}</div>
-<button id="close-fleet-message" style="
-padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>
+<div id="fleet-box" class="yq-overlay">
+<div class="yq-card" style="max-width:300px;">
+<div style="margin-bottom:15px;font-size:13.5px;font-weight:700;">${text}</div>
+<button id="close-fleet-message" class="yq-btn yq-btn-primary">إغلاق</button>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);

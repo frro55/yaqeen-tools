@@ -47,61 +47,66 @@
             .trim();
     }
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-big{font-size:40px;font-weight:800;margin-top:4px;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
     function chooseBranch() {
 
         document.getElementById("available-box")?.remove();
+        injectYqStyles();
 
         const box = document.createElement("div");
         box.id = "available-box";
-
-        box.style = `
-            position:fixed;
-            inset:0;
-            background:#0008;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            z-index:999999999;
-            font-family:Arial;
-        `;
+        box.className = "yq-overlay";
 
         box.innerHTML = `
-        <div style="
-            width:300px;
-            background:#fff;
-            border-radius:16px;
-            padding:25px;
-            text-align:center;
-        ">
-            <h3 style="margin-top:0">🚗 السيارات المتوفرة</h3>
+        <div class="yq-card" style="max-width:300px;">
+            <h3>🚗 السيارات المتوفرة</h3>
 
-            <button id="airport">✈️ المطار</button>
-            <button id="yard">🏢 الساحة</button>
-            <button id="all">📍 الكل</button>
+            <button id="airport" class="yq-menu-btn">✈️ المطار</button>
+            <button id="yard" class="yq-menu-btn">🏢 الساحة</button>
+            <button id="all" class="yq-menu-btn">📍 الكل</button>
 
-            <button id="cancel" style="
-                margin-top:10px;
-                background:#eee;
-                color:#333;
-            ">إلغاء</button>
+            <button id="cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
         </div>`;
 
         document.body.appendChild(box);
-
-        box.querySelectorAll("button").forEach(btn => {
-
-            btn.style.cssText += `
-                width:100%;
-                padding:12px;
-                margin-top:8px;
-                border:none;
-                border-radius:8px;
-                cursor:pointer;
-                background:#A3E635;
-                font-size:15px;
-            `;
-
-        });
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
@@ -340,27 +345,13 @@
 
     function showLoading() {
         document.getElementById("available-report")?.remove();
+        injectYqStyles();
 
         const html = `
-<div id="available-report" style="
-position:fixed;
-inset:0;
-background:#0008;
-display:flex;
-justify-content:center;
-align-items:center;
-z-index:999999999;
-font-family:Arial;
-">
-<div style="
-width:280px;
-background:white;
-border-radius:16px;
-padding:30px;
-text-align:center;
-direction:rtl;
-">
-جارٍ جلب السيارات المتوفرة...
+<div id="available-report" class="yq-overlay">
+<div class="yq-card" style="max-width:280px;padding:30px;">
+<div class="yq-spinner"></div>
+<div style="font-size:13.5px;font-weight:700;">جارٍ جلب السيارات المتوفرة...</div>
 </div>
 </div>`;
 
@@ -369,34 +360,13 @@ direction:rtl;
 
     function showMessage(text) {
         document.getElementById("available-report")?.remove();
+        injectYqStyles();
 
         const html = `
-<div id="available-report" style="
-position:fixed;
-inset:0;
-background:#0008;
-display:flex;
-justify-content:center;
-align-items:center;
-z-index:999999999;
-font-family:Arial;
-">
-<div style="
-width:300px;
-background:white;
-border-radius:16px;
-padding:25px;
-text-align:center;
-direction:rtl;
-">
-<div style="margin-bottom:15px">${text}</div>
-<button id="close-report" style="
-padding:10px 18px;
-border:none;
-border-radius:8px;
-background:#A3E635;
-cursor:pointer;
-">إغلاق</button>
+<div id="available-report" class="yq-overlay">
+<div class="yq-card" style="max-width:300px;">
+<div style="margin-bottom:15px;font-size:13.5px;font-weight:700;">${text}</div>
+<button id="close-report" class="yq-btn yq-btn-primary">إغلاق</button>
 </div>
 </div>`;
 
@@ -418,64 +388,23 @@ cursor:pointer;
         });
 
         document.getElementById("available-report")?.remove();
+        injectYqStyles();
 
         let html = `
-<div id="available-report"
-style="
-position:fixed;
-inset:0;
-background:#0008;
-display:flex;
-justify-content:center;
-align-items:center;
-z-index:999999999;
-font-family:Arial;
-padding:24px;
-box-sizing:border-box;
-">
+<div id="available-report" class="yq-overlay">
 
-<div style="
-width:380px;
-max-height:85vh;
-background:white;
-border-radius:16px;
-overflow:hidden;
-direction:rtl;
-display:flex;
-flex-direction:column;
-">
+<div style="width:min(380px,95vw);max-height:85vh;background:#fff;border-radius:22px;
+overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 
-<div style="
-background:#A3E635;
-padding:18px;
-text-align:center;
-flex-shrink:0;
-">
-
-<div style="font-size:16px">
-إجمالي السيارات المتوفرة
+<div class="yq-report-header">
+<div class="yq-report-title">إجمالي السيارات المتوفرة</div>
+<div class="yq-report-big">${total}</div>
 </div>
 
-<div style="
-font-size:42px;
-font-weight:bold;
-margin-top:6px;
-">
-${total}
-</div>
+<div style="overflow:auto;flex:1;padding:0 10px;">
+<table class="yq-report-table">
 
-</div>
-
-<div style="overflow:auto;flex:1;">
-<table style="
-width:100%;
-border-collapse:collapse;
-">
-
-<tr style="background:#f5f5f5">
-<th style="padding:10px">القروب</th>
-<th>العدد</th>
-</tr>
+<tr><th>القروب</th><th>العدد</th></tr>
 `;
 
         Object.keys(groups)
@@ -484,22 +413,8 @@ border-collapse:collapse;
 
                 html += `
 <tr>
-<td style="
-padding:9px;
-border-top:1px solid #eee;
-text-align:center;
-">
-${group}
-</td>
-
-<td style="
-border-top:1px solid #eee;
-text-align:center;
-font-weight:bold;
-">
-${groups[group]}
-</td>
-
+<td style="text-align:center;">${group}</td>
+<td style="text-align:center;font-weight:800;">${groups[group]}</td>
 </tr>`;
 
             });
@@ -508,46 +423,10 @@ ${groups[group]}
 </table>
 </div>
 
-<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">
-
-<button id="print-report"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:8px;
-background:#eee;
-color:#333;
-cursor:pointer;
-">
-🖨️ طباعة
-</button>
-
-<button id="refresh-report"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:8px;
-background:#eee;
-color:#333;
-cursor:pointer;
-">
-🔄 تحديث
-</button>
-
-<button id="close-report"
-style="
-flex:1;
-padding:10px;
-border:none;
-border-radius:8px;
-background:#A3E635;
-cursor:pointer;
-">
-إغلاق
-</button>
-
+<div class="yq-report-actions">
+<button id="print-report">🖨️ طباعة</button>
+<button id="refresh-report">🔄 تحديث</button>
+<button id="close-report" class="yq-primary">إغلاق</button>
 </div>
 
 </div>

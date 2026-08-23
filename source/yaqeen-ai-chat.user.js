@@ -150,12 +150,12 @@
     function bubbleHtml(m) {
         const isUser = m.role === 'user';
         const imageHtml = m.image
-            ? '<img src="' + m.image + '" style="max-width:100%;border-radius:8px;margin-bottom:6px;display:block;" />'
+            ? '<img src="' + m.image + '" style="max-width:100%;border-radius:10px;margin-bottom:6px;display:block;" />'
             : '';
         return (
             '<div style="display:flex;' + (isUser ? 'justify-content:flex-start;' : 'justify-content:flex-end;') + 'margin-bottom:10px;">' +
-            '<div style="max-width:80%;padding:10px 13px;border-radius:12px;font-size:13.5px;line-height:1.7;white-space:pre-wrap;text-align:right;' +
-            (isUser ? 'background:#f0f0f0;color:#111;' : 'background:#A3E635;color:#1a1a1a;') +
+            '<div style="max-width:80%;padding:11px 14px;border-radius:14px;font-size:13.5px;font-weight:500;line-height:1.7;white-space:pre-wrap;text-align:right;' +
+            (isUser ? 'background:#f1f0ea;color:#1c1c1a;' : 'background:linear-gradient(160deg,#A3E635,#b8ec52);color:#3c4a10;font-weight:700;') +
             '">' + imageHtml + escapeHtml(m.content) + '</div></div>'
         );
     }
@@ -184,8 +184,8 @@
         }
         box.style.display = 'flex';
         box.innerHTML =
-            '<img src="' + pendingImage + '" style="height:44px;border-radius:6px;" />' +
-            '<span id="ai-chat-remove-image" style="cursor:pointer;font-size:13px;color:#dc2626;margin-inline-start:8px;">✕ إزالة</span>';
+            '<img src="' + pendingImage + '" style="height:44px;border-radius:9px;" />' +
+            '<span id="ai-chat-remove-image" style="cursor:pointer;font-size:12.5px;font-weight:700;color:#dc2626;margin-inline-start:8px;">✕ إزالة</span>';
         document.getElementById('ai-chat-remove-image').onclick = () => {
             pendingImage = null;
             renderPreview();
@@ -243,21 +243,24 @@
         pendingImage = null;
 
         const html =
-            '<div id="ai-chat-header" style="background:#A3E635;padding:14px 18px;text-align:center;font-weight:bold;' +
-            'font-size:16px;border-radius:14px 14px 0 0;position:relative;cursor:move;user-select:none;">🤖 شات AI' +
-            '<span id="ai-chat-close" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;">✕</span>' +
+            '<div id="ai-chat-header" style="background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;padding:16px 18px;' +
+            'text-align:center;font-weight:800;font-size:15px;position:relative;cursor:move;user-select:none;">🤖 شات AI' +
+            '<span id="ai-chat-close" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;opacity:.75;">✕</span>' +
             '</div>' +
-            '<div style="padding:10px 14px 0;font-size:11.5px;color:#777;text-align:center;">' +
+            '<div style="padding:10px 16px 0;font-size:11px;font-weight:600;color:#a19c92;text-align:center;">' +
             'يقرأ الصفحة المفتوحة حالياً - اسأل عنها أو أي سؤال عام يخص التأجير، وممكن ترفقين صورة' +
             '</div>' +
-            '<div id="ai-chat-messages" style="height:320px;overflow-y:auto;padding:14px;"></div>' +
-            '<div id="ai-chat-typing" style="display:none;padding:0 14px 8px;font-size:12px;color:#999;text-align:right;">... يكتب</div>' +
-            '<div id="ai-chat-preview" style="display:none;align-items:center;padding:0 14px 10px;"></div>' +
-            '<div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid #eee;align-items:center;">' +
-            '<button id="ai-chat-send" style="padding:0 18px;height:38px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;font-size:14px;">إرسال</button>' +
+            '<div id="ai-chat-messages" style="height:320px;overflow-y:auto;padding:16px;"></div>' +
+            '<div id="ai-chat-typing" style="display:none;padding:0 16px 8px;font-size:12px;font-weight:700;color:#a19c92;text-align:right;">... يكتب</div>' +
+            '<div id="ai-chat-preview" style="display:none;align-items:center;padding:0 16px 10px;"></div>' +
+            '<div style="display:flex;gap:8px;padding:14px 16px;border-top:1px solid #e9e7df;align-items:center;">' +
+            '<button id="ai-chat-send" style="padding:0 18px;height:40px;border:0;border-radius:11px;' +
+            'background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;cursor:pointer;font-size:13.5px;font-weight:800;font-family:inherit;">إرسال</button>' +
             '<input id="ai-chat-input" type="text" placeholder="اكتب سؤالك..." style="' +
-            'flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:13.5px;text-align:right;direction:rtl;" />' +
-            '<button id="ai-chat-attach" title="إرفاق صورة" style="width:38px;height:38px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:16px;">📎</button>' +
+            'flex:1;padding:10px 13px;border:1.5px solid #e9e7df;border-radius:11px;font-size:13.5px;' +
+            'text-align:right;direction:rtl;font-family:inherit;background:#fbfbf9;color:#1c1c1a;box-sizing:border-box;" />' +
+            '<button id="ai-chat-attach" title="إرفاق صورة" style="width:40px;height:40px;border:1.5px solid #e9e7df;' +
+            'border-radius:11px;background:#fbfbf9;cursor:pointer;font-size:15px;">📎</button>' +
             '<input id="ai-chat-file" type="file" accept="image/*" style="display:none;" />' +
             '</div>';
 
@@ -266,8 +269,8 @@
         // تفضل قابلة للتفاعل الكامل حواليها وتحتها
         document.body.insertAdjacentHTML('beforeend',
             '<div id="ai-chat-box" style="' +
-            'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:14px;' +
-            'overflow:hidden;direction:rtl;font-family:Arial;box-shadow:0 10px 30px rgba(0,0,0,.35);' +
+            'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:20px;' +
+            'overflow:hidden;direction:rtl;font-family:"Tajawal",Arial,Tahoma,sans-serif;box-shadow:0 20px 50px -12px rgba(0,0,0,.35);' +
             'z-index:999999999;">' + html + '</div>'
         );
 

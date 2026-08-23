@@ -573,32 +573,108 @@
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-branch-list{text-align:right;max-height:280px;overflow:auto;border:1.5px solid #e9e7df;' +
+        'border-radius:12px;padding:10px 14px;background:#fbfbf9;}' +
+        '.yq-branch-list label{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:14px;cursor:pointer;}' +
+        '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
+        '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#767068;font-weight:700;}' +
+        '.yq-link-row a{color:#79a916;text-decoration:none;font-size:12.5px;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
+        '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="closed-debt-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:25px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="closed-debt-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
     function showProgress(text) {
         document.getElementById('closed-debt-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 340));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            300
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('closed-debt-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="closed-debt-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            320
-        ));
-        document.getElementById('closed-debt-close').onclick = () => {
-            document.getElementById('closed-debt-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     /**
@@ -611,28 +687,21 @@
             document.getElementById('closed-debt-box')?.remove();
 
             const checkboxesHtml = months.map(m => (
-                '<label style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #eee;cursor:pointer;">' +
-                '<input type="checkbox" class="closed-debt-month-cb" value="' + m.key + '" checked style="width:18px;height:18px;">' +
-                '<span>' + m.label + '</span>' +
-                '</label>'
+                '<label><input type="checkbox" class="closed-debt-month-cb" value="' + m.key + '" checked> ' +
+                '<span>' + m.label + '</span></label>'
             )).join('');
 
             const html =
-                '<div style="font-size:16px;font-weight:bold;margin-bottom:6px;">📕 عقود أغلقت كمديونية</div>' +
-                '<div style="font-size:13px;color:#555;margin-bottom:10px;">اختر الشهر/الأشهر اللي تبي تطلع عقودها (حسب تاريخ التسليم بالقائمة):</div>' +
-                '<div style="text-align:left;margin-bottom:8px;font-size:13px;">' +
-                '<a href="#" id="closed-debt-select-all" style="color:#166534;text-decoration:underline;margin-left:12px;">تحديد الكل</a>' +
-                '<a href="#" id="closed-debt-select-none" style="color:#dc2626;text-decoration:underline;">إلغاء الكل</a>' +
+                '<h3>📕 عقود أغلقت كمديونية</h3>' +
+                '<div class="yq-desc">اختر الشهر/الأشهر اللي تبي تطلع عقودها (حسب تاريخ التسليم بالقائمة):</div>' +
+                '<div class="yq-link-row">' +
+                '<span>الشهور</span>' +
+                '<span><a href="#" id="closed-debt-select-all">تحديد الكل</a> · ' +
+                '<a href="#" id="closed-debt-select-none">إلغاء الكل</a></span>' +
                 '</div>' +
-                '<div style="max-height:280px;overflow:auto;border:1px solid #eee;border-radius:8px;margin-bottom:14px;text-align:right;">' +
-                checkboxesHtml +
-                '</div>' +
-                '<div style="display:flex;gap:8px;">' +
-                '<button id="closed-debt-month-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-                'cursor:pointer;background:#eee;color:#333;font-size:14px;">إلغاء</button>' +
-                '<button id="closed-debt-month-go" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-                'cursor:pointer;background:#A3E635;font-size:14px;">عرض العقود</button>' +
-                '</div>';
+                '<div class="yq-branch-list">' + checkboxesHtml + '</div>' +
+                '<button id="closed-debt-month-go" class="yq-btn yq-btn-primary">عرض العقود</button>' +
+                '<button id="closed-debt-month-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>';
 
             document.body.insertAdjacentHTML('beforeend', overlayShell(html, 380));
 
@@ -884,7 +953,7 @@
                     }),
                     onload: response => {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[عقود أغلقت كمديونية] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
@@ -937,60 +1006,49 @@
 
     function showReport(records, visitedCount, monthsLabel) {
         document.getElementById('closed-debt-box')?.remove();
+        injectYqStyles();
         lastVisitedCount = visitedCount;
         lastMonthsLabel = monthsLabel;
 
         const rowsHtml = records.map(r => (
             '<tr>' +
-            '<td style="padding:9px;border-top:1px solid #eee;">' + r.agreementNo + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.name + '</td>' +
-            '<td style="border-top:1px solid #eee;" dir="ltr">' + r.phone + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.idNumber + '</td>' +
-            '<td style="border-top:1px solid #eee;">' + r.monthLabel + '</td>' +
-            '<td style="border-top:1px solid #eee;font-weight:bold;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td>' +
+            '<td>' + r.agreementNo + '</td>' +
+            '<td>' + r.name + '</td>' +
+            '<td dir="ltr">' + r.phone + '</td>' +
+            '<td>' + r.idNumber + '</td>' +
+            '<td>' + r.monthLabel + '</td>' +
+            '<td style="font-weight:800;color:' + remainingColor(r.remainingRaw) + ';">' + r.remaining + '</td>' +
             '</tr>'
         )).join('');
 
         const bodyHtml = records.length
             ? rowsHtml
-            : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#777;">لا توجد عقود مطابقة حالياً</td></tr>';
+            : '<tr><td colspan="6" style="padding:22px;text-align:center;color:#a19c92;">لا توجد عقود مطابقة حالياً</td></tr>';
 
         const html =
-            '<div id="closed-debt-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;">' +
+            '<div id="closed-debt-box" class="yq-overlay">' +
             '<div style="width:min(960px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
-            'background:white;border-radius:16px;overflow:hidden;direction:rtl;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px;font-weight:bold;">📕 عقود أغلقت كمديونية</div>' +
+            'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">📕 عقود أغلقت كمديونية</div>' +
             (monthsLabel ? (
-                '<div style="font-size:12.5px;margin-top:4px;opacity:.8;">' +
-                'الشهور المحددة: ' + monthsLabel +
-                '</div>'
+                '<div class="yq-report-sub">الشهور المحددة: ' + monthsLabel + '</div>'
             ) : '') +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">' +
-            'تم فحص ' + visitedCount + ' عقد | عدد العقود المطابقة: ' + records.length +
+            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد · عدد العقود المطابقة: ' + records.length + '</div>' +
             '</div>' +
-            '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-            '<tr style="background:#f5f5f5;position:sticky;top:0;">' +
-            '<th style="padding:10px">رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th id="closed-debt-sort-month" style="cursor:pointer;user-select:none;">شهر التسليم' + sortIndicator('month') + '</th>' +
             '<th id="closed-debt-sort-remaining" style="cursor:pointer;user-select:none;">المتبقي' + sortIndicator('remaining') + '</th>' +
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="closed-debt-copy" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📋 نسخ</button>' +
-            '<button id="closed-debt-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="closed-debt-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="closed-debt-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="closed-debt-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="closed-debt-copy">📋 نسخ</button>' +
+            '<button id="closed-debt-print">🖨️ طباعة</button>' +
+            '<button id="closed-debt-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="closed-debt-refresh">🔄 تحديث</button>' +
+            '<button id="closed-debt-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -1018,9 +1076,9 @@
         document.getElementById('closed-debt-copy').onclick = async () => {
             try {
                 await navigator.clipboard.writeText(tableToTsv(records));
-                alert('تم نسخ الجدول');
+                showToast('تم نسخ الجدول', 'success');
             } catch (err) {
-                alert('تعذّر النسخ: ' + err.message);
+                showToast('تعذّر النسخ: ' + err.message, 'error');
             }
         };
     }

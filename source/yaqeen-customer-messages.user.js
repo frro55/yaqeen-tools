@@ -212,37 +212,52 @@
     }
 
     // ==========================================================
-    // واجهة العرض
+    // واجهة العرض (نظام يقين الموحّد - نفس هوية لوحة التحكم)
     // ==========================================================
 
-    function overlayShell(innerHtml, width) {
-        return (
-            '<div id="customer-msg-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;">' +
-            '<div style="width:' + width + 'px;background:#fff;border-radius:16px;padding:22px;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
-        );
-    }
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-info-box{font-size:12.5px;color:#767068;line-height:1.9;margin-bottom:18px;padding:12px 14px;' +
+        'background:#fbfbf7;border-radius:12px;border:1px solid #e9e7df;text-align:right;}' +
+        '.yq-info-box strong{color:#1c1c1a;}' +
+        '.yq-btn{width:100%;padding:13px;margin-bottom:9px;border:1.5px solid #e9e7df;border-radius:13px;' +
+        'cursor:pointer;background:#fff;color:#1c1c1a;font-size:13.5px;font-weight:700;font-family:inherit;' +
+        'text-align:right;display:block;}' +
+        '.yq-btn-primary{border:0;background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'font-weight:800;box-shadow:0 8px 16px -8px rgba(121,169,22,.55);text-align:center;}' +
+        '.yq-btn-secondary{background:#f1f0ea;border:0;color:#767068;text-align:center;}' +
+        '.yq-btn-row{display:flex;gap:8px;}' +
+        '.yq-btn-row .yq-btn{margin-bottom:0;}' +
+        '.yq-textarea{width:100%;height:220px;box-sizing:border-box;padding:14px;border:1.5px solid #e9e7df;' +
+        'border-radius:14px;font-size:13px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf9;' +
+        'line-height:1.8;}' +
+        '.yq-meta-line{font-size:12px;color:#767068;margin:10px 0 16px;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,400px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}';
 
-    function closeBox() {
-        document.getElementById('customer-msg-box')?.remove();
-    }
-
-    function showMessage(text) {
-        closeBox();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px;white-space:pre-line;">' + text + '</div>' +
-            '<button id="customer-msg-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            340
-        ));
-        document.getElementById('customer-msg-close').onclick = closeBox;
-    }
-
-    function showLoading(text) {
-        closeBox();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(text, 320));
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
     }
 
     function escapeHtml(text) {
@@ -251,25 +266,66 @@
         return div.innerHTML;
     }
 
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ المزعجة القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
+    function overlayShell(innerHtml, width) {
+        injectYqStyles();
+        return (
+            '<div id="customer-msg-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
+        );
+    }
+
+    function closeBox() {
+        document.getElementById('customer-msg-box')?.remove();
+    }
+
+    function showLoading(text) {
+        closeBox();
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + escapeHtml(text) + '</div>',
+            300
+        ));
+    }
+
     function showChoicePrompt(customer) {
         closeBox();
         const templateButtonsHtml = Object.keys(MESSAGE_TEMPLATES).map(key => (
-            '<button data-template="' + key + '" class="customer-msg-tpl-btn" style="' +
-            'width:100%;padding:12px;margin-bottom:10px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:14px;">' + MESSAGE_TEMPLATES[key].label + '</button>'
+            '<button data-template="' + key + '" class="customer-msg-tpl-btn yq-btn">' +
+            MESSAGE_TEMPLATES[key].label + '</button>'
         )).join('');
         const html =
-            '<div style="font-size:16px;font-weight:bold;margin-bottom:6px;">💬 رسائل واتساب للعميل</div>' +
-            '<div style="font-size:13px;color:#555;margin-bottom:16px;">' +
-            'الاسم: ' + escapeHtml(customer.name || 'غير معروف') + '<br>' +
-            'الجوال: <span dir="ltr">' + escapeHtml(customer.phone || 'غير معروف') + '</span>' +
+            '<h3>💬 رسائل واتساب للعميل</h3>' +
+            '<div class="yq-info-box">' +
+            'الاسم: <strong>' + escapeHtml(customer.name || 'غير معروف') + '</strong><br>' +
+            'الجوال: <span dir="ltr"><strong>' + escapeHtml(customer.phone || 'غير معروف') + '</strong></span>' +
             '</div>' +
             templateButtonsHtml +
-            '<button id="customer-msg-cancel" style="' +
-            'width:100%;padding:10px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:14px;">إلغاء</button>';
+            '<button id="customer-msg-cancel" class="yq-btn yq-btn-secondary" style="margin-top:6px;">إلغاء</button>';
 
-        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 360));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 400));
 
         document.querySelectorAll('.customer-msg-tpl-btn').forEach(btn => {
             btn.onclick = () => {
@@ -287,34 +343,31 @@
         const message = template.build(name);
 
         const html =
-            '<div style="font-size:15px;font-weight:bold;margin-bottom:10px;">معاينة الرسالة</div>' +
-            '<textarea id="customer-msg-preview" readonly style="' +
-            'width:100%;height:220px;box-sizing:border-box;padding:10px;border:1px solid #ddd;' +
-            'border-radius:8px;font-size:13px;text-align:right;resize:vertical;">' + escapeHtml(message) + '</textarea>' +
-            '<div style="font-size:12px;color:#777;margin:8px 0 14px;">سيُرسل إلى: <span dir="ltr">' +
-            escapeHtml(customer.phone || '') + '</span></div>' +
-            '<div style="display:flex;gap:8px;">' +
-            '<button id="customer-msg-back" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#eee;color:#333;font-size:14px;">رجوع</button>' +
-            '<button id="customer-msg-send" style="flex:1;padding:12px;border:none;border-radius:8px;' +
-            'cursor:pointer;background:#A3E635;font-size:14px;">✅ إرسال</button>' +
+            '<h3 style="margin-bottom:12px;">معاينة الرسالة</h3>' +
+            '<textarea id="customer-msg-preview" readonly class="yq-textarea">' + escapeHtml(message) + '</textarea>' +
+            '<div class="yq-meta-line">سيُرسل إلى: <span dir="ltr"><strong>' + escapeHtml(customer.phone || '') + '</strong></span></div>' +
+            '<div class="yq-btn-row">' +
+            '<button id="customer-msg-back" class="yq-btn yq-btn-secondary">رجوع</button>' +
+            '<button id="customer-msg-send" class="yq-btn yq-btn-primary">✅ إرسال</button>' +
             '</div>';
 
-        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 380));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 420));
 
         document.getElementById('customer-msg-back').onclick = () => showChoicePrompt(customer);
         document.getElementById('customer-msg-send').onclick = async () => {
             if (!customer.phone) {
-                showMessage('تعذّر الإرسال: ما قدرنا نقرأ رقم جوال العميل من الصفحة.');
+                showToast('تعذّر الإرسال: ما قدرنا نقرأ رقم جوال العميل من الصفحة.', 'error');
                 return;
             }
             showLoading('جارٍ إرسال الرسالة...');
             try {
                 const jid = normalizePhoneToJid(customer.phone);
                 await sendWhatsAppText(jid, message);
-                showMessage('✅ تم إرسال الرسالة بنجاح.');
+                closeBox();
+                showToast('تم إرسال الرسالة بنجاح.', 'success');
             } catch (err) {
-                showMessage('تعذّر إرسال الرسالة: ' + err.message);
+                closeBox();
+                showToast('تعذّر إرسال الرسالة: ' + err.message, 'error');
             }
         };
     }
@@ -325,10 +378,8 @@
         const customer = await extractCustomerInfo();
 
         if (!customer.name && !customer.phone) {
-            showMessage(
-                'ما قدرنا نقرأ اسم أو جوال العميل من هذي الصفحة.\n\n' +
-                'تأكد إنك فاتح صفحة تفاصيل عقد معيّن (فيها بيانات العميل) قبل تشغيل الأداة.'
-            );
+            closeBox();
+            showToast('ما قدرنا نقرأ اسم أو جوال العميل من هذي الصفحة - تأكد إنك فاتح صفحة تفاصيل عقد معيّن.', 'error');
             return;
         }
 

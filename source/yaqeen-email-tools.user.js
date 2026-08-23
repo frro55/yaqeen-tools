@@ -37,64 +37,107 @@
     }
 
     // ==========================================================
+    // نظام تصميم موحّد (YQ) - نفس المستخدم بباقي الأدوات
+    // ==========================================================
+
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;max-height:90vh;overflow-y:auto;box-sizing:border-box;}' +
+        '.yq-card.yq-pad{padding:28px 26px;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-card-header{border-radius:22px 22px 0 0;padding:20px 24px;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;font-size:16px;font-weight:800;}' +
+        '.yq-card-body{padding:24px;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-field-wrap{text-align:right;margin-bottom:12px;}' +
+        '.yq-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:5px;}' +
+        '.yq-field{width:100%;padding:12px;border:1.5px solid #e9e7df;border-radius:12px;font-size:14px;' +
+        'box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        'textarea.yq-field{resize:vertical;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
+    // ==========================================================
     // قائمة اختيار نوع الإيميل
     // ==========================================================
 
     function chooseEmailType() {
 
         document.getElementById("email-box")?.remove();
+        injectYqStyles();
 
         const box = document.createElement("div");
         box.id = "email-box";
-
-        box.style = `
-        position:fixed;
-        inset:0;
-        background:#0008;
-        z-index:999999999;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-family:Arial;
-        `;
+        box.className = "yq-overlay";
 
         box.innerHTML = `
-        <div style="
-        background:white;
-        padding:25px;
-        border-radius:15px;
-        width:300px;
-        text-align:center;
-        direction:rtl;
-        ">
-        <h3 style="margin-top:0">📧 إيميل</h3>
+        <div class="yq-card yq-pad">
+        <h3>📧 إيميل</h3>
 
-        <button id="close-agreement">🔒 إغلاق عقد</button>
-        <button id="accident">🚗 حادث</button>
-        <button id="open-agreement">📄 فتح اتفاقية</button>
+        <button id="close-agreement" class="yq-menu-btn">🔒 إغلاق عقد</button>
+        <button id="accident" class="yq-menu-btn">🚗 حادث</button>
+        <button id="open-agreement" class="yq-menu-btn">📄 فتح اتفاقية</button>
 
-        <button id="cancel" style="
-                    margin-top:10px;
-                    background:#eee;
-                    color:#333;
-                ">إلغاء</button>
+        <button id="cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
         </div>
         `;
 
         document.body.appendChild(box);
-
-        box.querySelectorAll("button").forEach(btn => {
-            btn.style.cssText += `
-            width:100%;
-            padding:12px;
-            margin-top:8px;
-            border:0;
-            border-radius:8px;
-            cursor:pointer;
-            background:#A3E635;
-            font-size:15px;
-            `;
-        });
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
@@ -123,26 +166,22 @@
     function showCloseAgreementForm() {
         return new Promise(resolve => {
             document.getElementById("email-box")?.remove();
+            injectYqStyles();
 
             const box = document.createElement("div");
             box.id = "email-box";
-            box.style.cssText = `
-                position:fixed;inset:0;background:#0008;z-index:999999999;
-                display:flex;align-items:center;justify-content:center;font-family:Arial;
-            `;
+            box.className = "yq-overlay";
 
             box.innerHTML = `
-            <div style="background:white;border-radius:15px;width:360px;overflow:hidden;direction:rtl;">
-                <div style="background:#A3E635;padding:18px;text-align:center;">
-                    <div style="font-size:16px;font-weight:bold;">🔒 إغلاق عقد</div>
-                </div>
-                <div style="padding:20px;">
-                    <div style="text-align:right;margin-bottom:14px;">
-                        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">سبب إغلاق العقد</label>
-                        <textarea id="close-reason" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+            <div class="yq-card" style="max-width:360px;">
+                <div class="yq-card-header">🔒 إغلاق عقد</div>
+                <div class="yq-card-body">
+                    <div class="yq-field-wrap">
+                        <label>سبب إغلاق العقد</label>
+                        <textarea id="close-reason" rows="3" class="yq-field"></textarea>
                     </div>
-                    <button id="close-submit" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">نسخ الإيميل</button>
-                    <button id="close-cancel" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">إلغاء</button>
+                    <button id="close-submit" class="yq-btn yq-btn-primary">نسخ الإيميل</button>
+                    <button id="close-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
                 </div>
             </div>`;
 
@@ -165,27 +204,9 @@
         });
     }
 
-    /** رسالة نجاح/خطأ مخصصة (بنفس تصميم باقي الأدوات) بدل alert() المتصفح */
+    /** إشعار خفيف (توست) - بديل alert() المتصفح */
     function showEmailMessage(text, isError) {
-        document.getElementById("email-message-box")?.remove();
-        const headerColor = isError ? "#dc2626" : "#A3E635";
-        const headerText = isError ? "#fff" : "#1a1a1a";
-        const html = `
-        <div id="email-message-box" style="position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:999999999;font-family:Arial;">
-            <div style="width:320px;background:white;border-radius:16px;overflow:hidden;text-align:center;direction:rtl;">
-                <div style="background:${headerColor};color:${headerText};padding:18px;font-size:16px;font-weight:bold;">
-                    ${isError ? "⚠️ تنبيه" : "✅ تم بنجاح"}
-                </div>
-                <div style="padding:20px;">
-                    <div style="margin-bottom:16px;white-space:pre-line;">${text}</div>
-                    <button id="email-message-close" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">إغلاق</button>
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML("beforeend", html);
-        document.getElementById("email-message-close").onclick = () => {
-            document.getElementById("email-message-box")?.remove();
-        };
+        showToast(text, isError ? "error" : "success");
     }
 
     async function closeAgreementEmail() {
@@ -237,35 +258,33 @@
     function showAccidentInputForm() {
         return new Promise(resolve => {
             document.getElementById("email-box")?.remove();
+            injectYqStyles();
 
             const box = document.createElement("div");
             box.id = "email-box";
-            box.style.cssText = `
-                position:fixed;inset:0;background:#0008;z-index:999999999;
-                display:flex;align-items:center;justify-content:center;font-family:Arial;
-            `;
+            box.className = "yq-overlay";
 
             box.innerHTML = `
-            <div style="background:white;padding:25px;border-radius:15px;width:340px;text-align:center;direction:rtl;">
-                <h3 style="margin-top:0">🚗 بيانات الحادث</h3>
-                <div style="text-align:right;margin-bottom:10px;">
-                    <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">رقم عقد التأجير</label>
-                    <input id="acc-agreement" type="text" placeholder="A1780008085" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+            <div class="yq-card yq-pad" style="max-width:340px;">
+                <h3>🚗 بيانات الحادث</h3>
+                <div class="yq-field-wrap">
+                    <label>رقم عقد التأجير</label>
+                    <input id="acc-agreement" type="text" placeholder="A1780008085" class="yq-field" />
                 </div>
-                <div style="text-align:right;margin-bottom:10px;">
-                    <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">نسبة الإدانة</label>
-                    <input id="acc-guilt" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+                <div class="yq-field-wrap">
+                    <label>نسبة الإدانة</label>
+                    <input id="acc-guilt" type="text" class="yq-field" />
                 </div>
-                <div style="text-align:right;margin-bottom:10px;">
-                    <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">موقع الحادث</label>
-                    <input id="acc-location" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+                <div class="yq-field-wrap">
+                    <label>موقع الحادث</label>
+                    <input id="acc-location" type="text" class="yq-field" />
                 </div>
-                <div style="text-align:right;margin-bottom:14px;">
-                    <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">رقم الحادث</label>
-                    <input id="acc-number" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+                <div class="yq-field-wrap">
+                    <label>رقم الحادث</label>
+                    <input id="acc-number" type="text" class="yq-field" />
                 </div>
-                <button id="acc-submit" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">متابعة</button>
-                <button id="acc-cancel" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">إلغاء</button>
+                <button id="acc-submit" class="yq-btn yq-btn-primary">متابعة</button>
+                <button id="acc-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
             </div>`;
 
             document.body.appendChild(box);
@@ -276,7 +295,7 @@
             function submit() {
                 const agreementNo = agreementInput.value.trim();
                 if (!agreementNo) {
-                    agreementInput.style.border = "1px solid #dc2626";
+                    agreementInput.classList.add("yq-field-err");
                     return;
                 }
                 const result = {
@@ -447,15 +466,15 @@
             await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }) })]);
 
             if (downloadIssues.length > 0) {
-                alert("تم نسخ ايميل الحادث بنجاح\n\n⚠️ تعذّر تحميل:\n" + downloadIssues.join("\n"));
+                showToast("تم نسخ ايميل الحادث بنجاح، لكن تعذّر تحميل: " + downloadIssues.join("، "), "error");
             } else {
-                alert("تم نسخ ايميل الحادث بنجاح");
+                showToast("تم نسخ ايميل الحادث بنجاح", "success");
             }
 
         } catch (err) {
             try { frame.remove(); } catch (err2) { /* تجاهل */ }
             hideAgreementStatus();
-            alert("تعذّر إنشاء إيميل الحادث: " + err.message);
+            showToast("تعذّر إنشاء إيميل الحادث: " + err.message, "error");
         }
 
     }
@@ -650,25 +669,22 @@
     function showPhotoPicker(images) {
         return new Promise(resolve => {
             document.getElementById("email-photo-picker")?.remove();
+            injectYqStyles();
 
             const selected = new Set();
 
             const box = document.createElement("div");
             box.id = "email-photo-picker";
-            box.style.cssText = `
-                position:fixed;inset:0;background:#0008;z-index:999999999;
-                display:flex;align-items:center;justify-content:center;font-family:Arial;
-            `;
+            box.className = "yq-overlay";
 
             box.innerHTML = `
-            <div style="background:white;padding:20px;border-radius:15px;width:min(640px,92vw);max-height:85vh;
-            display:flex;flex-direction:column;direction:rtl;">
-                <h3 style="margin:0 0 12px">📷 اختر صور الفحص اللي تبغى تحمّلها</h3>
+            <div class="yq-card" style="max-width:640px;padding:22px;display:flex;flex-direction:column;">
+                <h3 style="margin-bottom:12px;">📷 اختر صور الفحص اللي تبغى تحمّلها</h3>
                 <div id="photo-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;overflow:auto;padding:4px;"></div>
                 <div style="display:flex;gap:8px;margin-top:14px;">
-                    <button id="photo-download" style="flex:1;padding:10px;border:0;border-radius:8px;background:#A3E635;cursor:pointer;">تحميل ومتابعة</button>
-                    <button id="photo-skip" style="flex:1;padding:10px;border:0;border-radius:8px;background:#eee;color:#333;cursor:pointer;">تخطي بدون تحميل</button>
-                    <button id="photo-cancel" style="flex:1;padding:10px;border:0;border-radius:8px;background:#eee;color:#333;cursor:pointer;">إلغاء</button>
+                    <button id="photo-download" class="yq-btn yq-btn-primary" style="margin-top:0;flex:1;">تحميل ومتابعة</button>
+                    <button id="photo-skip" class="yq-btn yq-btn-secondary" style="margin-top:0;flex:1;">تخطي بدون تحميل</button>
+                    <button id="photo-cancel" class="yq-btn yq-btn-secondary" style="margin-top:0;flex:1;">إلغاء</button>
                 </div>
             </div>`;
 
@@ -935,12 +951,12 @@
 
     function showAgreementStatus(text) {
         document.getElementById("email-status-box")?.remove();
+        injectYqStyles();
         const html = `
-<div id="email-status-box" style="
-position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;
-z-index:999999999;font-family:Arial;">
-<div style="width:300px;background:white;border-radius:16px;padding:30px;text-align:center;direction:rtl;">
-${text}
+<div id="email-status-box" class="yq-overlay">
+<div class="yq-card" style="max-width:300px;padding:30px;">
+<div class="yq-spinner"></div>
+<div style="font-size:13.5px;font-weight:700;">${text}</div>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);
@@ -966,24 +982,23 @@ ${text}
 
             function render() {
                 document.getElementById("email-status-box")?.remove();
+                injectYqStyles();
 
                 const ok = currentResult && currentResult.ok;
                 const statusLine = ok
-                    ? '<div style="color:#16a34a;margin-bottom:10px;">✅ تم فتح نافذة طباعة الاتفاقية</div>'
-                    : '<div style="color:#dc2626;margin-bottom:10px;">⚠️ ' + (currentResult ? currentResult.reason : "تعذّر فتح نافذة الطباعة") + '</div>';
+                    ? '<div style="color:#16a34a;font-weight:700;margin-bottom:10px;">✅ تم فتح نافذة طباعة الاتفاقية</div>'
+                    : '<div style="color:#dc2626;font-weight:700;margin-bottom:10px;">⚠️ ' + (currentResult ? currentResult.reason : "تعذّر فتح نافذة الطباعة") + '</div>';
 
                 const html = `
-                <div id="email-status-box" style="position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;z-index:999999999;font-family:Arial;">
-                    <div style="width:340px;background:white;border-radius:16px;overflow:hidden;text-align:center;direction:rtl;">
-                        <div style="background:#A3E635;padding:18px;">
-                            <div style="font-size:16px;font-weight:bold;">📄 تنزيل الاتفاقية</div>
-                        </div>
-                        <div style="padding:20px;">
+                <div id="email-status-box" class="yq-overlay">
+                    <div class="yq-card" style="max-width:340px;">
+                        <div class="yq-card-header">📄 تنزيل الاتفاقية</div>
+                        <div class="yq-card-body">
                             ${statusLine}
-                            <div style="margin-bottom:16px;">اختر "حفظ كـ PDF" من نافذة الطباعة واحفظ الملف، ثم اضغط "التالي" للمتابعة.</div>
-                            <button id="agreement-next" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">التالي</button>
-                            ${!ok ? '<button id="agreement-retry" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">🔄 إعادة المحاولة</button>' : ''}
-                            <button id="agreement-skip" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">تخطي هذي الخطوة</button>
+                            <div class="yq-desc" style="text-align:center;">اختر "حفظ كـ PDF" من نافذة الطباعة واحفظ الملف، ثم اضغط "التالي" للمتابعة.</div>
+                            <button id="agreement-next" class="yq-btn yq-btn-primary">التالي</button>
+                            ${!ok ? '<button id="agreement-retry" class="yq-btn yq-btn-secondary">🔄 إعادة المحاولة</button>' : ''}
+                            <button id="agreement-skip" class="yq-btn yq-btn-secondary">تخطي هذي الخطوة</button>
                         </div>
                     </div>
                 </div>`;
@@ -1017,34 +1032,30 @@ ${text}
     function showOpenAgreementForm() {
         return new Promise(resolve => {
             document.getElementById("email-box")?.remove();
+            injectYqStyles();
 
             const box = document.createElement("div");
             box.id = "email-box";
-            box.style.cssText = `
-                position:fixed;inset:0;background:#0008;z-index:999999999;
-                display:flex;align-items:center;justify-content:center;font-family:Arial;
-            `;
+            box.className = "yq-overlay";
 
             box.innerHTML = `
-            <div style="background:white;border-radius:15px;width:340px;overflow:hidden;direction:rtl;">
-                <div style="background:#A3E635;padding:18px;text-align:center;">
-                    <div style="font-size:16px;font-weight:bold;">📄 فتح اتفاقية</div>
-                </div>
-                <div style="padding:20px;">
-                    <div style="text-align:right;margin-bottom:10px;">
-                        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">رقم الحجز</label>
-                        <input id="open-booking" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+            <div class="yq-card" style="max-width:340px;">
+                <div class="yq-card-header">📄 فتح اتفاقية</div>
+                <div class="yq-card-body">
+                    <div class="yq-field-wrap">
+                        <label>رقم الحجز</label>
+                        <input id="open-booking" type="text" class="yq-field" />
                     </div>
-                    <div style="text-align:right;margin-bottom:10px;">
-                        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">رقم عقد التأجير</label>
-                        <input id="open-contract" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
+                    <div class="yq-field-wrap">
+                        <label>رقم عقد التأجير</label>
+                        <input id="open-contract" type="text" class="yq-field" />
                     </div>
-                    <div style="text-align:right;margin-bottom:14px;">
-                        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px;">الملاحظات</label>
-                        <textarea id="open-notes" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+                    <div class="yq-field-wrap">
+                        <label>الملاحظات</label>
+                        <textarea id="open-notes" rows="3" class="yq-field"></textarea>
                     </div>
-                    <button id="open-submit" style="width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;background:#A3E635;font-size:15px;">التالي</button>
-                    <button id="open-cancel" style="width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;cursor:pointer;background:#eee;color:#333;font-size:15px;">إلغاء</button>
+                    <button id="open-submit" class="yq-btn yq-btn-primary">التالي</button>
+                    <button id="open-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
                 </div>
             </div>`;
 
@@ -1056,7 +1067,7 @@ ${text}
             function submit() {
                 const bookingNo = bookingInput.value.trim();
                 if (!bookingNo) {
-                    bookingInput.style.border = "1px solid #dc2626";
+                    bookingInput.classList.add("yq-field-err");
                     return;
                 }
                 const result = {

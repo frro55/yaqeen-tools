@@ -440,14 +440,91 @@
     // واجهة العرض
     // ==========================================================
 
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
+        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
+        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'border-bottom:1.5px solid #e9e7df;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
+        '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles')) return;
+        var style = document.createElement('style');
+        style.id = 'yq-shared-styles';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً - بديل alert()/رسائل النجاح والخطأ القديمة */
+    function showToast(message, type) {
+        injectYqStyles();
+        var wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        var toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+
+        var remove = function () { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
     function overlayShell(innerHtml, width) {
+        injectYqStyles();
         return (
-            '<div id="airport-hours-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;align-items:center;' +
-            'justify-content:center;z-index:999999999;font-family:Arial;padding:24px;box-sizing:border-box;">' +
-            '<div style="width:' + width + 'px;max-width:100%;max-height:85vh;overflow:auto;' +
-            'background:#fff;border-radius:16px;padding:25px;box-sizing:border-box;' +
-            'text-align:center;direction:rtl;">' + innerHtml + '</div></div>'
+            '<div id="airport-hours-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
         );
     }
 
@@ -455,17 +532,11 @@
         document.getElementById('airport-hours-box')?.remove();
 
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<h3 style="margin-top:0">🛫 حجوزات المطار القادمة</h3>' +
-            '<div style="margin:15px 0;text-align:right">كم ساعة قدام تبغى تشوف الحجوزات؟</div>' +
-            '<input id="airport-hours-input" type="number" min="1" step="1" value="6" style="' +
-            'width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;' +
-            'text-align:center;box-sizing:border-box;" />' +
-            '<button id="airport-hours-submit" style="' +
-            'width:100%;padding:12px;margin-top:12px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#A3E635;font-size:15px;">عرض التقرير</button>' +
-            '<button id="airport-hours-cancel" style="' +
-            'width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;cursor:pointer;' +
-            'background:#eee;color:#333;font-size:15px;">إلغاء</button>',
+            '<h3>🛫 حجوزات المطار القادمة</h3>' +
+            '<div class="yq-desc">كم ساعة قدام تبغى تشوف الحجوزات؟</div>' +
+            '<input id="airport-hours-input" type="number" min="1" step="1" value="6" class="yq-field" />' +
+            '<button id="airport-hours-submit" class="yq-btn yq-btn-primary">عرض التقرير</button>' +
+            '<button id="airport-hours-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
             300
         ));
 
@@ -476,7 +547,7 @@
         function submit() {
             var hours = parseFloat(input.value);
             if (!hours || hours <= 0) {
-                input.style.border = '1px solid #dc2626';
+                input.classList.add('yq-field-err');
                 return;
             }
             runReport(hours);
@@ -493,24 +564,20 @@
 
     function showLoading() {
         document.getElementById('airport-hours-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell('جارٍ جلب الحجوزات والسيارات المتاحة...', 280));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">جارٍ جلب الحجوزات والسيارات المتاحة...</div>',
+            280
+        ));
     }
 
-    function showMessage(text) {
+    function showMessage(text, type) {
         document.getElementById('airport-hours-box')?.remove();
-        document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div style="margin-bottom:15px">' + text + '</div>' +
-            '<button id="airport-hours-close" style="' +
-            'padding:10px 18px;border:none;border-radius:8px;background:#A3E635;cursor:pointer;">إغلاق</button>',
-            300
-        ));
-        document.getElementById('airport-hours-close').onclick = function () {
-            document.getElementById('airport-hours-box')?.remove();
-        };
+        showToast(text, type || 'error');
     }
 
     function showReport(hours, bookingCounts, vehicleCounts, yardVehicleCounts, totalBookings, totalVehicles) {
         document.getElementById('airport-hours-box')?.remove();
+        injectYqStyles();
 
         // اتحاد كل القروبات (حجوزات + سيارات مطار + سيارات حوش) عشان أي قروب
         // له حوش فقط بدون سيارات مطار ولا حجوزات يظل يظهر بالتقرير
@@ -524,52 +591,44 @@
             var diffColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#b45309';
             return (
                 '<tr>' +
-                '<td style="padding:9px;border-top:1px solid #eee;text-align:center;font-weight:bold;">' + escapeHtml(group) + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;">' + vehicles + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;">' + bookings + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;font-weight:bold;color:' + diffColor + '">' +
+                '<td style="text-align:center;font-weight:800;">' + escapeHtml(group) + '</td>' +
+                '<td style="text-align:center;">' + vehicles + '</td>' +
+                '<td style="text-align:center;">' + bookings + '</td>' +
+                '<td style="text-align:center;font-weight:800;color:' + diffColor + '">' +
                 (diff > 0 ? '+' + diff : diff) + '</td>' +
-                '<td style="border-top:1px solid #eee;text-align:center;padding:4px;">' +
+                '<td style="text-align:center;padding:6px;">' +
                 '<input type="number" min="0" class="yard-vehicle-input" data-group="' + escapeHtml(group) + '" value="' + yardVehicles + '" style="' +
-                'width:52px;padding:5px 3px;border:1px solid #ddd;border-radius:6px;text-align:center;font:inherit;font-weight:bold;">' +
+                'width:52px;padding:5px 3px;border:1.5px solid #e9e7df;border-radius:8px;text-align:center;font:inherit;font-weight:800;">' +
                 '</td>' +
                 '</tr>'
             );
         }).join('');
 
         if (groups.length === 0) {
-            rowsHtml = '<tr><td colspan="5" style="padding:15px;text-align:center;color:#777;">لا توجد بيانات ضمن هذه المدة</td></tr>';
+            rowsHtml = '<tr><td colspan="5" style="padding:22px;text-align:center;color:#a19c92;">لا توجد بيانات ضمن هذه المدة</td></tr>';
         }
 
         var html =
-            '<div id="airport-hours-box" style="' +
-            'position:fixed;inset:0;background:#0008;display:flex;justify-content:center;align-items:center;' +
-            'z-index:999999999;font-family:Arial;padding:24px;box-sizing:border-box;">' +
-            '<div style="width:420px;max-width:100%;max-height:85vh;background:white;border-radius:16px;' +
+            '<div id="airport-hours-box" class="yq-overlay">' +
+            '<div style="width:min(460px,95vw);max-height:85vh;background:#fff;border-radius:22px;' +
             'overflow:hidden;direction:rtl;display:flex;flex-direction:column;">' +
-            '<div style="background:#A3E635;padding:18px;text-align:center;flex-shrink:0;">' +
-            '<div style="font-size:16px">حجوزات المطار خلال ' + hours + ' ساعة القادمة</div>' +
-            '<div style="font-size:13px;margin-top:4px;opacity:.8;">إجمالي الحجوزات: ' + totalBookings +
-            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<div class="yq-report-header">' +
+            '<div class="yq-report-title">🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</div>' +
+            '<div class="yq-report-sub">إجمالي الحجوزات: ' + totalBookings +
+            ' · إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;">' +
-            '<table style="width:100%;border-collapse:collapse;">' +
-            '<tr style="background:#f5f5f5">' +
-            '<th style="padding:10px">القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th>' +
+            '<div style="overflow:auto;flex:1;padding:0 10px;">' +
+            '<table class="yq-report-table">' +
+            '<tr><th>القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th>' +
             '<th>سيارات الحوش (53)</th>' +
             '</tr>' + rowsHtml + '</table>' +
             '</div>' +
-            '<div style="padding:15px;text-align:center;display:flex;gap:8px;flex-shrink:0;">' +
-            '<button id="airport-hours-refresh" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🔄 تحديث</button>' +
-            '<button id="airport-hours-print" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">🖨️ طباعة</button>' +
-            '<button id="airport-hours-whatsapp" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">📱 إرسال صورة واتساب</button>' +
-            '<button id="airport-hours-change" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#eee;color:#333;cursor:pointer;">تغيير المدة</button>' +
-            '<button id="airport-hours-close" style="flex:1;padding:10px;border:none;border-radius:8px;' +
-            'background:#A3E635;cursor:pointer;">إغلاق</button>' +
+            '<div class="yq-report-actions">' +
+            '<button id="airport-hours-refresh">🔄 تحديث</button>' +
+            '<button id="airport-hours-print">🖨️ طباعة</button>' +
+            '<button id="airport-hours-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
+            '<button id="airport-hours-change">تغيير المدة</button>' +
+            '<button id="airport-hours-close">إغلاق</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -853,7 +912,7 @@
                     }),
                     onload: function (response) {
                         if (response.status >= 200 && response.status < 300) {
-                            showMessage('✅ تم إرسال صورة التقرير عبر واتساب بنجاح');
+                            showMessage('تم إرسال صورة التقرير عبر واتساب بنجاح', 'success');
                         } else if (response.status === 413) {
                             console.error('[حجوزات المطار] فشل إرسال واتساب: 413', response.responseText);
                             showMessage('فشل الإرسال: السيرفر يرفض حجم الصورة (413)');
