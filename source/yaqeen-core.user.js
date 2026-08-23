@@ -75,7 +75,6 @@
     const TOOL_ORDER = [
         "fleet-inventory",
         "available-vehicles",
-        "payment-verify",
         "late-payments",
         "late-payments-branches",
         "company-extension",
@@ -296,9 +295,7 @@
     // المفاتيح المُعدِّلة. لإضافة اختصار جديد مستقبلاً، ضيف سطر جديد بنفس
     // الشكل: { alt, ctrl, shift, code, toolId } - كود المفتاح لأي حرف هو
     // "Key" + الحرف بالإنجليزي كبير (مثال: زر B = "KeyB")
-    const SHORTCUTS = [
-        { alt: true, ctrl: false, shift: false, code: "KeyA", toolId: "payment-verify" },
-    ];
+    const SHORTCUTS = [];
 
     // ============================================================
     // صلاحيات المستخدم: أي أداة مسجّلة عبر add() ما تظهر بالقائمة إلا لو

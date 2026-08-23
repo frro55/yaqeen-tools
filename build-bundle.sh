@@ -52,7 +52,6 @@ FILES=(
   yaqeen-fleet-inventory.user.js
   yaqeen-available-vehicles.user.js
   yaqeen-email-tools.user.js
-  yaqeen-payment-verify.user.js
   yaqeen-airport-hours-report.user.js
   yaqeen-late-payments-report.user.js
   yaqeen-late-payments-branches-report.user.js
