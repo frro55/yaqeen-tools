@@ -75,8 +75,6 @@
     const TOOL_ORDER = [
         "fleet-inventory",
         "available-vehicles",
-        "returned-vehicles-report",
-        "verify-returned-vehicles",
         "payment-verify",
         "late-payments",
         "late-payments-branches",
@@ -100,8 +98,6 @@
     const TOOL_GROUPS = {
         "fleet-inventory": "fleet",
         "available-vehicles": "fleet",
-        "returned-vehicles-report": "fleet",
-        "verify-returned-vehicles": "fleet",
         "late-payments": "debt",
         "late-payments-branches": "debt",
         "company-extension": "debt",

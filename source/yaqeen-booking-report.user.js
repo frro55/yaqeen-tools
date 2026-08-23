@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Yaqeen - تقرير الحجوزات القادمة
 // @namespace    yaqeen-tools
-// @version      1.0.0
-// @description  أداة داخل نظام Yaqeen تقارن الحجوزات القادمة بعدد السيارات الجاهزة لكل مجموعة (نسبة الإشغال + الفرق)
+// @version      2.0.0
+// @description  أداة داخل نظام Yaqeen تقارن الحجوزات القادمة بعدد السيارات الجاهزة لكل مجموعة (نسبة الإشغال + الفرق)، مع عدد السيارات المسترجعة (نفس الفرع) كمعلومة إضافية تحت كل عمود يوم
 // @author       -
 // @match        https://yaqeen.lumirental.com/*
 // @grant        unsafeWindow
@@ -19,11 +19,14 @@
  * أداة مستقلة تُسجَّل داخل نظام الأدوات الحالي عبر YAQEEN_TOOLS.add()
  * ولا تُعدّل أي شيء في الـ Core أو بقية الأدوات.
  *
- * مصادر البيانات (صفحتان فقط، بدون أي API خارجي):
+ * مصادر البيانات (بدون أي API خارجي):
  *  1) صفحة الحجوزات القادمة.
  *  2) صفحة المركبات الجاهزة (حسب مصدر السيارات الذي يختاره المستخدم).
+ *  3) صفحة السيارات المستأجرة الحالية (المسترجعة) - نأخذ منها فقط الراجعة
+ *     لنفس الفرع، ونعرض عددها تحت كل عمود يوم كمعلومة إضافية (وتُضاف على
+ *     السيارات الجاهزة حالياً عند حساب نسبة الإشغال والفرق).
  *
- * تُقرأ الصفحتان عبر نافذة منبثقة حقيقية (نفس النطاق، بدون أي iframe)، ثم
+ * تُقرأ الصفحات عبر iframe مخفي (نفس النطاق، بدون نافذة منبثقة حقيقية)، ثم
  * تُستخرج البيانات مباشرة من جدول HTML الظاهر في الصفحة - دون الضغط على أي فلتر.
  */
 (function () {
@@ -45,6 +48,8 @@
   var BRANCH_LOCATION_ID = 29;
   var YARD_LOCATION_ID = 53;
   var PAGE_SIZE = 500;
+  var SAME_BRANCH_LABEL = 'نفس الفرع';
+  var MAX_FETCH_ATTEMPTS = 3;
 
   var URLS = {
     bookings:
@@ -64,6 +69,10 @@
         '&pageSize=' +
         PAGE_SIZE,
     },
+    returned:
+      'https://yaqeen.lumirental.com/rental/vehicles/rented?pageSize=' +
+      PAGE_SIZE +
+      '&sort=dropoffDate&order=desc&pageNumber=0',
   };
 
   /**
@@ -71,8 +80,8 @@
    * السبعة بترتيبها الحقيقي (السبت موجود ضمنها) بدءاً من اليوم اللي بعد "غداً"
    * مباشرة - مو قائمة ثابتة تبدأ دائماً بالأحد بغض النظر عن يوم اليوم الفعلي.
    */
+  var WEEKDAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   function buildDayChips() {
-    var WEEKDAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     var chips = ['اليوم', 'غداً'];
     var cursor = (new Date().getDay() + 2) % 7; // اليوم اللي بعد "غداً" مباشرة
     while (chips.length < 9) {
@@ -106,6 +115,11 @@
   var VEHICLE_COLUMNS_MAP = {
     group: ['المجموعة'],
   };
+  var RETURNED_COLUMNS_MAP = {
+    group: ['المجموعة'],
+    dropoffBranch: ['فرع التسليم'],
+    dropoffText: ['تاريخ التسليم'],
+  };
 
   // عمود "المجموعة" موجود في الجدولين معاً، لذلك نستخدمه لتمييز جدول البيانات
   // الحقيقي عن أي جداول أخرى بالصفحة (بدل الاعتماد على عدد الصفوف الذي يفشل
@@ -123,6 +137,7 @@
     lastUpdated: null,
     bookings: [], // [{id, pickupText, day, group, vehicle}]
     vehiclesBySource: { branch: [], yard: [], all: [] }, // group[] لكل مصدر
+    returns: [], // [{group, day}] - سيارات مسترجعة لنفس الفرع فقط
     selectedSource: 'all',
     selectedDays: new Set(['اليوم']),
     sort: { key: null, dir: 1 },
@@ -211,6 +226,29 @@
   }
 
   /**
+   * صفحات ثقيلة (مثل صفحة المستأجرة بمئات الصفوف) ممكن تظهر أول صفوفها
+   * بخلايا فارغة مؤقتاً أثناء التحميل. الاكتفاء بوجود صفوف (tbody tr) فقط
+   * يخدع المنطق فيعتبر التحميل مكتمل وهو لسا فاضي. هذا الفحص يتأكد من وجود
+   * نص فعلي بعمود "المجموعة" على الأقل بصف واحد قبل اعتبار الصفحة جاهزة.
+   */
+  function tableHasMeaningfulData(doc, columnsMap) {
+    var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
+    if (!table) return false;
+    var bodyRows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+    if (bodyRows.length === 0) return false;
+
+    var headerCells = Array.prototype.slice.call(table.querySelectorAll('thead tr th, thead tr td'));
+    var groupIdx = findColumnIndex(headerCells, columnsMap.group || GROUP_COLUMN_HINT);
+    if (groupIdx < 0) return true; // احتياطي: لو ما قدرنا نحدد رقم العمود، نكتفي بوجود صفوف
+
+    return bodyRows.some(function (row) {
+      var cells = row.querySelectorAll('td');
+      var cell = cells[groupIdx];
+      return cell && cell.textContent.trim().length > 0;
+    });
+  }
+
+  /**
    * ينشئ iframe مخفي (خارج حدود الشاشة تماماً) ويحمّل الرابط المطلوب بداخله،
    * بدل فتح نافذة منبثقة حقيقية. هذا يمنع أي نافذة تظهر فوق صفحتك أو تسرق
    * التركيز أثناء جلب البيانات - جُرّب وتحقّقنا إن Yaqeen ما يتصرف مختلف ولا
@@ -252,9 +290,7 @@
           setTimeout(check, 300);
           return;
         }
-        var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
-        var hasRows = table && table.querySelectorAll('tbody tr').length > 0;
-        if (hasRows || Date.now() - start > timeoutMs) {
+        if (tableHasMeaningfulData(doc, columnsMap) || Date.now() - start > timeoutMs) {
           resolve(doc);
           return;
         }
@@ -487,6 +523,64 @@
       });
   }
 
+  /** يستخرج تاريخ التسليم (بدون وقت) من نص خلية "تاريخ التسليم" (ثلاث صيغ محتملة) */
+  function parseDropoffDateOnly(text) {
+    text = (text || '').trim();
+    var now = new Date();
+    var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    var relMatch = /^(اليوم|غدا ?ً?)\s*-/.exec(text);
+    if (relMatch) {
+      var isToday = normalizeArabic(relMatch[1]) === normalizeArabic('اليوم');
+      var d = new Date(todayMid);
+      d.setDate(d.getDate() + (isToday ? 0 : 1));
+      return d;
+    }
+
+    var dateMatch = /(\d{1,2})-(\d{1,2})-(\d{4})/.exec(text);
+    if (dateMatch) {
+      var day = parseInt(dateMatch[1], 10);
+      var month = parseInt(dateMatch[2], 10);
+      var year = parseInt(dateMatch[3], 10);
+      return new Date(year, month - 1, day);
+    }
+
+    return null;
+  }
+
+  /**
+   * يحوّل تاريخ التسليم إلى اسم شريحة اليوم بنفس مفردات DAY_CHIPS (اليوم/غداً/
+   * أيام الأسبوع). السيارات المتأخرة عن تاريخ تسليمها (راجعة من قبل ولسا ما
+   * تسلمت فعلياً) تُستثنى بالكامل ولا تُحتسب ضمن أي يوم - وجودها بالنظام متأخر
+   * عن الموعد، فما نعتمد عليها كـ"سيارة راح ترجع اليوم" لأنها فعلياً متأخرة.
+   */
+  function computeReturnDayLabel(dropoffText) {
+    var dateOnly = parseDropoffDateOnly(dropoffText);
+    if (!dateOnly) return null;
+    var now = new Date();
+    var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var diffDays = Math.round((dateOnly - todayMid) / 86400000);
+    if (diffDays < 0) return null; // متأخرة - نستثنيها
+    if (diffDays === 0) return 'اليوم';
+    if (diffDays === 1) return 'غداً';
+    return WEEKDAY_NAMES[dateOnly.getDay()];
+  }
+
+  /** يحوّل السجلات الخام لصفحة "المستأجرة" إلى سيارات مسترجعة بنفس الفرع فقط */
+  function parseReturnsFromRecords(rawRecords) {
+    return rawRecords
+      .filter(function (r) { return r.group; })
+      .filter(function (r) {
+        var branchRaw = (r.dropoffBranch || '').trim();
+        // نتجاهل أي سيارة راجعة لفرع مختلف - ما تفيد أسطول فرعك
+        return !branchRaw || normalizeArabic(branchRaw) === normalizeArabic(SAME_BRANCH_LABEL);
+      })
+      .map(function (r) {
+        return { group: r.group.trim(), day: computeReturnDayLabel(r.dropoffText) };
+      })
+      .filter(function (r) { return r.day; });
+  }
+
   // ==========================================================
   // تشخيص (Console) - يساعد على معرفة سبب عدم ظهور بيانات مصدر معيّن
   // دون الحاجة للوصول المباشر لموقع Yaqeen
@@ -525,13 +619,30 @@
   // تحميل كل البيانات (مع الكاش)
   // ==========================================================
 
+  /**
+   * صفحة "المستأجرة" ثقيلة (مئات الصفوف)، فأحياناً رغم فحص tableHasMeaningfulData
+   * ترجع محاولة واحدة بصفر سجلات خام (لسا ما اكتمل تحميلها بالكامل). نعيد
+   * المحاولة تلقائياً بدل ما نعرض عمود "مسترجعة" فاضي بالغلط.
+   */
+  function fetchReturnedRecordsWithRetry(attempt) {
+    attempt = attempt || 1;
+    var frame = openHiddenFrame(URLS.returned);
+    return fetchAllRecordsFromFrame(frame, URLS.returned, RETURNED_COLUMNS_MAP).then(function (result) {
+      if (result.records.length === 0 && attempt < MAX_FETCH_ATTEMPTS) {
+        console.warn('[تقرير الحجوزات القادمة] محاولة جلب المسترجعة ' + attempt + ' رجعت بدون بيانات، إعادة محاولة...');
+        return fetchReturnedRecordsWithRetry(attempt + 1);
+      }
+      return result;
+    });
+  }
+
   function fetchAllData(force) {
     if (state.dataLoaded && !force) return Promise.resolve();
 
     setStatus('جارٍ تحميل بيانات الحجوزات والسيارات...', 'loading');
     showLoadingOverlay();
 
-    // ننشئ الإطارات الثلاثة فوراً - بعكس النوافذ المنبثقة، الـiframe عنصر
+    // ننشئ الإطارات فوراً - بعكس النوافذ المنبثقة، الـiframe عنصر
     // DOM عادي، فما فيه خطر حظر Popup ولا حاجة نفتحه بشكل متزامن ضمن نفس
     // ضغطة المستخدم.
     var bookingsFrame = openHiddenFrame(URLS.bookings);
@@ -561,17 +672,19 @@
           all: branchVehicles.concat(yardVehicles),
         };
 
+        if (yardVehicles.length === 0) {
+          console.warn('[تقرير الحجوزات القادمة] لم يتم العثور على أي مركبة في الساحة');
+        }
+
+        return fetchReturnedRecordsWithRetry();
+      })
+      .then(function (result) {
+        state.returns = parseReturnsFromRecords(result.records);
+        console.log('[تقرير الحجوزات القادمة] إجمالي السيارات المسترجعة بنفس الفرع (كل الصفحات):', state.returns.length);
+
         state.dataLoaded = true;
         state.lastUpdated = new Date();
-
-        if (yardVehicles.length === 0) {
-          setStatus(
-            'تم التحديث، لكن لم يتم العثور على أي مركبة في الساحة — افتح Console (F12) وابحث عن "تشخيص مصدر: الساحة" لمعرفة السبب',
-            'error'
-          );
-        } else {
-          setStatus('تم التحديث: ' + state.lastUpdated.toLocaleTimeString('ar-SA'), 'success');
-        }
+        setStatus('تم التحديث: ' + state.lastUpdated.toLocaleTimeString('ar-SA'), 'success');
         hideLoadingOverlay();
       })
       .catch(function (error) {
@@ -599,7 +712,7 @@
    * حالياً - عشان لو المستخدم يعدّل وهو بوضع "الساحة" ثم يرجع لوضع "الكل"،
    * التعديل يبقى منعكساً بنفس القيمة.
    */
-  function buildReportRows(bookings, vehiclesBySource, selectedSource, selectedDaysOrdered, vehicleOverrides) {
+  function buildReportRows(bookings, vehiclesBySource, selectedSource, selectedDaysOrdered, vehicleOverrides, returns) {
     var branchCountByGroup = {};
     (vehiclesBySource.branch || []).forEach(function (group) {
       branchCountByGroup[group] = (branchCountByGroup[group] || 0) + 1;
@@ -617,10 +730,18 @@
       dayMap[booking.day] = (dayMap[booking.day] || 0) + 1;
     });
 
+    var returnCountByGroupDay = {};
+    (returns || []).forEach(function (ret) {
+      if (!returnCountByGroupDay[ret.group]) returnCountByGroupDay[ret.group] = {};
+      var dayMap = returnCountByGroupDay[ret.group];
+      dayMap[ret.day] = (dayMap[ret.day] || 0) + 1;
+    });
+
     var allGroups = {};
     Object.keys(branchCountByGroup).forEach(function (g) { allGroups[g] = true; });
     Object.keys(yardCountByGroup).forEach(function (g) { allGroups[g] = true; });
     Object.keys(bookingCountByGroupDay).forEach(function (g) { allGroups[g] = true; });
+    Object.keys(returnCountByGroupDay).forEach(function (g) { allGroups[g] = true; });
 
     var rows = Object.keys(allGroups).map(function (group) {
       var branchCount = branchCountByGroup[group] || 0;
@@ -636,16 +757,27 @@
         branchCount + yardCount;
 
       var dayMap = bookingCountByGroupDay[group] || {};
+      var returnDayMap = returnCountByGroupDay[group] || {};
       var dayCounts = {};
+      var dayReturns = {};
       var totalBookings = 0;
+      var totalReturns = 0;
       selectedDaysOrdered.forEach(function (day) {
         var count = dayMap[day] || 0;
+        var returnCount = returnDayMap[day] || 0;
         dayCounts[day] = count;
+        dayReturns[day] = returnCount;
         totalBookings += count;
+        totalReturns += returnCount;
       });
 
-      var occupancyPercent = vehicleCount > 0 ? (totalBookings / vehicleCount) * 100 : totalBookings > 0 ? Infinity : 0;
-      var difference = vehicleCount - totalBookings;
+      // نضيف السيارات المسترجعة (نفس الفرع) خلال الأيام المختارة للسيارات
+      // الجاهزة حالياً، عشان نسبة الإشغال والفرق تعكس أنه فيه سيارات راح
+      // ترجع وتغطي جزء من النقص - بدل ما تُحسب فقط من الجاهز الآن
+      var effectiveVehicleCount = vehicleCount + totalReturns;
+
+      var occupancyPercent = effectiveVehicleCount > 0 ? (totalBookings / effectiveVehicleCount) * 100 : totalBookings > 0 ? Infinity : 0;
+      var difference = effectiveVehicleCount - totalBookings;
 
       return {
         group: group,
@@ -653,7 +785,10 @@
         branchCount: branchCount,
         yardCount: yardCount,
         totalBookings: totalBookings,
+        totalReturns: totalReturns,
+        effectiveVehicleCount: effectiveVehicleCount,
         dayCounts: dayCounts,
+        dayReturns: dayReturns,
         occupancyPercent: occupancyPercent,
         difference: difference,
       };
@@ -819,6 +954,27 @@
     return td;
   }
 
+  /** خلية عمود يوم: عدد الحجوزات بالخط العريض، وتحته - إن وُجد - عدد السيارات المسترجعة بنفس اليوم/الفرع */
+  function buildDayCell(bookingCount, returnCount, extraClassName) {
+    var td = document.createElement('td');
+    if (extraClassName) td.className = extraClassName;
+    td.dataset.copyText = returnCount > 0 ? bookingCount + ' (+' + returnCount + ' مسترجعة)' : String(bookingCount);
+
+    var mainEl = document.createElement('div');
+    mainEl.textContent = bookingCount;
+    td.appendChild(mainEl);
+
+    if (returnCount > 0) {
+      var subEl = document.createElement('div');
+      subEl.className = 'yqn-return-sub';
+      subEl.title = 'سيارات مسترجعة لنفس الفرع متوقعة بهذا اليوم';
+      subEl.textContent = '↩ ' + returnCount;
+      td.appendChild(subEl);
+    }
+
+    return td;
+  }
+
   // ==========================================================
   // بناء الجدول (الأعمدة تُبنى تلقائياً حسب الأيام المختارة)
   // ==========================================================
@@ -839,8 +995,17 @@
     selectedDaysOrdered.forEach(function (day, index) {
       columns.push({ key: 'day:' + day, label: day, dividerBefore: index === 0 });
     });
-    columns.push({ key: 'occupancy', label: 'نسبة الإشغال', dividerBefore: true });
-    columns.push({ key: 'difference', label: 'الفرق' });
+    columns.push({
+      key: 'occupancy',
+      label: 'نسبة الإشغال',
+      dividerBefore: true,
+      title: 'السيارات الجاهزة + السيارات المسترجعة (نفس الفرع) بالأيام المختارة، مقابل الحجوزات',
+    });
+    columns.push({
+      key: 'difference',
+      label: 'الفرق',
+      title: 'السيارات الجاهزة + السيارات المسترجعة (نفس الفرع) بالأيام المختارة - الحجوزات',
+    });
     return columns;
   }
 
@@ -867,8 +1032,14 @@
         return;
       }
       if (col.key === 'vehicles') {
-        var vehiclesCell = buildVehiclesCell(row, columnCellClassName(col));
-        tr.appendChild(vehiclesCell);
+        tr.appendChild(buildVehiclesCell(row, columnCellClassName(col)));
+        return;
+      }
+      if (col.key.indexOf('day:') === 0) {
+        var day = col.key.slice(4);
+        var bookingCount = row.dayCounts[day] || 0;
+        var returnCount = (row.dayReturns && row.dayReturns[day]) || 0;
+        tr.appendChild(buildDayCell(bookingCount, returnCount, columnCellClassName(col)));
         return;
       }
       var td = document.createElement('td');
@@ -878,9 +1049,6 @@
         classNames.push('yqn-group-cell');
       } else if (col.key === 'bookings') {
         td.textContent = row.totalBookings;
-      } else if (col.key.indexOf('day:') === 0) {
-        var day = col.key.slice(4);
-        td.textContent = row.dayCounts[day] || 0;
       }
       if (classNames.length) td.className = classNames.join(' ');
       tr.appendChild(td);
@@ -894,21 +1062,29 @@
 
     var totalVehicles = 0;
     var totalBookings = 0;
+    var totalReturns = 0;
     var totalsByDay = {};
+    var returnsByDay = {};
     rows.forEach(function (r) {
       totalVehicles += r.vehicleCount;
       totalBookings += r.totalBookings;
+      totalReturns += r.totalReturns || 0;
       Object.keys(r.dayCounts).forEach(function (day) {
         totalsByDay[day] = (totalsByDay[day] || 0) + r.dayCounts[day];
       });
+      Object.keys(r.dayReturns || {}).forEach(function (day) {
+        returnsByDay[day] = (returnsByDay[day] || 0) + r.dayReturns[day];
+      });
     });
-    var totalOccupancy = totalVehicles > 0 ? (totalBookings / totalVehicles) * 100 : totalBookings > 0 ? Infinity : 0;
-    var totalDifference = totalVehicles - totalBookings;
+    // نفس منطق الصف الفردي: نضيف السيارات المسترجعة للأيام المختارة على
+    // الجاهزة حالياً قبل حساب نسبة الإشغال والفرق الإجمالية
+    var totalEffectiveVehicles = totalVehicles + totalReturns;
+    var totalOccupancy = totalEffectiveVehicles > 0 ? (totalBookings / totalEffectiveVehicles) * 100 : totalBookings > 0 ? Infinity : 0;
+    var totalDifference = totalEffectiveVehicles - totalBookings;
 
     columns.forEach(function (col) {
       if (col.key === 'occupancy') {
-        var occCell = buildOccupancyCell(totalOccupancy, columnCellClassName(col));
-        tr.appendChild(occCell);
+        tr.appendChild(buildOccupancyCell(totalOccupancy, columnCellClassName(col)));
         return;
       }
       if (col.key === 'difference') {
@@ -917,12 +1093,16 @@
         tr.appendChild(diffCell);
         return;
       }
+      if (col.key.indexOf('day:') === 0) {
+        var day = col.key.slice(4);
+        tr.appendChild(buildDayCell(totalsByDay[day] || 0, returnsByDay[day] || 0, columnCellClassName(col)));
+        return;
+      }
       var td = document.createElement('td');
       var classNames = [columnCellClassName(col)].filter(Boolean);
       if (col.key === 'group') td.textContent = 'الإجمالي';
       else if (col.key === 'vehicles') td.textContent = totalVehicles;
       else if (col.key === 'bookings') td.textContent = totalBookings;
-      else if (col.key.indexOf('day:') === 0) td.textContent = totalsByDay[col.key.slice(4)] || 0;
       if (classNames.length) td.className = classNames.join(' ');
       tr.appendChild(td);
     });
@@ -946,7 +1126,7 @@
   /** يحسب صفوف التقرير الحالية (حسب الفلاتر المختارة) بدون أي لمس للـ DOM - تُستخدم لعرض الجدول ولبناء رسالة واتساب */
   function getCurrentReportData() {
     var selectedDaysOrdered = getSelectedDaysOrdered();
-    var rows = buildReportRows(state.bookings || [], state.vehiclesBySource, state.selectedSource, selectedDaysOrdered, state.vehicleOverrides);
+    var rows = buildReportRows(state.bookings || [], state.vehiclesBySource, state.selectedSource, selectedDaysOrdered, state.vehicleOverrides, state.returns || []);
     // نعرض أي مجموعة عندها سيارات جاهزة حتى لو بدون أي حجز، أو عندها حجوزات
     // حتى لو بدون سيارات جاهزة حالياً - نخفي فقط الصفوف الفارغة كلياً (لا
     // سيارات ولا حجوزات) لأنها ما تضيف أي معلومة للتقرير
@@ -977,6 +1157,7 @@
     columns.forEach(function (col) {
       var th = document.createElement('th');
       th.textContent = col.label + sortIndicator(col.key);
+      if (col.title) th.title = col.title;
       var headClassNames = [columnCellClassName(col)].filter(Boolean);
       if (headClassNames.length) th.className = headClassNames.join(' ');
       th.addEventListener('click', function () { onSortClick(col.key); });
@@ -1000,6 +1181,7 @@
     tfoot.appendChild(buildTotalsRow(sortedRows, columns));
 
     modalEls.totalBookingsEl.textContent = (state.bookings || []).length;
+    modalEls.totalReturnsEl.textContent = (state.returns || []).length;
   }
 
   // ==========================================================
@@ -1122,7 +1304,8 @@
     '.yqn-bar-text{position:relative;z-index:1;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45);}' +
     '.yqn-diff-positive{color:#16a34a;font-weight:bold;}' +
     '.yqn-diff-negative{color:#dc2626;font-weight:bold;}' +
-    '.yqn-diff-zero{color:#b45309;font-weight:bold;}';
+    '.yqn-diff-zero{color:#b45309;font-weight:bold;}' +
+    '.yqn-return-sub{font-size:10.5px;color:#16a34a;font-weight:bold;margin-top:2px;}';
 
   /**
    * ينسخ جدول التقرير كنص HTML ثابت (بدون عناصر <input> التفاعلية لتعديل
@@ -1151,7 +1334,8 @@
       '<div class="yqn-print-meta">' + escapeHtml(now) +
       ' | مصدر السيارات: ' + escapeHtml(sourceLabel) +
       ' | الأيام: ' + escapeHtml(daysLabel) +
-      ' | إجمالي الحجوزات: ' + escapeHtml(String((state.bookings || []).length)) + '</div>'
+      ' | إجمالي الحجوزات: ' + escapeHtml(String((state.bookings || []).length)) +
+      ' | إجمالي المسترجعة (نفس الفرع): ' + escapeHtml(String((state.returns || []).length)) + '</div>'
     );
   }
 
@@ -1436,7 +1620,7 @@
       '<header class="yqn-header">' +
       '  <div class="yqn-header-titles">' +
       '    <h2>📊 تقرير الحجوزات القادمة</h2>' +
-      '    <div class="yqn-stat-badge">عدد الحجوزات الكلي: <strong id="yqn-total-bookings">0</strong></div>' +
+      '    <div class="yqn-stat-badge">الحجوزات: <strong id="yqn-total-bookings">0</strong> | المسترجعة (نفس الفرع): <strong id="yqn-total-returns">0</strong></div>' +
       '  </div>' +
       '  <button type="button" class="yqn-close" aria-label="إغلاق">✕</button>' +
       '</header>' +
@@ -1516,6 +1700,7 @@
       modal: modal,
       table: modal.querySelector('.yqn-table'),
       totalBookingsEl: modal.querySelector('#yqn-total-bookings'),
+      totalReturnsEl: modal.querySelector('#yqn-total-returns'),
       statusEl: modal.querySelector('#yqn-status'),
       loadingOverlayEl: modal.querySelector('#yqn-loading-overlay'),
     };
@@ -1629,6 +1814,7 @@
     '.yqn-yard-edit{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:3px;}' +
     '.yqn-yard-edit .yqn-vehicle-input{width:40px;padding:3px 2px;font-size:12px;}' +
     '.yqn-yard-label{font-size:10px;opacity:.55;white-space:nowrap;}' +
+    '.yqn-return-sub{font-size:10.5px;color:#16a34a;font-weight:bold;margin-top:2px;line-height:1.2;}' +
     '.yqn-bar-wrapper{position:relative;height:22px;border-radius:7px;background:#e5e5e5;overflow:hidden;min-width:120px;}' +
     '.yqn-bar-fill{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:7px;transition:width .2s;}' +
     '.yqn-occ-good .yqn-bar-fill{background:#22c55e;}' +
