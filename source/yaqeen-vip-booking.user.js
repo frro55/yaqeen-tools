@@ -223,7 +223,7 @@
         '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;max-height:90vh;overflow-y:auto;box-sizing:border-box;}' +
         '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
-        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #cec7b4;border-radius:12px;font-size:15px;' +
         'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
         '.yq-field.yq-field-err{border-color:#dc2626;}' +
         '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
@@ -246,17 +246,31 @@
         '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
         '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
-        '.vip-field-wrap{text-align:right;margin-bottom:10px;}' +
-        '.vip-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:5px;}' +
-        '.vip-field-wrap select,.vip-field-wrap input,.vip-field-wrap textarea{width:100%;padding:10px;' +
-        'border:1.5px solid #e9e7df;border-radius:10px;font-size:13px;box-sizing:border-box;font-family:inherit;' +
+        '.vip-field-wrap{text-align:right;margin-bottom:16px;}' +
+        '.vip-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:6px;}' +
+        '.vip-field-wrap select,.vip-field-wrap input,.vip-field-wrap textarea{width:100%;padding:11px;' +
+        'border:1.5px solid #cec7b4;border-radius:10px;font-size:13.5px;box-sizing:border-box;font-family:inherit;' +
         'background:#fbfbf9;color:#1c1c1a;}' +
+        '.vip-field-wrap select:focus,.vip-field-wrap input:focus,.vip-field-wrap textarea:focus{' +
+        'outline:2px solid #a8cf5a;border-color:#79a916;}' +
         '.vip-field-wrap textarea{resize:vertical;}' +
         '.vip-form-actions{display:flex;gap:8px;}' +
         '.vip-form-actions button{flex:1;padding:12px;border:0;border-radius:12px;cursor:pointer;' +
         'font-size:13px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
-        '.vip-form-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}';
-
+        '.vip-form-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
+        '.yq-btn-secondary:hover{background:#e5e2d5;}' +
+        '.yq-btn-primary:hover{filter:brightness(1.06);}' +
+        '.yq-menu-btn:hover{background:#e5e2d5;}' +
+        '.yq-toast-close:hover{color:#1c1c1a;}' +
+        '.yq-report-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.yq-report-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.vip-form-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.vip-form-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.shift-pick-btn:not(.current):hover{background:#e5e2d5;}' +
+        '.shift-add-emp-btn:hover{background:#e5e2d5;}' +
+        '.shift-emp-remove:hover{background:#fbdada;}' +
+        '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
         if (document.getElementById('yq-shared-styles')) return;
         const style = document.createElement('style');
@@ -339,7 +353,7 @@
         closeBox();
         injectYqStyles();
 
-        const grid2 = 'display:grid;grid-template-columns:1fr 1fr;gap:0 10px;';
+        const grid2 = 'display:grid;grid-template-columns:1fr 1fr;gap:0 14px;';
 
         const html =
             '<h3 style="margin-bottom:14px;">⭐ إضافة حجز VIP</h3>' +
@@ -370,7 +384,7 @@
             '<button id="vip-form-save-send" class="yq-primary">📩 حفظ وإرسال للقروب</button>' +
             '</div>';
 
-        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 480));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 540));
 
         document.getElementById('vip-form-cancel').onclick = closeBox;
         document.getElementById('vip-form-save').onclick = () => handleSave(false);

@@ -53,7 +53,7 @@
         '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
         '.yq-field-wrap{text-align:right;margin-bottom:12px;}' +
         '.yq-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:5px;}' +
-        '.yq-field{width:100%;padding:12px;border:1.5px solid #e9e7df;border-radius:12px;font-size:14px;' +
+        '.yq-field{width:100%;padding:12px;border:1.5px solid #cec7b4;border-radius:12px;font-size:14px;' +
         'box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
         '.yq-field.yq-field-err{border-color:#dc2626;}' +
         'textarea.yq-field{resize:vertical;}' +
@@ -78,8 +78,20 @@
         '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
         '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}';
-
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
+        '.yq-btn-secondary:hover{background:#e5e2d5;}' +
+        '.yq-btn-primary:hover{filter:brightness(1.06);}' +
+        '.yq-menu-btn:hover{background:#e5e2d5;}' +
+        '.yq-toast-close:hover{color:#1c1c1a;}' +
+        '.yq-report-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.yq-report-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.vip-form-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.vip-form-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.shift-pick-btn:not(.current):hover{background:#e5e2d5;}' +
+        '.shift-add-emp-btn:hover{background:#e5e2d5;}' +
+        '.shift-emp-remove:hover{background:#fbdada;}' +
+        '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
         if (document.getElementById('yq-shared-styles')) return;
         const style = document.createElement('style');
@@ -126,7 +138,7 @@
         box.className = "yq-overlay";
 
         box.innerHTML = `
-        <div class="yq-card yq-pad">
+        <div class="yq-card yq-pad" style="max-width:320px;">
         <h3>📧 إيميل</h3>
 
         <button id="close-agreement" class="yq-menu-btn">🔒 إغلاق عقد</button>

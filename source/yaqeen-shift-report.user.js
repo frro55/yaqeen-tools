@@ -387,7 +387,7 @@
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
         '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
         '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
-        '.yq-field{width:100%;padding:13px;border:1.5px solid #e9e7df;border-radius:12px;font-size:15px;' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #cec7b4;border-radius:12px;font-size:15px;' +
         'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
         '.yq-field.yq-field-err{border-color:#dc2626;}' +
         '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
@@ -414,27 +414,40 @@
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:17px;font-weight:800;}' +
         '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
-        '.shift-section-label{font-weight:800;font-size:13px;margin-bottom:6px;color:#1c1c1a;}' +
-        '.shift-mini-field{width:100%;padding:9px;border:1.5px solid #e9e7df;border-radius:10px;font-size:14px;' +
+        '.shift-section-label{font-weight:800;font-size:13px;margin-bottom:8px;color:#1c1c1a;}' +
+        '.shift-mini-field{width:100%;padding:11px;border:1.5px solid #cec7b4;border-radius:10px;font-size:14px;' +
         'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
-        '.shift-add-emp-btn{width:100%;padding:9px;margin-top:6px;border:0;border-radius:10px;cursor:pointer;' +
-        'background:#f1f0ea;color:#767068;font-size:12px;font-weight:700;font-family:inherit;}' +
-        '.shift-emp-name,.shift-emp-count{padding:8px;border:1.5px solid #e9e7df;border-radius:9px;font-size:13px;' +
+        '.shift-mini-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}' +
+        '.shift-add-emp-btn{width:100%;padding:10px;margin-top:8px;border:0;border-radius:10px;cursor:pointer;' +
+        'background:#f1f0ea;color:#767068;font-size:12px;font-weight:700;font-family:inherit;transition:background .15s;}' +
+        '.shift-emp-name,.shift-emp-count{padding:9px;border:1.5px solid #cec7b4;border-radius:9px;font-size:13px;' +
         'text-align:center;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
         '.shift-emp-name{text-align:right;flex:2;}' +
         '.shift-emp-count{flex:1;}' +
         '.shift-emp-remove{padding:0 12px;border:0;border-radius:9px;background:#fdecec;color:#dc2626;cursor:pointer;font-family:inherit;}' +
-        '.shift-preview{width:100%;height:170px;box-sizing:border-box;padding:12px;border:1.5px solid #e9e7df;' +
+        '.shift-preview{width:100%;height:190px;box-sizing:border-box;padding:14px;border:1.5px solid #cec7b4;' +
         'border-radius:12px;font-size:13px;text-align:left;resize:vertical;white-space:pre;background:#fbfbf9;color:#1c1c1a;font-family:inherit;}' +
         '.shift-pick-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
         'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
-        '.shift-pick-btn.current{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}';
-
+        '.shift-pick-btn.current{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
+        '.yq-btn-secondary:hover{background:#e5e2d5;}' +
+        '.yq-btn-primary:hover{filter:brightness(1.06);}' +
+        '.yq-menu-btn:hover{background:#e5e2d5;}' +
+        '.yq-toast-close:hover{color:#1c1c1a;}' +
+        '.yq-report-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.yq-report-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.vip-form-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.vip-form-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.shift-pick-btn:not(.current):hover{background:#e5e2d5;}' +
+        '.shift-add-emp-btn:hover{background:#e5e2d5;}' +
+        '.shift-emp-remove:hover{background:#fbdada;}' +
+        '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
         if (document.getElementById('yq-shared-styles')) return;
         const style = document.createElement('style');
@@ -525,7 +538,7 @@
 
     function empRowHtml(section) {
         return (
-            '<div class="shift-emp-row" data-section="' + section + '" style="display:flex;gap:6px;margin-top:6px;">' +
+            '<div class="shift-emp-row" data-section="' + section + '" style="display:flex;gap:8px;margin-top:8px;">' +
             '<input type="text" class="shift-emp-name" placeholder="اسم الموظف" />' +
             '<input type="number" class="shift-emp-count" placeholder="العدد" />' +
             '<button class="shift-emp-remove">✕</button>' +
@@ -599,12 +612,12 @@
 
         const html =
             '<div id="shift-report-box" class="yq-overlay">' +
-            '<div style="width:min(480px,95vw);max-height:92vh;display:flex;flex-direction:column;' +
+            '<div style="width:min(520px,95vw);max-height:92vh;display:flex;flex-direction:column;' +
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
             '<div class="yq-report-title">📋 تقرير الشفت - ' + shift.label + '</div>' +
             '</div>' +
-            '<div style="overflow:auto;flex:1;padding:20px;text-align:right;">' +
+            '<div style="overflow:auto;flex:1;padding:24px;text-align:right;">' +
 
             '<div class="shift-section-label">Opened (إجمالي من الموقع)</div>' +
             '<input id="shift-report-opened-total" type="number" value="' + (numbers.opened ?? '') + '" class="shift-mini-field" />' +

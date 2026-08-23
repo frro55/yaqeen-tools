@@ -253,13 +253,13 @@
             '<div id="ai-chat-messages" style="height:320px;overflow-y:auto;padding:16px;"></div>' +
             '<div id="ai-chat-typing" style="display:none;padding:0 16px 8px;font-size:12px;font-weight:700;color:#a19c92;text-align:right;">... يكتب</div>' +
             '<div id="ai-chat-preview" style="display:none;align-items:center;padding:0 16px 10px;"></div>' +
-            '<div style="display:flex;gap:8px;padding:14px 16px;border-top:1px solid #e9e7df;align-items:center;">' +
+            '<div style="display:flex;gap:8px;padding:14px 16px;border-top:1px solid #cec7b4;align-items:center;">' +
             '<button id="ai-chat-send" style="padding:0 18px;height:40px;border:0;border-radius:11px;' +
             'background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;cursor:pointer;font-size:13.5px;font-weight:800;font-family:inherit;">إرسال</button>' +
             '<input id="ai-chat-input" type="text" placeholder="اكتب سؤالك..." style="' +
-            'flex:1;padding:10px 13px;border:1.5px solid #e9e7df;border-radius:11px;font-size:13.5px;' +
+            'flex:1;padding:10px 13px;border:1.5px solid #cec7b4;border-radius:11px;font-size:13.5px;' +
             'text-align:right;direction:rtl;font-family:inherit;background:#fbfbf9;color:#1c1c1a;box-sizing:border-box;" />' +
-            '<button id="ai-chat-attach" title="إرفاق صورة" style="width:40px;height:40px;border:1.5px solid #e9e7df;' +
+            '<button id="ai-chat-attach" title="إرفاق صورة" style="width:40px;height:40px;border:1.5px solid #cec7b4;' +
             'border-radius:11px;background:#fbfbf9;cursor:pointer;font-size:15px;">📎</button>' +
             '<input id="ai-chat-file" type="file" accept="image/*" style="display:none;" />' +
             '</div>';
@@ -270,6 +270,7 @@
         document.body.insertAdjacentHTML('beforeend',
             '<div id="ai-chat-box" style="' +
             'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:20px;' +
+            'border:1.5px solid #cec7b4;' +
             'overflow:hidden;direction:rtl;font-family:"Tajawal",Arial,Tahoma,sans-serif;box-shadow:0 20px 50px -12px rgba(0,0,0,.35);' +
             'z-index:999999999;">' + html + '</div>'
         );
@@ -279,6 +280,13 @@
         makeDraggable(panel, header);
 
         document.getElementById('ai-chat-close').onclick = closeBox;
+
+        const attachBtn = document.getElementById('ai-chat-attach');
+        attachBtn.onmouseenter = () => { attachBtn.style.background = '#f1f0ea'; };
+        attachBtn.onmouseleave = () => { attachBtn.style.background = '#fbfbf9'; };
+        const sendBtn = document.getElementById('ai-chat-send');
+        sendBtn.onmouseenter = () => { sendBtn.style.filter = 'brightness(1.06)'; };
+        sendBtn.onmouseleave = () => { sendBtn.style.filter = 'none'; };
 
         const input = document.getElementById('ai-chat-input');
         input.focus();

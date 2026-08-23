@@ -66,8 +66,20 @@
         'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
         '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
         '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}';
-
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
+        '.yq-btn-secondary:hover{background:#e5e2d5;}' +
+        '.yq-btn-primary:hover{filter:brightness(1.06);}' +
+        '.yq-menu-btn:hover{background:#e5e2d5;}' +
+        '.yq-toast-close:hover{color:#1c1c1a;}' +
+        '.yq-report-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.yq-report-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.vip-form-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.vip-form-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.shift-pick-btn:not(.current):hover{background:#e5e2d5;}' +
+        '.shift-add-emp-btn:hover{background:#e5e2d5;}' +
+        '.shift-emp-remove:hover{background:#fbdada;}' +
+        '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
         if (document.getElementById('yq-shared-styles')) return;
         var style = document.createElement('style');

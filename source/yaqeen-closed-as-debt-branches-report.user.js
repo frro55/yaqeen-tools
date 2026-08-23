@@ -598,7 +598,7 @@
         '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
         '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
-        '.yq-branch-list{text-align:right;max-height:280px;overflow:auto;border:1.5px solid #e9e7df;' +
+        '.yq-branch-list{text-align:right;max-height:280px;overflow:auto;border:1.5px solid #cec7b4;' +
         'border-radius:12px;padding:10px 14px;background:#fbfbf9;}' +
         '.yq-branch-list label{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:14px;cursor:pointer;}' +
         '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
@@ -608,7 +608,7 @@
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:17px;font-weight:800;}' +
         '.yq-report-sub{font-size:12.5px;margin-top:5px;opacity:.85;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #e9e7df;}' +
+        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
@@ -616,12 +616,24 @@
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
         'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
-        'border-bottom:1.5px solid #e9e7df;}' +
-        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #e9e7df;}' +
+        'border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
         '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
-        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}';
-
+        'cursor:pointer;font-size:11.5px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
+        '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
+        '.yq-btn-secondary:hover{background:#e5e2d5;}' +
+        '.yq-btn-primary:hover{filter:brightness(1.06);}' +
+        '.yq-menu-btn:hover{background:#e5e2d5;}' +
+        '.yq-toast-close:hover{color:#1c1c1a;}' +
+        '.yq-report-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.yq-report-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.vip-form-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.vip-form-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.shift-pick-btn:not(.current):hover{background:#e5e2d5;}' +
+        '.shift-add-emp-btn:hover{background:#e5e2d5;}' +
+        '.shift-emp-remove:hover{background:#fbdada;}' +
+        '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
         if (document.getElementById('yq-shared-styles')) return;
         const style = document.createElement('style');

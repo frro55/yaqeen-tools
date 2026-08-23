@@ -221,20 +221,20 @@
         '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
         '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
-        '.yq-info-box{font-size:12.5px;color:#767068;line-height:1.9;margin-bottom:18px;padding:12px 14px;' +
-        'background:#fbfbf7;border-radius:12px;border:1px solid #e9e7df;text-align:right;}' +
+        '.yq-info-box{font-size:13px;color:#767068;line-height:2;margin-bottom:20px;padding:16px 18px;' +
+        'background:#fbfbf7;border-radius:14px;border:1.5px solid #cec7b4;text-align:right;}' +
         '.yq-info-box strong{color:#1c1c1a;}' +
-        '.yq-btn{width:100%;padding:13px;margin-bottom:9px;border:1.5px solid #e9e7df;border-radius:13px;' +
+        '.yq-btn{width:100%;padding:14px;margin-bottom:11px;border:1.5px solid #cec7b4;border-radius:13px;' +
         'cursor:pointer;background:#fff;color:#1c1c1a;font-size:13.5px;font-weight:700;font-family:inherit;' +
-        'text-align:right;display:block;}' +
+        'text-align:right;display:block;transition:background .15s,border-color .15s;}' +
         '.yq-btn-primary{border:0;background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
         'font-weight:800;box-shadow:0 8px 16px -8px rgba(121,169,22,.55);text-align:center;}' +
         '.yq-btn-secondary{background:#f1f0ea;border:0;color:#767068;text-align:center;}' +
-        '.yq-btn-row{display:flex;gap:8px;}' +
+        '.yq-btn-row{display:flex;gap:10px;}' +
         '.yq-btn-row .yq-btn{margin-bottom:0;}' +
-        '.yq-textarea{width:100%;height:220px;box-sizing:border-box;padding:14px;border:1.5px solid #e9e7df;' +
-        'border-radius:14px;font-size:13px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf9;' +
-        'line-height:1.8;}' +
+        '.yq-textarea{width:100%;height:250px;box-sizing:border-box;padding:16px;border:1.5px solid #cec7b4;' +
+        'border-radius:14px;font-size:13.5px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf9;' +
+        'line-height:1.9;}' +
         '.yq-meta-line{font-size:12px;color:#767068;margin:10px 0 16px;}' +
         '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
         'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
@@ -250,8 +250,20 @@
         '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
         '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
         '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
-        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}';
-
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
+        '.yq-btn-secondary:hover{background:#e5e2d5;}' +
+        '.yq-btn-primary:hover{filter:brightness(1.06);}' +
+        '.yq-menu-btn:hover{background:#e5e2d5;}' +
+        '.yq-toast-close:hover{color:#1c1c1a;}' +
+        '.yq-report-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.yq-report-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.vip-form-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
+        '.vip-form-actions button.yq-primary:hover{filter:brightness(1.06);}' +
+        '.shift-pick-btn:not(.current):hover{background:#e5e2d5;}' +
+        '.shift-add-emp-btn:hover{background:#e5e2d5;}' +
+        '.shift-emp-remove:hover{background:#fbdada;}' +
+        '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
     function injectYqStyles() {
         if (document.getElementById('yq-shared-styles')) return;
         const style = document.createElement('style');
@@ -325,7 +337,7 @@
             templateButtonsHtml +
             '<button id="customer-msg-cancel" class="yq-btn yq-btn-secondary" style="margin-top:6px;">إلغاء</button>';
 
-        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 400));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 430));
 
         document.querySelectorAll('.customer-msg-tpl-btn').forEach(btn => {
             btn.onclick = () => {
@@ -351,7 +363,7 @@
             '<button id="customer-msg-send" class="yq-btn yq-btn-primary">✅ إرسال</button>' +
             '</div>';
 
-        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 420));
+        document.body.insertAdjacentHTML('beforeend', overlayShell(html, 460));
 
         document.getElementById('customer-msg-back').onclick = () => showChoicePrompt(customer);
         document.getElementById('customer-msg-send').onclick = async () => {

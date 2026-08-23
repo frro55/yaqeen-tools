@@ -868,6 +868,10 @@
     td.dataset.copyText = label;
 
     var level = occupancyLevel(percent);
+
+    var row = document.createElement('div');
+    row.className = 'yqn-occ-row';
+
     var wrapper = document.createElement('div');
     wrapper.className = 'yqn-bar-wrapper yqn-occ-' + level;
 
@@ -876,14 +880,16 @@
     // نضمن حداً أدنى من العرض المرئي حتى عند 0% حتى لا يبدو الشريط فارغاً/معطوباً
     var widthPercent = Number.isFinite(percent) ? Math.max(Math.min(percent, 100), 4) : 100;
     fill.style.width = widthPercent + '%';
+    wrapper.appendChild(fill);
 
+    // النسبة كنص خارج الشريط (بدل الكتابة فوقه) - نفس فكرة تصميم "Main" المعتمد
     var text = document.createElement('span');
-    text.className = 'yqn-bar-text';
+    text.className = 'yqn-bar-text yqn-occ-' + level;
     text.textContent = label;
 
-    wrapper.appendChild(fill);
-    wrapper.appendChild(text);
-    td.appendChild(wrapper);
+    row.appendChild(wrapper);
+    row.appendChild(text);
+    td.appendChild(row);
     return td;
   }
 
@@ -1307,12 +1313,16 @@
     '.yqn-totals-row{font-weight:bold;background:#f0f0f0;}' +
     '.yqn-group-cell{font-weight:bold;}' +
     '.yqn-vehicle-input{width:52px;border:0;background:transparent;text-align:center;font:inherit;color:inherit;}' +
-    '.yqn-bar-wrapper{position:relative;display:block;height:16px;min-width:80px;border-radius:5px;background:#e5e5e5;overflow:hidden;}' +
+    '.yqn-occ-row{display:flex;align-items:center;gap:6px;}' +
+    '.yqn-bar-wrapper{position:relative;flex:1;display:block;height:10px;min-width:60px;border-radius:5px;background:#e5e5e5;overflow:hidden;}' +
     '.yqn-bar-fill{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:5px;}' +
     '.yqn-occ-good .yqn-bar-fill{background:#22c55e;}' +
     '.yqn-occ-warning .yqn-bar-fill{background:#eab308;}' +
     '.yqn-occ-critical .yqn-bar-fill{background:#ef4444;}' +
-    '.yqn-bar-text{position:relative;z-index:1;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45);}' +
+    '.yqn-bar-text{font-weight:bold;white-space:nowrap;}' +
+    '.yqn-bar-text.yqn-occ-good{color:#16a34a;}' +
+    '.yqn-bar-text.yqn-occ-warning{color:#b45309;}' +
+    '.yqn-bar-text.yqn-occ-critical{color:#dc2626;}' +
     '.yqn-diff-positive{color:#16a34a;font-weight:bold;}' +
     '.yqn-diff-negative{color:#dc2626;font-weight:bold;}' +
     '.yqn-diff-zero{color:#b45309;font-weight:bold;}' +
@@ -1637,22 +1647,21 @@
       '</header>' +
       '<div class="yqn-toolbar">' +
       '  <div class="yqn-actions">' +
-      '    <button type="button" data-action="refresh">🔄 تحديث البيانات</button>' +
-      '    <button type="button" data-action="copy">📋 نسخ الجدول</button>' +
-      '    <button type="button" data-action="export">📊 تصدير Excel</button>' +
-      '    <button type="button" data-action="print">🖨️ طباعة التقرير</button>' +
-      '    <button type="button" data-action="whatsapp">📱 إرسال صورة واتساب</button>' +
+      '    <button type="button" class="yqn-icon-btn" data-action="refresh" title="تحديث البيانات">🔄</button>' +
+      '    <button type="button" class="yqn-icon-btn" data-action="copy" title="نسخ الجدول">📋</button>' +
+      '    <button type="button" class="yqn-icon-btn" data-action="export" title="تصدير Excel">📊</button>' +
+      '    <button type="button" class="yqn-icon-btn" data-action="print" title="طباعة التقرير">🖨️</button>' +
       '  </div>' +
-      '</div>' +
-      '<div class="yqn-filters">' +
-      '  <div class="yqn-filter-group">' +
-      '    <span class="yqn-filter-label">مصدر السيارات</span>' +
-      '    <fieldset class="yqn-source-filter" aria-label="مصدر السيارات"></fieldset>' +
-      '  </div>' +
-      '  <div class="yqn-filter-divider" aria-hidden="true"></div>' +
-      '  <div class="yqn-filter-group yqn-filter-group--grow">' +
-      '    <span class="yqn-filter-label">الأيام</span>' +
-      '    <div class="yqn-day-chips"></div>' +
+      '  <div class="yqn-filters">' +
+      '    <div class="yqn-filter-group">' +
+      '      <span class="yqn-filter-label">مصدر السيارات</span>' +
+      '      <fieldset class="yqn-source-filter" aria-label="مصدر السيارات"></fieldset>' +
+      '    </div>' +
+      '    <div class="yqn-filter-divider" aria-hidden="true"></div>' +
+      '    <div class="yqn-filter-group yqn-filter-group--grow">' +
+      '      <span class="yqn-filter-label">الأيام</span>' +
+      '      <div class="yqn-day-chips"></div>' +
+      '    </div>' +
       '  </div>' +
       '</div>' +
       '<div class="yqn-table-wrapper">' +
@@ -1662,7 +1671,8 @@
       '    <div>جارٍ تحميل البيانات...</div>' +
       '  </div>' +
       '</div>' +
-      '<div class="yqn-status" id="yqn-status"></div>';
+      '<div class="yqn-status" id="yqn-status"></div>' +
+      '<button type="button" class="yqn-fab-whatsapp" data-action="whatsapp" title="إرسال صورة واتساب">📱</button>';
 
     // مصدر السيارات (Radio buttons)
     var sourceFieldset = modal.querySelector('.yqn-source-filter');
@@ -1766,36 +1776,45 @@
     '.yqn-modal{background:#fff;color:#1c1c1a;border-radius:22px;position:relative;' +
     'box-shadow:0 30px 60px -20px rgba(0,0,0,.35);' +
     'width:min(1560px,97vw);height:min(920px,94vh);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;}' +
-    // --- الرأس: بنفس أسلوب باقي الأدوات - تدرّج أخضر، عنوان + سطر إحصائي تحته ---
+    // --- الرأس: أبيض مع أيقونة بجانب العنوان + سطر إحصائي تحته (بدل الشريط الأخضر الكامل القديم) ---
     '.yqn-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 28px;' +
-    'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+    'background:#fff;color:#1c1c1a;border-bottom:1px solid #e9e7df;}' +
     '.yqn-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:5px;}' +
     '.yqn-header h2{margin:0;font-size:17px;font-weight:800;}' +
-    '.yqn-stat-badge{font-size:12.5px;opacity:.85;}' +
-    '.yqn-stat-badge strong{font-weight:800;}' +
-    '.yqn-close{background:transparent;border:0;font-size:18px;cursor:pointer;color:inherit;line-height:1;padding:8px;border-radius:9px;flex-shrink:0;opacity:.75;}' +
-    '.yqn-close:hover{background:rgba(0,0,0,.08);opacity:1;}' +
-    // --- شريط الأدوات: أزرار الإجراءات فقط، بمسافات متساوية بدون فراغ زائد ---
-    '.yqn-toolbar{display:flex;align-items:center;padding:14px 28px;border-bottom:1px solid #e9e7df;}' +
-    '.yqn-actions{display:flex;flex-wrap:wrap;gap:9px;}' +
-    '.yqn-actions button{cursor:pointer;border:0;background:#f1f0ea;color:#1c1c1a;font-family:inherit;' +
-    'padding:11px 16px;border-radius:11px;font-size:12.5px;font-weight:800;transition:background .15s;}' +
-    '.yqn-actions button:hover{background:#e9e7df;}' +
-    '.yqn-actions button[data-action="whatsapp"]{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+    '.yqn-stat-badge{font-size:12.5px;color:#767068;}' +
+    '.yqn-stat-badge strong{font-weight:800;color:#1c1c1a;}' +
+    '.yqn-close{background:transparent;border:0;font-size:18px;cursor:pointer;color:#a19c92;line-height:1;padding:8px;border-radius:9px;flex-shrink:0;}' +
+    '.yqn-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
+    // --- شريط موحّد: أيقونات الإجراءات + الفلاتر بصف واحد مضغوط ---
+    '.yqn-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;' +
+    'padding:14px 28px;border-bottom:1px solid #e9e7df;background:#fbfbf9;}' +
+    '.yqn-actions{display:flex;flex-wrap:wrap;gap:8px;}' +
+    '.yqn-icon-btn{cursor:pointer;border:1.5px solid #e9e7df;background:#fff;color:#1c1c1a;font-family:inherit;' +
+    'width:38px;height:38px;border-radius:11px;font-size:15px;line-height:1;transition:background .15s,border-color .15s;' +
+    'display:flex;align-items:center;justify-content:center;}' +
+    '.yqn-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
     // --- لوحة الفلاتر: قسمين واضحين (مصدر السيارات / الأيام) مع عنوان وفاصل بينهما ---
-    '.yqn-filters{display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding:16px 28px;' +
-    'background:#fbfbf9;border-bottom:1px solid #e9e7df;}' +
-    '.yqn-filter-group{display:flex;flex-direction:column;gap:8px;}' +
-    '.yqn-filter-group--grow{flex:1;min-width:260px;}' +
-    '.yqn-filter-label{font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
+    '.yqn-filters{display:flex;flex-wrap:wrap;align-items:center;gap:20px;}' +
+    '.yqn-filter-group{display:flex;flex-direction:column;gap:7px;}' +
+    '.yqn-filter-group--grow{flex:1;min-width:220px;}' +
+    '.yqn-filter-label{font-size:10.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
     '.yqn-filter-divider{align-self:stretch;width:1px;background:#e9e7df;}' +
-    '.yqn-source-filter{display:flex;align-items:center;gap:14px;border:0;padding:0;margin:0;flex-wrap:wrap;}' +
-    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;}' +
-    '.yqn-source-filter input[type="radio"]{width:16px;height:16px;accent-color:#79a916;}' +
-    '.yqn-day-chips{display:flex;flex-wrap:wrap;gap:8px;}' +
+    '.yqn-source-filter{display:flex;align-items:center;gap:12px;border:0;padding:0;margin:0;flex-wrap:wrap;}' +
+    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;}' +
+    '.yqn-source-filter input[type="radio"]{width:15px;height:15px;accent-color:#79a916;}' +
+    '.yqn-day-chips{display:flex;flex-wrap:wrap;gap:7px;}' +
     '.yqn-chip{cursor:pointer;border:1.5px solid #e9e7df;background:#fff;color:#1c1c1a;font-family:inherit;' +
-    'padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;transition:all .15s;}' +
+    'padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:700;transition:all .15s;}' +
+    '.yqn-chip:hover{border-color:#a19c92;}' +
     '.yqn-chip--active{background:linear-gradient(160deg,#A3E635,#79a916);border-color:transparent;color:#3c4a10;font-weight:800;}' +
+    // --- زر إرسال واتساب عائم (Floating Action Button) - داخل حدود البطاقة
+    // (مو خارجها) لأن .yqn-modal فيها overflow:hidden لازمة لتدوير زوايا
+    // الرأس/الجدول، فأي إحداثي سالب هنا كان بينقص فعلياً ---
+    '.yqn-fab-whatsapp{position:absolute;bottom:18px;left:18px;width:54px;height:54px;border-radius:50%;border:0;' +
+    'background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;font-size:22px;cursor:pointer;z-index:6;' +
+    'box-shadow:0 12px 24px -8px rgba(22,163,74,.55);display:flex;align-items:center;justify-content:center;' +
+    'transition:transform .15s;}' +
+    '.yqn-fab-whatsapp:hover{transform:scale(1.06);}' +
     // --- الجدول ---
     // تمرير مرئي بوضوح (سماكة ولون واضحين) حتى يظهر جلياً إن المنطقة قابلة
     // للتمرير حتى بدون تحريك الماوس فوقها - يحل مشكلة عدم ملاحظة إمكانية
@@ -1828,7 +1847,15 @@
     '.yqn-table tbody tr:nth-child(even){background-color:#fafaf6;}' +
     '.yqn-table tbody tr:hover{background-color:#f1f0ea;}' +
     '.yqn-group-cell{font-weight:800;font-size:15px;}' +
-    '.yqn-totals-row{font-weight:800;background-color:#fafaf6 !important;position:sticky;bottom:0;z-index:2;}' +
+    // --- صف الإجماليات كشريط داكن مستقل بصرياً بدل صف جدول عادي ---
+    '.yqn-totals-row{font-weight:800;position:sticky;bottom:0;z-index:2;}' +
+    '.yqn-totals-row td{background-color:#1c1c1a !important;color:#fff;border-bottom:0;border-top:2px solid #1c1c1a;}' +
+    '.yqn-totals-row td:first-child{border-radius:0 0 0 12px;}' +
+    '.yqn-totals-row .yqn-bar-text{color:#fff !important;}' +
+    '.yqn-totals-row .yqn-bar-wrapper{background:rgba(255,255,255,.18);}' +
+    '.yqn-totals-row .yqn-diff-positive{color:#86efac;}' +
+    '.yqn-totals-row .yqn-diff-negative{color:#fca5a5;}' +
+    '.yqn-totals-row .yqn-diff-zero{color:#fcd34d;}' +
     '.yqn-empty{padding:32px !important;opacity:.6;font-size:14px;}' +
     '.yqn-vehicles-cell{padding:4px 8px !important;}' +
     '.yqn-vehicle-input{width:56px;padding:6px 4px;border:1.5px solid #e9e7df;border-radius:8px;text-align:center;' +
@@ -1839,13 +1866,17 @@
     '.yqn-yard-edit .yqn-vehicle-input{width:40px;padding:3px 2px;font-size:12px;}' +
     '.yqn-yard-label{font-size:10px;opacity:.55;white-space:nowrap;}' +
     '.yqn-return-sub{font-size:10.5px;color:#16a34a;font-weight:bold;margin-top:2px;line-height:1.2;}' +
-    '.yqn-bar-wrapper{position:relative;height:22px;border-radius:7px;background:#e5e5e5;overflow:hidden;min-width:120px;}' +
-    '.yqn-bar-fill{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:7px;transition:width .2s;}' +
+    // --- شريط الإشغال: خط رفيع + النسبة كنص ملوّن خارج الشريط (مو فوقه) ---
+    '.yqn-occ-row{display:flex;align-items:center;gap:9px;min-width:130px;}' +
+    '.yqn-bar-wrapper{position:relative;flex:1;height:8px;border-radius:6px;background:#efeee7;overflow:hidden;min-width:60px;}' +
+    '.yqn-bar-fill{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:6px;transition:width .2s;}' +
     '.yqn-occ-good .yqn-bar-fill{background:#22c55e;}' +
     '.yqn-occ-warning .yqn-bar-fill{background:#eab308;}' +
     '.yqn-occ-critical .yqn-bar-fill{background:#ef4444;}' +
-    '.yqn-bar-text{position:relative;z-index:1;font-size:12.5px;font-weight:bold;line-height:22px;' +
-    'text-shadow:0 1px 2px rgba(0,0,0,.35);color:#fff;}' +
+    '.yqn-bar-text{font-size:12.5px;font-weight:800;white-space:nowrap;flex-shrink:0;}' +
+    '.yqn-bar-text.yqn-occ-good{color:#16a34a;}' +
+    '.yqn-bar-text.yqn-occ-warning{color:#b45309;}' +
+    '.yqn-bar-text.yqn-occ-critical{color:#dc2626;}' +
     '.yqn-diff-cell{font-weight:bold;font-size:16px;}' +
     '.yqn-diff-positive{color:#16a34a;}' +
     '.yqn-diff-negative{color:#dc2626;}' +
