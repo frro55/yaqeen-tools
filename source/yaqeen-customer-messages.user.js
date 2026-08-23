@@ -221,9 +221,11 @@
         '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
         '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
-        '.yq-info-box{font-size:13px;color:#767068;line-height:2;margin-bottom:20px;padding:16px 18px;' +
-        'background:#fbfbf7;border-radius:14px;border:1.5px solid #cec7b4;text-align:right;}' +
+        '.yq-info-box{font-size:13px;color:#767068;line-height:2;margin-bottom:16px;padding:16px 18px;' +
+        'background:#fbfbf7;border-radius:14px;border:1.5px solid #cec7b4;text-align:right;' +
+        'border-inline-start:4px solid #79a916;}' +
         '.yq-info-box strong{color:#1c1c1a;}' +
+        '.yq-divider{height:1.5px;background:#e5e2d5;margin:4px 0 18px;}' +
         '.yq-btn{width:100%;padding:14px;margin-bottom:11px;border:1.5px solid #cec7b4;border-radius:13px;' +
         'cursor:pointer;background:#fff;color:#1c1c1a;font-size:13.5px;font-weight:700;font-family:inherit;' +
         'text-align:right;display:block;transition:background .15s,border-color .15s;}' +
@@ -232,10 +234,11 @@
         '.yq-btn-secondary{background:#f1f0ea;border:0;color:#767068;text-align:center;}' +
         '.yq-btn-row{display:flex;gap:10px;}' +
         '.yq-btn-row .yq-btn{margin-bottom:0;}' +
-        '.yq-textarea{width:100%;height:250px;box-sizing:border-box;padding:16px;border:1.5px solid #cec7b4;' +
-        'border-radius:14px;font-size:13.5px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf9;' +
-        'line-height:1.9;}' +
-        '.yq-meta-line{font-size:12px;color:#767068;margin:10px 0 16px;}' +
+        '.yq-textarea{width:100%;height:260px;box-sizing:border-box;padding:16px;border:2px solid #a19c92;' +
+        'border-radius:14px;font-size:13.5px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf7;' +
+        'line-height:1.9;box-shadow:inset 0 2px 6px rgba(0,0,0,.04);}' +
+        '.yq-meta-line{font-size:12.5px;font-weight:600;color:#767068;margin:14px 0 18px;padding-top:14px;' +
+        'border-top:1.5px solid #e5e2d5;}' +
         '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
         'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
         '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
@@ -334,6 +337,7 @@
             'الاسم: <strong>' + escapeHtml(customer.name || 'غير معروف') + '</strong><br>' +
             'الجوال: <span dir="ltr"><strong>' + escapeHtml(customer.phone || 'غير معروف') + '</strong></span>' +
             '</div>' +
+            '<div class="yq-divider"></div>' +
             templateButtonsHtml +
             '<button id="customer-msg-cancel" class="yq-btn yq-btn-secondary" style="margin-top:6px;">إلغاء</button>';
 

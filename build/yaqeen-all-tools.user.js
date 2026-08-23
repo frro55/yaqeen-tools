@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0823.2305
+// @version      2026.0823.2332
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -10841,9 +10841,11 @@ ${rowsHtml}
         '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
         '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
-        '.yq-info-box{font-size:13px;color:#767068;line-height:2;margin-bottom:20px;padding:16px 18px;' +
-        'background:#fbfbf7;border-radius:14px;border:1.5px solid #cec7b4;text-align:right;}' +
+        '.yq-info-box{font-size:13px;color:#767068;line-height:2;margin-bottom:16px;padding:16px 18px;' +
+        'background:#fbfbf7;border-radius:14px;border:1.5px solid #cec7b4;text-align:right;' +
+        'border-inline-start:4px solid #79a916;}' +
         '.yq-info-box strong{color:#1c1c1a;}' +
+        '.yq-divider{height:1.5px;background:#e5e2d5;margin:4px 0 18px;}' +
         '.yq-btn{width:100%;padding:14px;margin-bottom:11px;border:1.5px solid #cec7b4;border-radius:13px;' +
         'cursor:pointer;background:#fff;color:#1c1c1a;font-size:13.5px;font-weight:700;font-family:inherit;' +
         'text-align:right;display:block;transition:background .15s,border-color .15s;}' +
@@ -10852,10 +10854,11 @@ ${rowsHtml}
         '.yq-btn-secondary{background:#f1f0ea;border:0;color:#767068;text-align:center;}' +
         '.yq-btn-row{display:flex;gap:10px;}' +
         '.yq-btn-row .yq-btn{margin-bottom:0;}' +
-        '.yq-textarea{width:100%;height:250px;box-sizing:border-box;padding:16px;border:1.5px solid #cec7b4;' +
-        'border-radius:14px;font-size:13.5px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf9;' +
-        'line-height:1.9;}' +
-        '.yq-meta-line{font-size:12px;color:#767068;margin:10px 0 16px;}' +
+        '.yq-textarea{width:100%;height:260px;box-sizing:border-box;padding:16px;border:2px solid #a19c92;' +
+        'border-radius:14px;font-size:13.5px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf7;' +
+        'line-height:1.9;box-shadow:inset 0 2px 6px rgba(0,0,0,.04);}' +
+        '.yq-meta-line{font-size:12.5px;font-weight:600;color:#767068;margin:14px 0 18px;padding-top:14px;' +
+        'border-top:1.5px solid #e5e2d5;}' +
         '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
         'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
         '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
@@ -10954,6 +10957,7 @@ ${rowsHtml}
             'الاسم: <strong>' + escapeHtml(customer.name || 'غير معروف') + '</strong><br>' +
             'الجوال: <span dir="ltr"><strong>' + escapeHtml(customer.phone || 'غير معروف') + '</strong></span>' +
             '</div>' +
+            '<div class="yq-divider"></div>' +
             templateButtonsHtml +
             '<button id="customer-msg-cancel" class="yq-btn yq-btn-secondary" style="margin-top:6px;">إلغاء</button>';
 
@@ -12664,6 +12668,7 @@ ${rowsHtml}
       '    <button type="button" class="yqn-icon-btn" data-action="copy" title="نسخ الجدول">📋</button>' +
       '    <button type="button" class="yqn-icon-btn" data-action="export" title="تصدير Excel">📊</button>' +
       '    <button type="button" class="yqn-icon-btn" data-action="print" title="طباعة التقرير">🖨️</button>' +
+      '    <button type="button" class="yqn-icon-btn yqn-icon-btn--whatsapp" data-action="whatsapp" title="إرسال صورة واتساب">📱</button>' +
       '  </div>' +
       '  <div class="yqn-filters">' +
       '    <div class="yqn-filter-group">' +
@@ -12684,8 +12689,7 @@ ${rowsHtml}
       '    <div>جارٍ تحميل البيانات...</div>' +
       '  </div>' +
       '</div>' +
-      '<div class="yqn-status" id="yqn-status"></div>' +
-      '<button type="button" class="yqn-fab-whatsapp" data-action="whatsapp" title="إرسال صورة واتساب">📱</button>';
+      '<div class="yqn-status" id="yqn-status"></div>';
 
     // مصدر السيارات (Radio buttons)
     var sourceFieldset = modal.querySelector('.yqn-source-filter');
@@ -12806,6 +12810,10 @@ ${rowsHtml}
     'width:38px;height:38px;border-radius:11px;font-size:15px;line-height:1;transition:background .15s,border-color .15s;' +
     'display:flex;align-items:center;justify-content:center;}' +
     '.yqn-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
+    '.yqn-icon-btn--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);border-color:transparent;' +
+    'color:#fff;box-shadow:0 6px 14px -6px rgba(22,163,74,.55);}' +
+    '.yqn-icon-btn--whatsapp:hover{background:linear-gradient(160deg,#25D366,#16a34a);filter:brightness(1.06);' +
+    'border-color:transparent;}' +
     // --- لوحة الفلاتر: قسمين واضحين (مصدر السيارات / الأيام) مع عنوان وفاصل بينهما ---
     '.yqn-filters{display:flex;flex-wrap:wrap;align-items:center;gap:20px;}' +
     '.yqn-filter-group{display:flex;flex-direction:column;gap:7px;}' +
@@ -12820,14 +12828,6 @@ ${rowsHtml}
     'padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:700;transition:all .15s;}' +
     '.yqn-chip:hover{border-color:#a19c92;}' +
     '.yqn-chip--active{background:linear-gradient(160deg,#A3E635,#79a916);border-color:transparent;color:#3c4a10;font-weight:800;}' +
-    // --- زر إرسال واتساب عائم (Floating Action Button) - داخل حدود البطاقة
-    // (مو خارجها) لأن .yqn-modal فيها overflow:hidden لازمة لتدوير زوايا
-    // الرأس/الجدول، فأي إحداثي سالب هنا كان بينقص فعلياً ---
-    '.yqn-fab-whatsapp{position:absolute;bottom:18px;left:18px;width:54px;height:54px;border-radius:50%;border:0;' +
-    'background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;font-size:22px;cursor:pointer;z-index:6;' +
-    'box-shadow:0 12px 24px -8px rgba(22,163,74,.55);display:flex;align-items:center;justify-content:center;' +
-    'transition:transform .15s;}' +
-    '.yqn-fab-whatsapp:hover{transform:scale(1.06);}' +
     // --- الجدول ---
     // تمرير مرئي بوضوح (سماكة ولون واضحين) حتى يظهر جلياً إن المنطقة قابلة
     // للتمرير حتى بدون تحريك الماوس فوقها - يحل مشكلة عدم ملاحظة إمكانية
@@ -13663,7 +13663,7 @@ ${rowsHtml}
             'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:20px;' +
             'border:1.5px solid #cec7b4;' +
             'overflow:hidden;direction:rtl;font-family:"Tajawal",Arial,Tahoma,sans-serif;box-shadow:0 20px 50px -12px rgba(0,0,0,.35);' +
-            'z-index:999999999;">' + html + '</div>'
+            'z-index:2147483647;">' + html + '</div>'
         );
 
         const panel = document.getElementById('ai-chat-box');

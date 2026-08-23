@@ -272,7 +272,7 @@
             'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:20px;' +
             'border:1.5px solid #cec7b4;' +
             'overflow:hidden;direction:rtl;font-family:"Tajawal",Arial,Tahoma,sans-serif;box-shadow:0 20px 50px -12px rgba(0,0,0,.35);' +
-            'z-index:999999999;">' + html + '</div>'
+            'z-index:2147483647;">' + html + '</div>'
         );
 
         const panel = document.getElementById('ai-chat-box');
