@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0028
+// @version      2026.0824.0039
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1500,14 +1500,19 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
         '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
         '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
         'font-size:15px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
-        '.yq-report-big{font-size:40px;font-weight:800;margin-top:4px;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-big{font-size:40px;font-weight:800;margin-top:4px;color:#16a34a;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
         'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
@@ -1846,6 +1851,7 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
 overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 
 <div class="yq-report-header">
+<button type="button" class="yq-report-close" id="close-report-x" aria-label="إغلاق">✕</button>
 <div class="yq-report-title">إجمالي السيارات المتوفرة</div>
 <div class="yq-report-big">${total}</div>
 </div>
@@ -1873,9 +1879,8 @@ overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 </div>
 
 <div class="yq-report-actions">
-<button id="print-report">🖨️ طباعة</button>
-<button id="refresh-report">🔄 تحديث</button>
-<button id="close-report" class="yq-primary">إغلاق</button>
+<button id="print-report" class="yq-icon-btn" title="طباعة">🖨️</button>
+<button id="refresh-report" class="yq-icon-btn" title="تحديث">🔄</button>
 </div>
 
 </div>
@@ -1883,7 +1888,7 @@ overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 
         document.body.insertAdjacentHTML("beforeend", html);
 
-        document.getElementById("close-report").onclick = () => {
+        document.getElementById("close-report-x").onclick = () => {
             document.getElementById("available-report").remove();
         };
 
@@ -3601,8 +3606,11 @@ ${rowsHtml}
         '.yq-toast-text{flex:1;text-align:right;font-size:13.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
         '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:14px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
         '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
@@ -3611,11 +3619,20 @@ ${rowsHtml}
         '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
         '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
         '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
-        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
+        '.yq-btn-labeled{cursor:pointer;border:0;border-radius:11px;height:38px;padding:0 16px;font-size:13.5px;' +
+        'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
+        'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
+        '.yq-btn-labeled:hover{background:#e5e2d5;}' +
+        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
+        '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
+        '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
         'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
@@ -3762,6 +3779,7 @@ ${rowsHtml}
             '<div style="width:min(460px,95vw);max-height:85vh;background:#fff;border-radius:22px;' +
             'overflow:hidden;direction:rtl;display:flex;flex-direction:column;">' +
             '<div class="yq-report-header">' +
+            '<button type="button" class="yq-report-close" id="airport-hours-close" aria-label="إغلاق">✕</button>' +
             '<div class="yq-report-title">🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</div>' +
             '<div class="yq-stat-row">' +
             '<span class="yq-stat-chip yq-stat-chip--result">📋 <strong>' + totalBookings + '</strong> حجز</span>' +
@@ -3775,11 +3793,10 @@ ${rowsHtml}
             '</tr>' + rowsHtml + '</table>' +
             '</div>' +
             '<div class="yq-report-actions">' +
-            '<button id="airport-hours-refresh">🔄 تحديث</button>' +
-            '<button id="airport-hours-print">🖨️ طباعة</button>' +
-            '<button id="airport-hours-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
-            '<button id="airport-hours-change">تغيير المدة</button>' +
-            '<button id="airport-hours-close">إغلاق</button>' +
+            '<button id="airport-hours-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
+            '<button id="airport-hours-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
+            '<button id="airport-hours-change" class="yq-btn-labeled">⏱️ تغيير المدة</button>' +
+            '<button id="airport-hours-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -4863,8 +4880,11 @@ ${rowsHtml}
         '.yq-toast-text{flex:1;text-align:right;font-size:13.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
         '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:14px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
         '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
@@ -4873,11 +4893,20 @@ ${rowsHtml}
         '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
         '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
         '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
-        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
+        '.yq-btn-labeled{cursor:pointer;border:0;border-radius:11px;height:38px;padding:0 16px;font-size:13.5px;' +
+        'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
+        'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
+        '.yq-btn-labeled:hover{background:#e5e2d5;}' +
+        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
+        '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
+        '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
         'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
@@ -5293,6 +5322,7 @@ ${rowsHtml}
             '<div style="width:min(980px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
+            '<button type="button" class="yq-report-close" id="late-payments-close" aria-label="إغلاق">✕</button>' +
             '<div class="yq-report-title">💰 العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
             '<div class="yq-stat-row">' +
             '<span class="yq-stat-chip yq-stat-chip--result">⚠️ <strong>' + records.length + '</strong> عقد متأخر</span>' +
@@ -5311,12 +5341,11 @@ ${rowsHtml}
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div class="yq-report-actions">' +
-            '<button id="late-payments-copy">📋 نسخ</button>' +
-            '<button id="late-payments-print">🖨️ طباعة</button>' +
-            '<button id="late-payments-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
-            '<button id="late-payments-send-all" class="yq-send">📤 إرسال للجميع</button>' +
-            '<button id="late-payments-refresh">🔄 تحديث</button>' +
-            '<button id="late-payments-close">إغلاق</button>' +
+            '<button id="late-payments-copy" class="yq-icon-btn" title="نسخ الجدول">📋</button>' +
+            '<button id="late-payments-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
+            '<button id="late-payments-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
+            '<button id="late-payments-send-all" class="yq-btn-labeled yq-btn-labeled--send">📤 إرسال للجميع</button>' +
+            '<button id="late-payments-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -6167,8 +6196,11 @@ ${rowsHtml}
         '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
         '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#767068;font-weight:700;}' +
         '.yq-link-row a{color:#79a916;text-decoration:none;font-size:13.5px;}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
         '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
@@ -6177,11 +6209,20 @@ ${rowsHtml}
         '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
         '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
         '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
-        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
+        '.yq-btn-labeled{cursor:pointer;border:0;border-radius:11px;height:38px;padding:0 16px;font-size:13.5px;' +
+        'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
+        'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
+        '.yq-btn-labeled:hover{background:#e5e2d5;}' +
+        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
+        '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
+        '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
         'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
@@ -6627,6 +6668,7 @@ ${rowsHtml}
             '<div style="width:min(1000px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
+            '<button type="button" class="yq-report-close" id="late-payments-close" aria-label="إغلاق">✕</button>' +
             '<div class="yq-report-title">💰 العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
             '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
             '<div class="yq-stat-row">' +
@@ -6646,13 +6688,12 @@ ${rowsHtml}
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div class="yq-report-actions">' +
-            '<button id="late-payments-copy">📋 نسخ</button>' +
-            '<button id="late-payments-print">🖨️ طباعة</button>' +
-            '<button id="late-payments-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
-            '<button id="late-payments-send-all" class="yq-send">📤 إرسال للجميع</button>' +
-            '<button id="late-payments-change-branch">🏢 تغيير الفروع</button>' +
-            '<button id="late-payments-refresh">🔄 تحديث</button>' +
-            '<button id="late-payments-close">إغلاق</button>' +
+            '<button id="late-payments-copy" class="yq-icon-btn" title="نسخ الجدول">📋</button>' +
+            '<button id="late-payments-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
+            '<button id="late-payments-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
+            '<button id="late-payments-change-branch" class="yq-btn-labeled">🏢 تغيير الفروع</button>' +
+            '<button id="late-payments-send-all" class="yq-btn-labeled yq-btn-labeled--send">📤 إرسال للجميع</button>' +
+            '<button id="late-payments-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -7091,8 +7132,11 @@ ${rowsHtml}
         '.yq-toast-text{flex:1;text-align:right;font-size:13.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
         '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:14px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
         '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
@@ -7101,11 +7145,20 @@ ${rowsHtml}
         '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
         '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
         '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
-        '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
+        '.yq-btn-labeled{cursor:pointer;border:0;border-radius:11px;height:38px;padding:0 16px;font-size:13.5px;' +
+        'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
+        'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
+        '.yq-btn-labeled:hover{background:#e5e2d5;}' +
+        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
+        '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
+        '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
         'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
@@ -7485,6 +7538,7 @@ ${rowsHtml}
             '<div style="width:min(1040px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
+            '<button type="button" class="yq-report-close" id="company-ext-close" aria-label="إغلاق">✕</button>' +
             '<div class="yq-report-title">🏢 عقود الشركات غير الممددة</div>' +
             '<div class="yq-stat-row">' +
             '<span class="yq-stat-chip yq-stat-chip--result">🏢 <strong>' + records.length + '</strong> عقد يحتاج تمديد</span>' +
@@ -7503,11 +7557,10 @@ ${rowsHtml}
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div class="yq-report-actions">' +
-            '<button id="company-ext-copy">📋 نسخ</button>' +
-            '<button id="company-ext-print">🖨️ طباعة</button>' +
-            '<button id="company-ext-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
-            '<button id="company-ext-refresh">🔄 تحديث</button>' +
-            '<button id="company-ext-close">إغلاق</button>' +
+            '<button id="company-ext-copy" class="yq-icon-btn" title="نسخ الجدول">📋</button>' +
+            '<button id="company-ext-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
+            '<button id="company-ext-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
+            '<button id="company-ext-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -7988,8 +8041,11 @@ ${rowsHtml}
         '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
         '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#767068;font-weight:700;}' +
         '.yq-link-row a{color:#79a916;text-decoration:none;font-size:13.5px;}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
         '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
@@ -7998,10 +8054,20 @@ ${rowsHtml}
         '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
         '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
         '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
+        '.yq-btn-labeled{cursor:pointer;border:0;border-radius:11px;height:38px;padding:0 16px;font-size:13.5px;' +
+        'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
+        'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
+        '.yq-btn-labeled:hover{background:#e5e2d5;}' +
+        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
+        '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
+        '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
         'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
@@ -8427,6 +8493,7 @@ ${rowsHtml}
             '<div style="width:min(1040px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
+            '<button type="button" class="yq-report-close" id="company-ext-close" aria-label="إغلاق">✕</button>' +
             '<div class="yq-report-title">🏢 عقود الشركات غير الممددة</div>' +
             '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
             '<div class="yq-stat-row">' +
@@ -8446,12 +8513,11 @@ ${rowsHtml}
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div class="yq-report-actions">' +
-            '<button id="company-ext-copy">📋 نسخ</button>' +
-            '<button id="company-ext-print">🖨️ طباعة</button>' +
-            '<button id="company-ext-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
-            '<button id="company-ext-change-branch">🏢 تغيير الفروع</button>' +
-            '<button id="company-ext-refresh">🔄 تحديث</button>' +
-            '<button id="company-ext-close">إغلاق</button>' +
+            '<button id="company-ext-copy" class="yq-icon-btn" title="نسخ الجدول">📋</button>' +
+            '<button id="company-ext-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
+            '<button id="company-ext-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
+            '<button id="company-ext-change-branch" class="yq-btn-labeled">🏢 تغيير الفروع</button>' +
+            '<button id="company-ext-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -9086,8 +9152,11 @@ ${rowsHtml}
         '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
         '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#767068;font-weight:700;}' +
         '.yq-link-row a{color:#79a916;text-decoration:none;font-size:13.5px;}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
         '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
@@ -9096,10 +9165,20 @@ ${rowsHtml}
         '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
         '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
         '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
+        '.yq-btn-labeled{cursor:pointer;border:0;border-radius:11px;height:38px;padding:0 16px;font-size:13.5px;' +
+        'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
+        'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
+        '.yq-btn-labeled:hover{background:#e5e2d5;}' +
+        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
+        '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
+        '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
@@ -9536,6 +9615,7 @@ ${rowsHtml}
             '<div style="width:min(960px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
+            '<button type="button" class="yq-report-close" id="closed-debt-close" aria-label="إغلاق">✕</button>' +
             '<div class="yq-report-title">📕 عقود أغلقت كمديونية</div>' +
             (monthsLabel ? (
                 '<div class="yq-report-sub">الشهور المحددة: ' + monthsLabel + '</div>'
@@ -9553,11 +9633,10 @@ ${rowsHtml}
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div class="yq-report-actions">' +
-            '<button id="closed-debt-copy">📋 نسخ</button>' +
-            '<button id="closed-debt-print">🖨️ طباعة</button>' +
-            '<button id="closed-debt-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
-            '<button id="closed-debt-refresh">🔄 تحديث</button>' +
-            '<button id="closed-debt-close">إغلاق</button>' +
+            '<button id="closed-debt-copy" class="yq-icon-btn" title="نسخ الجدول">📋</button>' +
+            '<button id="closed-debt-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
+            '<button id="closed-debt-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
+            '<button id="closed-debt-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -10191,8 +10270,11 @@ ${rowsHtml}
         '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
         '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#767068;font-weight:700;}' +
         '.yq-link-row a{color:#79a916;text-decoration:none;font-size:13.5px;}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
         '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
@@ -10201,10 +10283,20 @@ ${rowsHtml}
         '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
         '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
         '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
+        '.yq-btn-labeled{cursor:pointer;border:0;border-radius:11px;height:38px;padding:0 16px;font-size:13.5px;' +
+        'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
+        'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
+        '.yq-btn-labeled:hover{background:#e5e2d5;}' +
+        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
+        '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
+        '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
@@ -10686,6 +10778,7 @@ ${rowsHtml}
             '<div style="width:min(1000px,95vw);max-height:90vh;display:flex;flex-direction:column;' +
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
+            '<button type="button" class="yq-report-close" id="closed-debt-branches-close" aria-label="إغلاق">✕</button>' +
             '<div class="yq-report-title">📕 عقود أغلقت كمديونية</div>' +
             '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
             (monthsLabel ? (
@@ -10704,12 +10797,11 @@ ${rowsHtml}
             '</tr>' + bodyHtml + '</table>' +
             '</div>' +
             '<div class="yq-report-actions">' +
-            '<button id="closed-debt-branches-copy">📋 نسخ</button>' +
-            '<button id="closed-debt-branches-print">🖨️ طباعة</button>' +
-            '<button id="closed-debt-branches-whatsapp" class="yq-primary">📱 إرسال صورة واتساب</button>' +
-            '<button id="closed-debt-branches-change">🏢 تغيير الفروع</button>' +
-            '<button id="closed-debt-branches-refresh">🔄 تحديث</button>' +
-            '<button id="closed-debt-branches-close">إغلاق</button>' +
+            '<button id="closed-debt-branches-copy" class="yq-icon-btn" title="نسخ الجدول">📋</button>' +
+            '<button id="closed-debt-branches-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
+            '<button id="closed-debt-branches-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
+            '<button id="closed-debt-branches-change" class="yq-btn-labeled">🏢 تغيير الفروع</button>' +
+            '<button id="closed-debt-branches-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);

@@ -63,14 +63,19 @@
         '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
         '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
         'font-size:15px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
+        '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;position:relative;' +
+        'background:#fff;color:#1c1c1a;border-bottom:1.5px solid #cec7b4;}' +
+        '.yq-report-close{position:absolute;top:20px;left:24px;background:transparent;border:0;font-size:18px;' +
+        'cursor:pointer;color:#a19c92;padding:8px;border-radius:9px;line-height:1;transition:background .15s,color .15s;}' +
+        '.yq-report-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
-        '.yq-report-big{font-size:40px;font-weight:800;margin-top:4px;}' +
-        '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
-        '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
-        '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
+        '.yq-report-big{font-size:40px;font-weight:800;margin-top:4px;color:#16a34a;}' +
+        '.yq-report-actions{display:flex;gap:8px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;' +
+        'border-top:1.5px solid #cec7b4;align-items:center;}' +
+        '.yq-icon-btn{cursor:pointer;border:1.5px solid #cec7b4;background:#fff;color:#1c1c1a;font-family:inherit;' +
+        'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+        '.yq-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
         '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
         'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
@@ -409,6 +414,7 @@
 overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 
 <div class="yq-report-header">
+<button type="button" class="yq-report-close" id="close-report-x" aria-label="إغلاق">✕</button>
 <div class="yq-report-title">إجمالي السيارات المتوفرة</div>
 <div class="yq-report-big">${total}</div>
 </div>
@@ -436,9 +442,8 @@ overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 </div>
 
 <div class="yq-report-actions">
-<button id="print-report">🖨️ طباعة</button>
-<button id="refresh-report">🔄 تحديث</button>
-<button id="close-report" class="yq-primary">إغلاق</button>
+<button id="print-report" class="yq-icon-btn" title="طباعة">🖨️</button>
+<button id="refresh-report" class="yq-icon-btn" title="تحديث">🔄</button>
 </div>
 
 </div>
@@ -446,7 +451,7 @@ overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 
         document.body.insertAdjacentHTML("beforeend", html);
 
-        document.getElementById("close-report").onclick = () => {
+        document.getElementById("close-report-x").onclick = () => {
             document.getElementById("available-report").remove();
         };
 
