@@ -563,30 +563,17 @@
 
     /** يفحص لو فيه نسخة أحدث منشورة على السيرفر عن النسخة المثبتة حالياً، ويحدّث شارة الإشعار */
     function checkForScriptUpdate() {
-        console.log("[yaqeen-update-check] بدأ الفحص، النسخة المثبتة:", SCRIPT_VERSION);
-        if (SCRIPT_VERSION === "unknown") {
-            console.log("[yaqeen-update-check] توقف: SCRIPT_VERSION = unknown");
-            return;
-        }
+        if (SCRIPT_VERSION === "unknown") return;
         // نضيف باراميتر عشوائي لكسر أي كاش (متصفح أو GM_xmlhttpRequest) - بدونه
         // نفس الرابط المطلوب يرجّع نفس النسخة القديمة المخزّنة حتى لو
         // السيرفر فعلياً عنده نسخة أحدث، لأنه ما فيه أي إشارة تُجبر طلب شبكة جديد
         fetchText(UPDATE_SCRIPT_URL + "?_=" + Date.now()).then(text => {
-            if (!text) {
-                console.log("[yaqeen-update-check] توقف: fetchText رجع فاضي (فشل الطلب)");
-                return;
-            }
-            console.log("[yaqeen-update-check] وصل رد بطول", text.length, "حرف");
+            if (!text) return;
             const match = /@version\s+(\S+)/.exec(text);
-            if (!match) {
-                console.log("[yaqeen-update-check] توقف: ما لقيت @version بالرد");
-                return;
-            }
-            console.log("[yaqeen-update-check] النسخة بالسيرفر:", match[1], "| المثبتة:", SCRIPT_VERSION, "| أحدث؟", match[1] > SCRIPT_VERSION);
+            if (!match) return;
             if (match[1] > SCRIPT_VERSION) {
                 UPDATE_STATE.available = true;
                 updateUpdateBadge();
-                console.log("[yaqeen-update-check] فيه تحديث - الشارة لازم تظهر الحين");
             }
         });
     }
