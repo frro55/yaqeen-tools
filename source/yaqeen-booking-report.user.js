@@ -1306,8 +1306,8 @@
     '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
     'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
     'h1{font-size:20px;margin:0 0 4px;}' +
-    '.yqn-print-meta{color:#555;font-size:13px;margin-bottom:16px;}' +
-    'table{border-collapse:collapse;width:100%;font-size:12.5px;}' +
+    '.yqn-print-meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+    'table{border-collapse:collapse;width:100%;font-size:13.5px;}' +
     'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
     'th{background:#f0f0f0;}' +
     '.yqn-totals-row{font-weight:bold;background:#f0f0f0;}' +
@@ -1326,7 +1326,7 @@
     '.yqn-diff-positive{color:#16a34a;font-weight:bold;}' +
     '.yqn-diff-negative{color:#dc2626;font-weight:bold;}' +
     '.yqn-diff-zero{color:#b45309;font-weight:bold;}' +
-    '.yqn-return-sub{font-size:10.5px;color:#16a34a;font-weight:bold;margin-top:2px;}';
+    '.yqn-return-sub{font-size:11.5px;color:#16a34a;font-weight:bold;margin-top:2px;}';
 
   /**
    * ينسخ جدول التقرير كنص HTML ثابت (بدون عناصر <input> التفاعلية لتعديل
@@ -1771,7 +1771,7 @@
   // ==========================================================
   var MODAL_CSS =
     '.yqn-overlay{position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;' +
-    'background:rgba(20,18,12,.42);padding:24px;font-family:"Tajawal",Arial,Tahoma,sans-serif;font-size:16px;}' +
+    'background:rgba(20,18,12,.42);padding:24px;font-family:"Tajawal",Arial,Tahoma,sans-serif;font-size:17px;}' +
     '.yqn-overlay--open{display:flex;}' +
     '.yqn-modal{background:#fff;color:#1c1c1a;border-radius:22px;position:relative;' +
     'box-shadow:0 30px 60px -20px rgba(0,0,0,.35);' +
@@ -1780,8 +1780,8 @@
     '.yqn-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 28px;' +
     'background:#fff;color:#1c1c1a;border-bottom:1px solid #e9e7df;}' +
     '.yqn-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:5px;}' +
-    '.yqn-header h2{margin:0;font-size:17px;font-weight:800;}' +
-    '.yqn-stat-badge{font-size:12.5px;color:#767068;}' +
+    '.yqn-header h2{margin:0;font-size:18px;font-weight:800;}' +
+    '.yqn-stat-badge{font-size:13.5px;color:#767068;}' +
     '.yqn-stat-badge strong{font-weight:800;color:#1c1c1a;}' +
     '.yqn-close{background:transparent;border:0;font-size:18px;cursor:pointer;color:#a19c92;line-height:1;padding:8px;border-radius:9px;flex-shrink:0;}' +
     '.yqn-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
@@ -1790,7 +1790,7 @@
     'padding:14px 28px;border-bottom:1px solid #e9e7df;background:#fbfbf9;}' +
     '.yqn-actions{display:flex;flex-wrap:wrap;gap:8px;}' +
     '.yqn-icon-btn{cursor:pointer;border:1.5px solid #e9e7df;background:#fff;color:#1c1c1a;font-family:inherit;' +
-    'width:38px;height:38px;border-radius:11px;font-size:15px;line-height:1;transition:background .15s,border-color .15s;' +
+    'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
     'display:flex;align-items:center;justify-content:center;}' +
     '.yqn-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
     '.yqn-icon-btn--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);border-color:transparent;' +
@@ -1801,14 +1801,14 @@
     '.yqn-filters{display:flex;flex-wrap:wrap;align-items:center;gap:20px;}' +
     '.yqn-filter-group{display:flex;flex-direction:column;gap:7px;}' +
     '.yqn-filter-group--grow{flex:1;min-width:220px;}' +
-    '.yqn-filter-label{font-size:10.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
+    '.yqn-filter-label{font-size:11.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
     '.yqn-filter-divider{align-self:stretch;width:1px;background:#e9e7df;}' +
     '.yqn-source-filter{display:flex;align-items:center;gap:12px;border:0;padding:0;margin:0;flex-wrap:wrap;}' +
-    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;}' +
+    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;}' +
     '.yqn-source-filter input[type="radio"]{width:15px;height:15px;accent-color:#79a916;}' +
     '.yqn-day-chips{display:flex;flex-wrap:wrap;gap:7px;}' +
     '.yqn-chip{cursor:pointer;border:1.5px solid #e9e7df;background:#fff;color:#1c1c1a;font-family:inherit;' +
-    'padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:700;transition:all .15s;}' +
+    'padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:700;transition:all .15s;}' +
     '.yqn-chip:hover{border-color:#a19c92;}' +
     '.yqn-chip--active{background:linear-gradient(160deg,#A3E635,#79a916);border-color:transparent;color:#3c4a10;font-weight:800;}' +
     // --- الجدول ---
@@ -1822,14 +1822,14 @@
     '.yqn-table-wrapper::-webkit-scrollbar-thumb{background:#c7c3b8;border-radius:8px;border:3px solid #f0efe9;}' +
     '.yqn-table-wrapper::-webkit-scrollbar-thumb:hover{background:#a19c92;}' +
     '.yqn-loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.92);display:none;' +
-    'flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;font-size:13.5px;font-weight:700;color:#1c1c1a;}' +
+    'flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;font-size:14.5px;font-weight:700;color:#1c1c1a;}' +
     '.yqn-loading-overlay--visible{display:flex;}' +
     '.yqn-spinner-lg{width:32px;height:32px;border:3px solid #A3E635;border-left-color:transparent;' +
     'border-radius:50%;animation:yqn-spin .8s linear infinite;}' +
-    '.yqn-table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px;}' +
+    '.yqn-table{width:100%;border-collapse:collapse;font-size:15px;min-width:760px;}' +
     '.yqn-table th,.yqn-table td{padding:12px 16px;text-align:center;border-bottom:1px solid #e9e7df;white-space:nowrap;}' +
     '.yqn-table thead th{position:sticky;top:0;background:#fafaf6;cursor:pointer;user-select:none;z-index:3;' +
-    'font-weight:800;font-size:11px;color:#a19c92;text-transform:uppercase;letter-spacing:.02em;}' +
+    'font-weight:800;font-size:12px;color:#a19c92;text-transform:uppercase;letter-spacing:.02em;}' +
     // تثبيت أول ٣ أعمدة (المجموعة/السيارات/الحجوزات) عند التمرير الأفقي حتى تبقى هوية الصف ظاهرة دائماً
     '.yqn-table th:nth-child(1),.yqn-table td:nth-child(1){position:sticky;inset-inline-start:0;width:120px;min-width:120px;}' +
     '.yqn-table th:nth-child(2),.yqn-table td:nth-child(2){position:sticky;inset-inline-start:120px;width:96px;min-width:96px;}' +
@@ -1842,7 +1842,7 @@
     '.yqn-table tbody tr{background-color:#fff;}' +
     '.yqn-table tbody tr:nth-child(even){background-color:#fafaf6;}' +
     '.yqn-table tbody tr:hover{background-color:#f1f0ea;}' +
-    '.yqn-group-cell{font-weight:800;font-size:15px;}' +
+    '.yqn-group-cell{font-weight:800;font-size:16px;}' +
     // --- صف الإجماليات كشريط داكن مستقل بصرياً بدل صف جدول عادي ---
     '.yqn-totals-row{font-weight:800;position:sticky;bottom:0;z-index:2;}' +
     '.yqn-totals-row td{background-color:#1c1c1a !important;color:#fff;border-bottom:0;border-top:2px solid #1c1c1a;}' +
@@ -1852,16 +1852,16 @@
     '.yqn-totals-row .yqn-diff-positive{color:#86efac;}' +
     '.yqn-totals-row .yqn-diff-negative{color:#fca5a5;}' +
     '.yqn-totals-row .yqn-diff-zero{color:#fcd34d;}' +
-    '.yqn-empty{padding:32px !important;opacity:.6;font-size:14px;}' +
+    '.yqn-empty{padding:32px !important;opacity:.6;font-size:15px;}' +
     '.yqn-vehicles-cell{padding:4px 8px !important;}' +
     '.yqn-vehicle-input{width:56px;padding:6px 4px;border:1.5px solid #e9e7df;border-radius:8px;text-align:center;' +
     'font:inherit;font-weight:800;color:inherit;background:#fbfbf9;}' +
     '.yqn-vehicle-input:focus{outline:2px solid #79a916;border-color:#79a916;}' +
-    '.yqn-vehicles-total{font-weight:bold;font-size:15px;line-height:1.3;}' +
+    '.yqn-vehicles-total{font-weight:bold;font-size:16px;line-height:1.3;}' +
     '.yqn-yard-edit{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:3px;}' +
-    '.yqn-yard-edit .yqn-vehicle-input{width:40px;padding:3px 2px;font-size:12px;}' +
-    '.yqn-yard-label{font-size:10px;opacity:.55;white-space:nowrap;}' +
-    '.yqn-return-sub{font-size:10.5px;color:#16a34a;font-weight:bold;margin-top:2px;line-height:1.2;}' +
+    '.yqn-yard-edit .yqn-vehicle-input{width:40px;padding:3px 2px;font-size:13px;}' +
+    '.yqn-yard-label{font-size:11px;opacity:.55;white-space:nowrap;}' +
+    '.yqn-return-sub{font-size:11.5px;color:#16a34a;font-weight:bold;margin-top:2px;line-height:1.2;}' +
     // --- شريط الإشغال: خط رفيع + النسبة كنص ملوّن خارج الشريط (مو فوقه) ---
     '.yqn-occ-row{display:flex;align-items:center;gap:9px;min-width:130px;}' +
     '.yqn-bar-wrapper{position:relative;flex:1;height:8px;border-radius:6px;background:#efeee7;overflow:hidden;min-width:60px;}' +
@@ -1869,15 +1869,15 @@
     '.yqn-occ-good .yqn-bar-fill{background:#22c55e;}' +
     '.yqn-occ-warning .yqn-bar-fill{background:#eab308;}' +
     '.yqn-occ-critical .yqn-bar-fill{background:#ef4444;}' +
-    '.yqn-bar-text{font-size:12.5px;font-weight:800;white-space:nowrap;flex-shrink:0;}' +
+    '.yqn-bar-text{font-size:13.5px;font-weight:800;white-space:nowrap;flex-shrink:0;}' +
     '.yqn-bar-text.yqn-occ-good{color:#16a34a;}' +
     '.yqn-bar-text.yqn-occ-warning{color:#b45309;}' +
     '.yqn-bar-text.yqn-occ-critical{color:#dc2626;}' +
-    '.yqn-diff-cell{font-weight:bold;font-size:16px;}' +
+    '.yqn-diff-cell{font-weight:bold;font-size:17px;}' +
     '.yqn-diff-positive{color:#16a34a;}' +
     '.yqn-diff-negative{color:#dc2626;}' +
     '.yqn-diff-zero{color:#b45309;}' +
-    '.yqn-status{padding:12px 28px;font-size:12.5px;font-weight:700;min-height:20px;opacity:.9;display:flex;align-items:center;gap:8px;}' +
+    '.yqn-status{padding:12px 28px;font-size:13.5px;font-weight:700;min-height:20px;opacity:.9;display:flex;align-items:center;gap:8px;}' +
     '.yqn-status--loading{color:#2563eb;}' +
     '.yqn-status--success{color:#16a34a;}' +
     '.yqn-status--error{color:#dc2626;}' +

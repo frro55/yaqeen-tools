@@ -154,7 +154,7 @@
             : '';
         return (
             '<div style="display:flex;' + (isUser ? 'justify-content:flex-start;' : 'justify-content:flex-end;') + 'margin-bottom:10px;">' +
-            '<div style="max-width:80%;padding:11px 14px;border-radius:14px;font-size:13.5px;font-weight:500;line-height:1.7;white-space:pre-wrap;text-align:right;' +
+            '<div style="max-width:80%;padding:11px 14px;border-radius:14px;font-size:14.5px;font-weight:500;line-height:1.7;white-space:pre-wrap;text-align:right;' +
             (isUser ? 'background:#f1f0ea;color:#1c1c1a;' : 'background:linear-gradient(160deg,#A3E635,#b8ec52);color:#3c4a10;font-weight:700;') +
             '">' + imageHtml + escapeHtml(m.content) + '</div></div>'
         );
@@ -185,7 +185,7 @@
         box.style.display = 'flex';
         box.innerHTML =
             '<img src="' + pendingImage + '" style="height:44px;border-radius:9px;" />' +
-            '<span id="ai-chat-remove-image" style="cursor:pointer;font-size:12.5px;font-weight:700;color:#dc2626;margin-inline-start:8px;">✕ إزالة</span>';
+            '<span id="ai-chat-remove-image" style="cursor:pointer;font-size:13.5px;font-weight:700;color:#dc2626;margin-inline-start:8px;">✕ إزالة</span>';
         document.getElementById('ai-chat-remove-image').onclick = () => {
             pendingImage = null;
             renderPreview();
@@ -244,23 +244,23 @@
 
         const html =
             '<div id="ai-chat-header" style="background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;padding:16px 18px;' +
-            'text-align:center;font-weight:800;font-size:15px;position:relative;cursor:move;user-select:none;">🤖 شات AI' +
-            '<span id="ai-chat-close" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;opacity:.75;">✕</span>' +
+            'text-align:center;font-weight:800;font-size:16px;position:relative;cursor:move;user-select:none;">🤖 شات AI' +
+            '<span id="ai-chat-close" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:17px;opacity:.75;">✕</span>' +
             '</div>' +
-            '<div style="padding:10px 16px 0;font-size:11px;font-weight:600;color:#a19c92;text-align:center;">' +
+            '<div style="padding:10px 16px 0;font-size:12px;font-weight:600;color:#a19c92;text-align:center;">' +
             'يقرأ الصفحة المفتوحة حالياً - اسأل عنها أو أي سؤال عام يخص التأجير، وممكن ترفقين صورة' +
             '</div>' +
             '<div id="ai-chat-messages" style="height:320px;overflow-y:auto;padding:16px;"></div>' +
-            '<div id="ai-chat-typing" style="display:none;padding:0 16px 8px;font-size:12px;font-weight:700;color:#a19c92;text-align:right;">... يكتب</div>' +
+            '<div id="ai-chat-typing" style="display:none;padding:0 16px 8px;font-size:13px;font-weight:700;color:#a19c92;text-align:right;">... يكتب</div>' +
             '<div id="ai-chat-preview" style="display:none;align-items:center;padding:0 16px 10px;"></div>' +
             '<div style="display:flex;gap:8px;padding:14px 16px;border-top:1px solid #cec7b4;align-items:center;">' +
             '<button id="ai-chat-send" style="padding:0 18px;height:40px;border:0;border-radius:11px;' +
-            'background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;cursor:pointer;font-size:13.5px;font-weight:800;font-family:inherit;">إرسال</button>' +
+            'background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;cursor:pointer;font-size:14.5px;font-weight:800;font-family:inherit;">إرسال</button>' +
             '<input id="ai-chat-input" type="text" placeholder="اكتب سؤالك..." style="' +
-            'flex:1;padding:10px 13px;border:1.5px solid #cec7b4;border-radius:11px;font-size:13.5px;' +
+            'flex:1;padding:10px 13px;border:1.5px solid #cec7b4;border-radius:11px;font-size:14.5px;' +
             'text-align:right;direction:rtl;font-family:inherit;background:#fbfbf9;color:#1c1c1a;box-sizing:border-box;" />' +
             '<button id="ai-chat-attach" title="إرفاق صورة" style="width:40px;height:40px;border:1.5px solid #cec7b4;' +
-            'border-radius:11px;background:#fbfbf9;cursor:pointer;font-size:15px;">📎</button>' +
+            'border-radius:11px;background:#fbfbf9;cursor:pointer;font-size:16px;">📎</button>' +
             '<input id="ai-chat-file" type="file" accept="image/*" style="display:none;" />' +
             '</div>';
 

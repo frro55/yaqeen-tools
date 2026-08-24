@@ -222,12 +222,12 @@
         'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
         '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;max-height:90vh;overflow-y:auto;box-sizing:border-box;}' +
-        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
-        '.yq-field{width:100%;padding:13px;border:1.5px solid #cec7b4;border-radius:12px;font-size:15px;' +
+        '.yq-card h3{margin:0 0 6px;font-size:17px;font-weight:800;}' +
+        '.yq-field{width:100%;padding:13px;border:1.5px solid #cec7b4;border-radius:12px;font-size:16px;' +
         'text-align:center;box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
         '.yq-field.yq-field-err{border-color:#dc2626;}' +
         '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        'font-size:15px;font-weight:800;font-family:inherit;}' +
         '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
         'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
         '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
@@ -241,22 +241,22 @@
         'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
         '.yq-toast.err{border-inline-start-color:#dc2626;}' +
         '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
-        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        'justify-content:center;font-size:16px;flex-shrink:0;background:#eaf7e9;}' +
         '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
-        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
-        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:13.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:14px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
         '.vip-field-wrap{text-align:right;margin-bottom:16px;}' +
-        '.vip-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:6px;}' +
+        '.vip-field-wrap label{display:block;font-size:13px;font-weight:700;color:#767068;margin-bottom:6px;}' +
         '.vip-field-wrap select,.vip-field-wrap input,.vip-field-wrap textarea{width:100%;padding:11px;' +
-        'border:1.5px solid #cec7b4;border-radius:10px;font-size:13.5px;box-sizing:border-box;font-family:inherit;' +
+        'border:1.5px solid #cec7b4;border-radius:10px;font-size:14.5px;box-sizing:border-box;font-family:inherit;' +
         'background:#fbfbf9;color:#1c1c1a;}' +
         '.vip-field-wrap select:focus,.vip-field-wrap input:focus,.vip-field-wrap textarea:focus{' +
         'outline:2px solid #a8cf5a;border-color:#79a916;}' +
         '.vip-field-wrap textarea{resize:vertical;}' +
         '.vip-form-actions{display:flex;gap:8px;}' +
         '.vip-form-actions button{flex:1;padding:12px;border:0;border-radius:12px;cursor:pointer;' +
-        'font-size:13px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
         '.vip-form-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
@@ -323,7 +323,7 @@
     function showLoading(text) {
         closeBox();
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + text + '</div>',
+            '<div class="yq-spinner"></div><div style="font-size:14.5px;font-weight:700;">' + text + '</div>',
             300
         ));
     }
@@ -377,7 +377,7 @@
             '<label>ملاحظات</label>' +
             '<textarea id="vip-f-notes" rows="2"></textarea>' +
             '</div>' +
-            '<div id="vip-form-err" style="color:#dc2626;font-size:12.5px;font-weight:bold;margin-bottom:10px;display:none;"></div>' +
+            '<div id="vip-form-err" style="color:#dc2626;font-size:13.5px;font-weight:bold;margin-bottom:10px;display:none;"></div>' +
             '<div class="vip-form-actions">' +
             '<button id="vip-form-cancel">إلغاء</button>' +
             '<button id="vip-form-save">💾 حفظ فقط</button>' +

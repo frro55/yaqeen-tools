@@ -46,19 +46,19 @@
         '.yq-card{width:100%;background:#fff;border-radius:22px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;max-height:90vh;overflow-y:auto;box-sizing:border-box;}' +
         '.yq-card.yq-pad{padding:28px 26px;}' +
-        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:17px;font-weight:800;}' +
         '.yq-card-header{border-radius:22px 22px 0 0;padding:20px 24px;' +
-        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;font-size:16px;font-weight:800;}' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;font-size:17px;font-weight:800;}' +
         '.yq-card-body{padding:24px;}' +
-        '.yq-desc{margin:14px 0;text-align:right;font-size:13px;color:#767068;line-height:1.9;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:14px;color:#767068;line-height:1.9;}' +
         '.yq-field-wrap{text-align:right;margin-bottom:12px;}' +
-        '.yq-field-wrap label{display:block;font-size:12px;font-weight:700;color:#767068;margin-bottom:5px;}' +
-        '.yq-field{width:100%;padding:12px;border:1.5px solid #cec7b4;border-radius:12px;font-size:14px;' +
+        '.yq-field-wrap label{display:block;font-size:13px;font-weight:700;color:#767068;margin-bottom:5px;}' +
+        '.yq-field{width:100%;padding:12px;border:1.5px solid #cec7b4;border-radius:12px;font-size:15px;' +
         'box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
         '.yq-field.yq-field-err{border-color:#dc2626;}' +
         'textarea.yq-field{resize:vertical;}' +
         '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        'font-size:15px;font-weight:800;font-family:inherit;}' +
         '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
         'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
         '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
@@ -72,13 +72,13 @@
         'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
         '.yq-toast.err{border-inline-start-color:#dc2626;}' +
         '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
-        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        'justify-content:center;font-size:16px;flex-shrink:0;background:#eaf7e9;}' +
         '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
-        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
-        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:13.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:14px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
         '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        'font-size:15px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
@@ -968,7 +968,7 @@
 <div id="email-status-box" class="yq-overlay">
 <div class="yq-card" style="max-width:300px;padding:30px;">
 <div class="yq-spinner"></div>
-<div style="font-size:13.5px;font-weight:700;">${text}</div>
+<div style="font-size:14.5px;font-weight:700;">${text}</div>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);

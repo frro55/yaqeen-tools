@@ -56,9 +56,9 @@
         'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
         '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
-        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:17px;font-weight:800;}' +
         '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        'font-size:15px;font-weight:800;font-family:inherit;}' +
         '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
         'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
         '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
@@ -66,7 +66,7 @@
         'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
         '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
         '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        'font-size:15px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
@@ -418,7 +418,7 @@
 <div id="fleet-box" class="yq-overlay">
 <div class="yq-card" style="max-width:300px;padding:30px;">
 <div class="yq-spinner"></div>
-<div style="font-size:13.5px;font-weight:700;">${text}</div>
+<div style="font-size:14.5px;font-weight:700;">${text}</div>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);
@@ -430,7 +430,7 @@
         const html = `
 <div id="fleet-box" class="yq-overlay">
 <div class="yq-card" style="max-width:300px;">
-<div style="margin-bottom:15px;font-size:13.5px;font-weight:700;">${text}</div>
+<div style="margin-bottom:15px;font-size:14.5px;font-weight:700;">${text}</div>
 <button id="close-fleet-message" class="yq-btn yq-btn-primary">إغلاق</button>
 </div>
 </div>`;

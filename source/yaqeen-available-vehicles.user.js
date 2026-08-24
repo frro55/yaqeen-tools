@@ -52,9 +52,9 @@
         'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
         '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
-        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:17px;font-weight:800;}' +
         '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;}' +
+        'font-size:15px;font-weight:800;font-family:inherit;}' +
         '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
         'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
         '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
@@ -62,18 +62,18 @@
         'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
         '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
         '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:14px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
+        'font-size:15px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-header{border-radius:22px 22px 0 0;padding:22px 28px;flex-shrink:0;' +
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
-        '.yq-report-title{font-size:17px;font-weight:800;}' +
+        '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-big{font-size:40px;font-weight:800;margin-top:4px;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
-        'font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
+        'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:13.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:11px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
@@ -363,7 +363,7 @@
 <div id="available-report" class="yq-overlay">
 <div class="yq-card" style="max-width:280px;padding:30px;">
 <div class="yq-spinner"></div>
-<div style="font-size:13.5px;font-weight:700;">جارٍ جلب السيارات المتوفرة...</div>
+<div style="font-size:14.5px;font-weight:700;">جارٍ جلب السيارات المتوفرة...</div>
 </div>
 </div>`;
 
@@ -377,7 +377,7 @@
         const html = `
 <div id="available-report" class="yq-overlay">
 <div class="yq-card" style="max-width:300px;">
-<div style="margin-bottom:15px;font-size:13.5px;font-weight:700;">${text}</div>
+<div style="margin-bottom:15px;font-size:14.5px;font-weight:700;">${text}</div>
 <button id="close-report" class="yq-btn yq-btn-primary">إغلاق</button>
 </div>
 </div>`;
@@ -489,8 +489,8 @@ overflow:hidden;direction:rtl;display:flex;flex-direction:column;">
 *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}
 body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}
 h1{font-size:20px;margin:0 0 4px;}
-.meta{color:#555;font-size:13px;margin-bottom:16px;}
-table{border-collapse:collapse;width:100%;font-size:14px;}
+.meta{color:#555;font-size:14px;margin-bottom:16px;}
+table{border-collapse:collapse;width:100%;font-size:15px;}
 th,td{border:1px solid #999;padding:8px 10px;text-align:center;}
 th{background:#f0f0f0;}
 </style>

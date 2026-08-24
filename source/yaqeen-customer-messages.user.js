@@ -220,14 +220,14 @@
         'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
         '.yq-card{width:100%;background:#fff;border-radius:22px;padding:28px 26px;text-align:center;' +
         'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;}' +
-        '.yq-card h3{margin:0 0 6px;font-size:16px;font-weight:800;}' +
-        '.yq-info-box{font-size:13px;color:#767068;line-height:2;margin-bottom:16px;padding:16px 18px;' +
+        '.yq-card h3{margin:0 0 6px;font-size:17px;font-weight:800;}' +
+        '.yq-info-box{font-size:14px;color:#767068;line-height:2;margin-bottom:16px;padding:16px 18px;' +
         'background:#fbfbf7;border-radius:14px;border:1.5px solid #cec7b4;text-align:right;' +
         'border-inline-start:4px solid #79a916;}' +
         '.yq-info-box strong{color:#1c1c1a;}' +
         '.yq-divider{height:1.5px;background:#e5e2d5;margin:4px 0 18px;}' +
         '.yq-btn{width:100%;padding:14px;margin-bottom:11px;border:1.5px solid #cec7b4;border-radius:13px;' +
-        'cursor:pointer;background:#fff;color:#1c1c1a;font-size:13.5px;font-weight:700;font-family:inherit;' +
+        'cursor:pointer;background:#fff;color:#1c1c1a;font-size:14.5px;font-weight:700;font-family:inherit;' +
         'text-align:right;display:block;transition:background .15s,border-color .15s;}' +
         '.yq-btn-primary{border:0;background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
         'font-weight:800;box-shadow:0 8px 16px -8px rgba(121,169,22,.55);text-align:center;}' +
@@ -235,9 +235,9 @@
         '.yq-btn-row{display:flex;gap:10px;}' +
         '.yq-btn-row .yq-btn{margin-bottom:0;}' +
         '.yq-textarea{width:100%;height:260px;box-sizing:border-box;padding:16px;border:2px solid #a19c92;' +
-        'border-radius:14px;font-size:13.5px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf7;' +
+        'border-radius:14px;font-size:14.5px;font-family:inherit;text-align:right;resize:vertical;background:#fbfbf7;' +
         'line-height:1.9;box-shadow:inset 0 2px 6px rgba(0,0,0,.04);}' +
-        '.yq-meta-line{font-size:12.5px;font-weight:600;color:#767068;margin:14px 0 18px;padding-top:14px;' +
+        '.yq-meta-line{font-size:13.5px;font-weight:600;color:#767068;margin:14px 0 18px;padding-top:14px;' +
         'border-top:1.5px solid #e5e2d5;}' +
         '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
         'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
@@ -249,10 +249,10 @@
         'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
         '.yq-toast.err{border-inline-start-color:#dc2626;}' +
         '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
-        'justify-content:center;font-size:15px;flex-shrink:0;background:#eaf7e9;}' +
+        'justify-content:center;font-size:16px;flex-shrink:0;background:#eaf7e9;}' +
         '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
-        '.yq-toast-text{flex:1;text-align:right;font-size:12.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
-        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:13px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:13.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:14px;cursor:pointer;padding:4px;flex-shrink:0;}' +
         '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
@@ -320,7 +320,7 @@
     function showLoading(text) {
         closeBox();
         document.body.insertAdjacentHTML('beforeend', overlayShell(
-            '<div class="yq-spinner"></div><div style="font-size:13.5px;font-weight:700;">' + escapeHtml(text) + '</div>',
+            '<div class="yq-spinner"></div><div style="font-size:14.5px;font-weight:700;">' + escapeHtml(text) + '</div>',
             300
         ));
     }
