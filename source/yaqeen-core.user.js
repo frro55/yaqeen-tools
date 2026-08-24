@@ -835,6 +835,10 @@
             window.open(UPDATE_SCRIPT_URL, "_blank");
         };
         document.body.appendChild(updateBadge);
+        // مزامنة دفاعية: لو checkForScriptUpdate خلص قبل ما توصل هذي النقطة
+        // (نادر - ممكن بس لو تأخر إنشاء الواجهة عبر wait()) نعكس النتيجة
+        // على الشارة فوراً بدل ما تضل مخفية لين دورة الفحص التالية بعد 20 دقيقة
+        updateUpdateBadge();
 
 
         // التصميم

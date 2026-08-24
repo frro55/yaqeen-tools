@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0244
+// @version      2026.0824.0246
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -849,6 +849,10 @@
             window.open(UPDATE_SCRIPT_URL, "_blank");
         };
         document.body.appendChild(updateBadge);
+        // مزامنة دفاعية: لو checkForScriptUpdate خلص قبل ما توصل هذي النقطة
+        // (نادر - ممكن بس لو تأخر إنشاء الواجهة عبر wait()) نعكس النتيجة
+        // على الشارة فوراً بدل ما تضل مخفية لين دورة الفحص التالية بعد 20 دقيقة
+        updateUpdateBadge();
 
 
         // التصميم
