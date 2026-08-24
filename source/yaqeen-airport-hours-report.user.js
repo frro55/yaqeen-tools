@@ -17,9 +17,7 @@
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed معزول عن window الحقيقية
     var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت أداة "تقرير الحجوزات القادمة")
@@ -61,8 +59,7 @@
         'السبت': 6,
     };
 
-    // تعديلات يدوية على عدد سيارات الحوش لكل قروب - تُمسح مع كل تحديث حقيقي
-    // للبيانات (تحديث/تغيير المدة) عشان ما تطغى على الأرقام الفعلية الجديدة
+    // تعديلات يدوية على عدد سيارات الحوش لكل قروب - تُمسح مع كل تحديث حقيقي للبيانات
     var yardOverrides = {};
 
     // ==========================================================
@@ -364,11 +361,8 @@
     function runReport(hours) {
         document.getElementById('airport-hours-box')?.remove();
 
-        // ننشئ الإطارات الثلاثة فوراً (يبدأ تحميلها بالخلفية فوراً)، لكن نقرأها
-        // بالتتابع لا بالتوازي (Promise.all): فتح 3 صفحات React ثقيلة والبدء
-        // بقراءتها كلها بنفس اللحظة يسبب تنافساً على الموارد يمنع إطار
-        // "الحوش" (آخر واحد) من اكتمال تحميله ضمن المهلة، فيرجع صفوفاً فارغة
-        // رغم وجود بيانات فعلية بالصفحة الحقيقية
+        // الإطارات الثلاثة تُفتح فوراً لكن تُقرأ بالتتابع لا بالتوازي - قراءة متزامنة تسبب تنافس موارد
+        // يمنع إطار "الحوش" (آخر واحد) من اكتمال تحميله ضمن المهلة
         var bookingsFrame = openHiddenFrame(BOOKINGS_URL);
         var vehiclesFrame = openHiddenFrame(VEHICLES_URL);
         var yardFrame = openHiddenFrame(YARD_VEHICLES_URL);
@@ -413,17 +407,14 @@
                     totalVehicles++;
                 });
 
-                // عمود "سيارات الحوش" يشمل الآن كل قروبات الحوش فعلياً - حتى لو
-                // القروب ما عنده أي سيارة بالمطار نفسه ولا أي حجز، عشان يظهر
-                // بالتقرير ويصير قابل للتعديل اليدوي
+                // عمود "سيارات الحوش" يشمل كل قروبات الحوش حتى لو ما عنده سيارة بالمطار ولا حجز
                 var yardVehicleCounts = {};
                 yardRows.forEach(function (r) {
                     if (!r.group || !r.available) return;
                     yardVehicleCounts[r.group] = (yardVehicleCounts[r.group] || 0) + 1;
                 });
 
-                // تحديث حقيقي جديد للبيانات - نمسح أي تعديل يدوي سابق حتى ما يظل
-                // يطغى على الأرقام الفعلية الجديدة
+                // تحديث حقيقي جديد للبيانات - نمسح أي تعديل يدوي سابق
                 yardOverrides = {};
 
                 showReport(hours, bookingCounts, vehicleCounts, yardVehicleCounts, totalBookings, totalVehicles);
@@ -609,8 +600,7 @@
         document.getElementById('airport-hours-box')?.remove();
         injectYqStyles();
 
-        // اتحاد كل القروبات (حجوزات + سيارات مطار + سيارات حوش) عشان أي قروب
-        // له حوش فقط بدون سيارات مطار ولا حجوزات يظل يظهر بالتقرير
+        // اتحاد كل القروبات (حجوزات + سيارات مطار + سيارات حوش) عشان قروب فيه حوش فقط يظل يظهر
         var groups = Object.keys(Object.assign({}, bookingCounts, vehicleCounts, yardVehicleCounts)).sort();
 
         var rowsHtml = groups.map(function (group) {
@@ -754,8 +744,7 @@
     }
 
     // ==========================================================
-    // إرسال صورة واتساب - نفس أسلوب أداة "تقرير الحجوزات القادمة"
-    // (SVG+foreignObject لرسم الجدول كصورة، بدون أي مكتبة خارجية)
+    // إرسال صورة واتساب (SVG+foreignObject، بدون أي مكتبة خارجية)
     // ==========================================================
 
     /** يحوّل نص UTF-8 (فيه عربي) إلى base64 - btoa العادية تدعم Latin1 بس */
@@ -841,8 +830,7 @@
                     '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
                     '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
 
-                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG
-                // فيها foreignObject لو كانت محمّلة من blob: (Tainted Canvas)
+                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG فيها foreignObject من blob: (Tainted Canvas)
                 var svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
 
                 var img = new Image();
@@ -953,8 +941,7 @@
                         target: WHATSAPP_CONFIG.target,
                         sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
-                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
-                        // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
+                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن البوت يعمل Buffer.from مباشرة
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة - ' + new Date().toLocaleString('ar-SA'),
                     }),

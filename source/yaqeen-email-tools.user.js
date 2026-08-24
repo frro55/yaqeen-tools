@@ -17,9 +17,7 @@
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح صلاحية GM_xmlhttpRequest يشغّل
-    // السكربت بوضع sandbox معزول، و window.YAQEEN_TOOLS المسجّلة من صفحة
-    // يقين نفسها ما تكون مرئية إلا عبر unsafeWindow بهذا الوضع
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل السكربت بوضع sandbox معزول
     var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     function waitCore() {
@@ -262,9 +260,7 @@
     // ==========================================================
     // إيميل حادث
     // ==========================================================
-    // يبحث برقم عقد التأجير، يدخل تفاصيل الحجز تلقائياً، يعرض صور "فحص
-    // التسليم" حتى يختار المستخدم منها، يحمّل المختار، ثم يبني الإيميل.
-    // ==========================================================
+    // يبحث بالعقد، يدخل التفاصيل، يعرض صور الفحص للاختيار، يحمّلها، ويبني الإيميل
 
     /** يجمع كل الإدخالات اليدوية (رقم العقد + بيانات الحادث) بنافذة وحدة قبل ما نبدأ، بدل ما نقاطع المستخدم بـprompt عدة مرات وسط التدفق */
     function showAccidentInputForm() {
@@ -342,10 +338,7 @@
 
         showAgreementStatus("جارٍ البحث عن العقد...");
 
-        // iframe مخفي بدل نافذة منبثقة لكل خطوات البحث والتصفّح - ما يظهر أي
-        // شيء فوق صفحتك. الاستثناء الوحيد نافذة طباعة الاتفاقية نفسها، اللي
-        // يفتحها يقين بكوده الخاص (مو إحنا) كنافذة منفصلة حقيقية بغض النظر
-        // عن كون الزر اللي ضغطناه جوا iframe مخفي أو لا
+        // iframe مخفي للبحث والتصفّح؛ الاستثناء: نافذة طباعة الاتفاقية يفتحها يقين نفسه كنافذة حقيقية منفصلة
         const frame = openHiddenFrame(
             `https://yaqeen.lumirental.com/rental/branches/29/bookings?agreementNo=${encodeURIComponent(agreementNo)}`
         );
@@ -373,11 +366,7 @@
             let agreementResult = await attemptAgreementDownload();
             hideAgreementStatus();
 
-            // ما نكمل للخطوة التالية إلا بعد تأكيد صريح من المستخدم إنه حفظ
-            // الاتفاقية فعلاً - قبل كذا كانت العملية تكمل تلقائياً بالخلفية
-            // فوراً بدون أي انتظار حقيقي. وفيه زر "إعادة المحاولة" يعيد الضغط
-            // على "..." ثم "تنزيل الاتفاقية" من جديد لو فشلت أول مرة (مثلاً
-            // القائمة تأخرت تفتح)، بدل ما نضطر نلغي العملية كاملة ونبدأ من الصفر
+            // ننتظر تأكيد يدوي إن المستخدم حفظ الاتفاقية قبل المتابعة، مع زر إعادة محاولة لو فشل الضغط الأول
             agreementResult = await showAgreementConfirm(agreementResult, attemptAgreementDownload);
             if (agreementResult && !agreementResult.ok) downloadIssues.push("الاتفاقية: " + agreementResult.reason);
 
@@ -419,8 +408,7 @@
             showAgreementStatus("جارٍ جلب صور الفحص...");
             let deliveryImages = [];
             try {
-                // "تقرير الفحص" أكورديون مطوي افتراضياً - محتواه (صور فحص الاستلام/التسليم)
-                // ما يترسم بالـ DOM أصلاً إلا بعد ما نفتحه
+                // تقرير الفحص أكورديون مطوي افتراضياً، لازم نفتحه قبل ما محتواه يترسم بالـDOM
                 const reportToggle = Array.from(doc2.querySelectorAll('button'))
                     .find(b => b.textContent.includes('تقرير الفحص'));
                 if (reportToggle && reportToggle.getAttribute('aria-expanded') !== 'true') {
@@ -432,8 +420,7 @@
                     Array.from(d.querySelectorAll("h3")).some(h => h.textContent.includes("فحص")) ? d : null
                 ), 8000);
 
-                // نفضّل "فحص التسليم" (صور الإرجاع) وإلا نكتفي بـ"فحص الاستلام" (صور الاستلام
-                // بداية العقد) - العقد اللي لسا ما رجع للفرع ما يكون فيه "فحص تسليم" أصلاً
+                // نفضّل فحص التسليم وإلا فحص الاستلام (العقد اللي ما رجع للفرع ما فيه تسليم بعد)
                 const section = findInspectionSection(doc2, "فحص التسليم") || findInspectionSection(doc2, "فحص الاستلام");
                 if (section) {
                     deliveryImages = await collectAllInspectionImages(frame.contentWindow, doc2, section);
@@ -460,9 +447,7 @@
                 hideAgreementStatus();
             }
 
-            // استمارة المركبة: تحتاج رقم اللوحة بالشكل الإنجليزي (زي رابط
-            // /rental/vehicles/7015%20HDS/overview) - لو ما توفر نجرب اللي سحبناه
-            // من جدول البحث كحل احتياطي، حتى لو صيغته عربي وممكن يفشل بصمت
+            // استمارة المركبة تحتاج رقم اللوحة إنجليزي؛ لو ما توفر نجرب لوحة جدول البحث كحل احتياطي
             showAgreementStatus("جارٍ تحميل استمارة المركبة...");
             const registrationResult = await downloadVehicleRegistration(plateFromDetail || plate);
             if (registrationResult && !registrationResult.ok) downloadIssues.push("الاستمارة: " + registrationResult.reason);
@@ -608,12 +593,7 @@
             .filter(Boolean);
     }
 
-    /**
-     * يجمع كل صور القسم: لو ما فيه صور مخفية (بدون شارة "+N") يرجع الصور الظاهرة
-     * مباشرة، وإلا يفتح معرض الصور (Lightbox) بالضغط على الصورة الرئيسية،
-     * ويتنقل بزر "التالي" لأن شريط المصغّرات هناك مبني بشكل تدريجي (Virtualized) -
-     * ما تظهر كل الصور بالـ DOM إلا بعد ما نتصفّح بجانبها فعلياً - ثم يغلق المعرض.
-     */
+    /** يجمع كل صور القسم: يرجع الظاهر مباشرة، أو يفتح المعرض ويتنقل بـ"التالي" (المصغّرات تُحمَّل تدريجياً) */
     async function collectAllInspectionImages(popup, doc, section) {
         const visibleImages = extractVisibleInspectionImages(section);
         if (!sectionHasMoreImages(section)) return visibleImages;
@@ -734,13 +714,7 @@
         });
     }
 
-    /**
-     * يحمّل صورة واحدة كملف عبر GM_xmlhttpRequest بدل fetch العادي - صور
-     * الفحص مستضافة على cdn.lumirental.com (نطاق مختلف عن يقين نفسها)،
-     * و fetch العادي يترفض بصمت بسبب CORS فيرجع يفتحها بتبويب جديد بدل ما
-     * ينزّلها. GM_xmlhttpRequest صلاحية من Tampermonkey نفسه فما يخضع لقيود
-     * CORS إطلاقاً.
-     */
+    /** تحميل صورة عبر GM_xmlhttpRequest بدل fetch لتفادي CORS (صور الفحص على نطاق cdn مختلف) */
     function downloadImage(url, filename) {
         return new Promise(resolve => {
             if (typeof GM_xmlhttpRequest === "undefined") {
@@ -791,22 +765,11 @@
         el.click();
     }
 
-    /**
-     * يضغط زر "..." بصف الحجز، ثم "تنزيل الاتفاقية" من القائمة. زر يقين هذا
-     * يفتح نافذة طباعة حقيقية فيها الاتفاقية - نتركها تفتح طبيعي (بدون أي
-     * اعتراض أو تصوير) عشان تختار "حفظ كـ PDF" بنفسك من قائمة الطابعات؛
-     * هذي الخطوة الوحيدة اليدوية بكل التدفق، وتنتج PDF حقيقي بمقاس A4 صحيح
-     * ونص عربي سليم، بعكس محاولات التصوير (html2canvas) اللي جربناها قبل.
-     * يرجع { ok: true } أو { ok: false, reason: "..." } - نعرض السبب للمستخدم مباشرة بدل الاكتفاء بالـ Console.
-     */
+    /** يضغط "..." ثم "تنزيل الاتفاقية"، ويترك نافذة الطباعة الحقيقية تفتح ليحفظها المستخدم PDF يدوياً (الخطوة اليدوية الوحيدة - بديل html2canvas اللي فشل بجودة الـPDF والعربي)
+     * يرجع { ok, reason } */
     async function downloadAgreementFromRow(win, row) {
-        // بعض صفوف الحجوزات فيها أكثر من زر (زي "إنهاء الاتفاقية" جنب زر
-        // "...")، فأخذ "أول button بالصف" كان يمسك زر غير زر القائمة أصلاً -
-        // يفتح القائمة الغلط (أو ما يفتح شي) فما تظهر "تنزيل الاتفاقية"
-        // بعدها. المشغّل الحقيقي (aria-haspopup="menu") أحياناً يكون على
-        // <div> غالف (Radix asChild) وليس على <button> نفسه (الزر بداخله مجرد
-        // أيقونة زخرفية) - فنستهدف أي عنصر عنده هذا الـattribute بغض النظر عن
-        // نوع الوسم، ونرجع لأول زر بالصف كحل احتياطي أخير لو ما لقينا شي
+        // "أول button بالصف" يمسك زر غلط لو فيه أكثر من زر (صفوف فيها "إنهاء الاتفاقية" مثلاً)؛
+        // نستهدف [aria-haspopup="menu"] مباشرة لأنه قد يكون على <div> غالف لا على <button> نفسه
         const menuTrigger = row.querySelector('[aria-haspopup="menu"]') || row.querySelector("button");
         if (!menuTrigger) return { ok: false, reason: 'ما لقيت زر "..." بصف الحجز' };
         dispatchFullClick(menuTrigger, win);
@@ -816,14 +779,8 @@
         let downloadBtn = null;
         const menuStart = Date.now();
         while (!downloadBtn && Date.now() - menuStart < 3000) {
-            // بعض العقود عندها عناصر تجميع/طي إضافية بالقائمة (زي "تحصيل الدفع"
-            // اللي يُغلَّف بزرّين متداخلين لأنه Radix DropdownMenuSub) - عنصر
-            // <button> الخارجي بهذي الحالات نصّه (textContent) يشمل نص أي عنصر
-            // متداخل بداخله، فلو اخترنا أول تطابق بترتيب DOM ممكن نمسك الزر
-            // الخارجي (اللي يفتح/يطوي قائمة فرعية بدل ما ينزّل شي) بدل الزر
-            // الفعلي. ترتيب DOM دايماً يحط أي عنصر أب قبل أبنائه، فنختار آخر
-            // تطابق (الأعمق/الأكثر تحديداً) بدل أول تطابق لضمان إنه هو نفسه
-            // الزر الحقيقي وليس أي غلاف حوله
+            // نختار آخر تطابق لا أول تطابق: بعض القوائم متداخلة (Radix DropdownMenuSub) وزر
+            // <button> الخارجي نصّه يشمل نص العناصر بداخله، فأول تطابق يمسك الغلاف لا الزر الفعلي
             const matches = Array.from(doc.querySelectorAll('[role="menuitem"], button'))
                 .filter(b => b.textContent.includes("تنزيل الاتفاقية"));
             downloadBtn = matches.length ? matches[matches.length - 1] : null;
@@ -884,21 +841,8 @@
         });
     }
 
-    /**
-     * يفتح صفحة مستندات المركبة (برقم اللوحة) ويضغط زر عرض "استمارة المركبة" -
-     * الضغط عليه يبدأ تحميل الملف تلقائياً على الجهاز مباشرة (بدون معاينة أو
-     * تبويب وسيط). نستخدم iframe مخفي بدل نافذة منبثقة لأن هذي الخطوة تصير
-     * بعد سلسلة طويلة من await بعيد عن ضغطة المستخدم الأصلية، والمتصفح يحظر
-     * window.open() اللي ما تُستدعى مباشرة ضمن حدث ضغطة حقيقي.
-     */
-    /**
-     * يلقط صف مستند معيّن من جدول "مستندات" حسب عمود "نوع المستند" تحديداً
-     * (مو نص الصف كامل) - مهم بالذات إن هذا الجدول أحياناً يحتوي أكثر من نوع
-     * مستند بنفس الوقت (مثلاً "استمارة المركبة" و"شهادة التأمين" معاً)،
-     * فمطابقة نص الصف كامل بدل عمود التصنيف بالذات ممكن تلخبط بينهم لو أي
-     * عمود ثاني بالصف فيه نص مشابه بالصدفة. نحاول مطابقة تامة أول شي، وإلا
-     * نرجع لمطابقة جزئية كحل احتياطي لو تغيّرت الصياغة قليلاً.
-     */
+    /** يفتح صفحة مستندات المركبة ويضغط تحميل "استمارة المركبة"؛ iframe مخفي لأن window.open يُحظر بعيد عن ضغطة المستخدم الأصلية */
+    /** يلقط صف مستند حسب عمود "نوع المستند" تحديداً (مو نص الصف كامل) لتفادي تعارض أنواع مستندات متعددة بنفس الصف */
     function findDocumentRowByType(doc, exactLabel, fallbackSubstring) {
         const tables = Array.from(doc.querySelectorAll("table"));
         for (const table of tables) {
@@ -927,10 +871,7 @@
         const frame = openHiddenFrame(`https://yaqeen.lumirental.com/rental/vehicles/${encodeURIComponent(plate)}/overview`);
 
         try {
-            // مهلة أطول من المعتاد: أول تحميل لهذي الصفحة بالجلسة أبطأ بكثير من
-            // المحاولات اللي بعدها (تحميل حزمة JS باردة)، و15 ثانية ما كانت كافية.
-            // ننتظر تحديداً صف "استمارة المركبة" (مو أي جدول عام بالصفحة) حتى
-            // نضمن إن جدول "مستندات" فعلاً انحمّل قبل ما نحاول نقرأ منه
+            // مهلة أطول (25 ثانية): أول تحميل للصفحة بالجلسة أبطأ بكثير، ننتظر صف "استمارة المركبة" تحديداً
             const doc = await waitForFrame(frame, d => (findDocumentRowByType(d, "استمارة المركبة", "استمارة") ? d : null), 25000);
             if (!doc) {
                 return { ok: false, reason: `ما تحمّلت صفحة مستندات المركبة أو ما لقينا صف "استمارة المركبة" (اللوحة: "${plate}")` };
@@ -946,12 +887,9 @@
                 return { ok: false, reason: "ما لقيت زر التحميل بصف الاستمارة" };
             }
 
-            // نفس مشكلة زر "..." بقائمة الاتفاقية - .click() لحاله ما يشغّل معالج
-            // الضغط بشكل موثوق دائماً بهذي الواجهة (Radix UI)، يحتاج أحداث
-            // pointer حقيقية قبله. هذا سبب فشل التحميل بصمت أول مرة وينجح بإعادة المحاولة
+            // نفس مشكلة زر "..." السابق: .click() لحاله ما يشغّل معالج الضغط بموثوقية بهذي الواجهة (Radix UI)
             dispatchFullClick(btn, frame.contentWindow);
-            // نستنى وقت أطول حتى يبدأ التحميل فعلياً قبل ما نشيل الـiframe - الضغط
-            // يشغّل طلب شبكة لجلب الملف قبل التحميل، وممكن ياخذ وقت أطول من ثانيتين
+            // ننتظر أطول من ثانيتين حتى يبدأ التحميل فعلياً قبل إزالة الـiframe
             await new Promise(r => setTimeout(r, 5000));
             return { ok: true };
         } catch (err) {
@@ -978,16 +916,7 @@
         document.getElementById("email-status-box")?.remove();
     }
 
-    /**
-     * نافذة تأكيد يدوي تتوقف عندها العملية فعلياً (Promise ما يُحلّ إلا بضغطة
-     * المستخدم) - تعرض هل نجحنا بفتح نافذة الطباعة أصلاً، وتطلب من المستخدم
-     * يحفظ الاتفاقية كـPDF ويضغط "التالي" قبل ما نكمل لباقي الخطوات (الصور
-     * والاستمارة). لو فشلت المحاولة (ما لقينا زر "..." أو "تنزيل الاتفاقية")
-     * يظهر زر "🔄 إعادة المحاولة" يعيد استدعاء retryFn (نفس منطق الضغط من
-     * جديد) بدون قفل النافذة أو إلغاء العملية كاملة. يرجع الـPromise بآخر
-     * نتيجة فعلية (بعد أي إعادة محاولة) حتى تنعكس صح على رسالة الأخطاء
-     * النهائية بآخر الإيميل.
-     */
+    /** نافذة تأكيد يدوي تنتظر ضغطة المستخدم بعد حفظ PDF؛ فيها زر إعادة محاولة لو فشل، وترجع آخر نتيجة فعلية */
     function showAgreementConfirm(initialResult, retryFn) {
         return new Promise(resolve => {
             let currentResult = initialResult;
@@ -1110,8 +1039,7 @@
 
         showAgreementStatus("جارٍ البحث عن الحجز...");
 
-        // iframe مخفي بدل نافذة منبثقة - نفس أسلوب إيميل الحادث، ما يظهر أي
-        // شيء فوق صفحتك أثناء البحث وجلب البيانات
+        // iframe مخفي (نفس أسلوب إيميل الحادث) أثناء البحث وجلب البيانات
         const frame = openHiddenFrame(
             `https://yaqeen.lumirental.com/rental/branches/29/bookings?bookingNo=${encodeURIComponent(bookingNo)}`
         );
@@ -1158,8 +1086,7 @@
 
             await new Promise(r => setTimeout(r, 1200));
 
-            // لوحة "معلومات السائق": كل حقل عبارة عن <p class="text-sm">التسمية</p> يتبعه
-            // <p>القيمة</p> بنفس الحاوية - نلقط التسمية "رقم الهوية" ونرجع أخوها التالي
+            // لوحة "معلومات السائق": نلقط <p> تسمية "رقم الهوية" ونرجع أخوها التالي كقيمة
             const idLabel = Array.from(doc2.querySelectorAll("p"))
                 .find(p => p.textContent.trim().startsWith("رقم الهوية"));
             const idNumber = idLabel?.nextElementSibling?.textContent.trim() || "";
@@ -1167,9 +1094,7 @@
             try { frame.remove(); } catch (err) { /* تجاهل */ }
             hideAgreementStatus();
 
-            // إزالة الـiframe أحياناً تسحب التركيز (focus) عن صفحتنا، و
-            // navigator.clipboard.write يرفض العمل لو المستند غير مركّز -
-            // نجبر التركيز رجوع يدوياً احتياطاً (نفس أسلوب إيميل الحادث)
+            // نجبر التركيز رجوع يدوياً: إزالة الـiframe تسحب focus وclipboard.write يرفض العمل بدونه
             window.focus();
             await new Promise(r => setTimeout(r, 150));
 

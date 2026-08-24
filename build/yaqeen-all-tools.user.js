@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0439
+// @version      2026.0824.0501
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -25,13 +25,7 @@
     'use strict';
 
 
-    // نستخدم unsafeWindow (إن وُجد) لنفس سبب باقي الأدوات: لو هذا الملف
-    // انضم يوماً لملف مجمّع مع أدوات تطلب صلاحيات GM_* (زي الحزمة الموحّدة)،
-    // كامل الملف المجمّع ينفّذ بوضع sandboxed، فلازم Core يستخدم نفس المرجع
-    // (unsafeWindow) اللي تستخدمه بقية الأدوات، وإلا كل طرف يسجّل/يدوّر على
-    // YAQEEN_TOOLS في window مختلف عن الثاني ولا شي يشتغل. لما Core يشتغل
-    // لحاله (بدون أي صلاحيات) unsafeWindow ما يكون معرّف، فيرجع لسلوكه الحالي
-    // العادي (window الحقيقية) بدون أي تغيير
+    // unsafeWindow: نفس مرجع window المستخدم بباقي أدوات الحزمة الموحّدة
     var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     if (HOST_WINDOW.YAQEEN_TOOLS) return;
@@ -39,8 +33,7 @@
 
     const THEME = "#A3E635";
 
-    // صورة زر الليمونة العائم (Base64) - نفس الأيقونة المستخدمة بتصميم القائمة
-    // الدائرية، مضمّنة مباشرة بالسكربت بدل ما تُحمّل من رابط خارجي
+    // صورة زر الليمونة العائم (Base64)، مضمّنة بالسكربت بدل تحميلها من رابط خارجي
     const LIME_IMAGE_DATA_URL = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBw0PDRAOEQ4VFRANDxMNDRANDQ8ODg0RFxIWFhUVFRYYHCghGBomJxUVIT0iJSkrLi8vFx8/ODMtODQtLisBCgoKDg0OGhAQGyslIB0tLS0vLS0wLS0tKy0tKy0tLS0tLS0tLS0tLS0tLSstLS0tLSstLS0tLS0tLS0tLS0rLf/AABEIAMgAyAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQYBAwQCB//EADwQAAIBAgIGBAwFBAMAAAAAAAABAgMRBAUGEiExUWEiMkFxExY0U3KBkqGxwdHwQoKRk+FSsuLxI2Oj/8QAGwEBAAIDAQEAAAAAAAAAAAAAAAEEAwUGAgf/xAApEQEAAgEDAwMFAAMBAAAAAAAAAQIDBAUREiExEzJBFTRRUmEWM3Ei/9oADAMBAAIRAxEAPwCxnzRSAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAniQIAAAAAAAAAAAAAAAAAAAAAAAAAEx5PDtyjAPEVVD8K6VR8I33F7b9JOoy8fEPdK8yudXK6Eqfg/BpRtZWSTjzT4nX20GG2Po47LE1iVMzXLZ4eeq9sX1J9kv5OQ1uivprfxXvWYcRR7vETyACAAAAAAAAAAAAAAAAAAAAAAJiOZ4OOZXnR/AeBoK66dTpT4rgvUdvtmljDh/srVI4hKGy8PbRjMLCrBwmrp/quaMOo09c1Om0ImIlR81y2eHnZ7YvqT49/M4rXaG+nvxPhXvTpcJQ+WMAAAAAAAAAAAAAAAAAAAAAAkMhwnhcRGLXRj/wAku5fzb3mx2zT+rqIj4h7pHMr6juY8cLTJIAaMXhYVYOE1dP3c0YM+CmanTZExyo2bZZPDzs9sH1JceT5nF67QW01v5+Va9OHCUO7wACAAAAAAAAAAAAAAAAAAAFq0Ow9oVKnbKWou5f79x1WxYeKTf8rGKOyyHQMoSAGCBpxWGhVg4TV4yMWfBTNTpsiY5UfNssnh52e2EupPjyfM4vXaG+ntx8K96dLgNcxgAAAAAAAAAAAAAAAAAACBfNH6Wrhaa4rW/V3+Z3W2U6NNWFqkdkibB7ZJAdgAEDRisPCrBwmrxkYs+GmWvTaETHKkZvlc8PPjCT6E/k+Zxev0F9Nfn4lWvThHmueAAAAAAAAAAAAAAAAAAE190JfQI1oUMNGUnaMKcV7kjvqZa4MEWt44W+eIQ1TSxXerQuuxyqar/Szsae+/1if/ADTlinK8+Nr8x/6f4nj/ACCf0R6zHjZLzC/cf0H+QT+h6zHjZPzK9t/Qj6/b9D1mPGup5le2/oR9ft+p6zHjXU81H2mR9fv+p6zTidIpVYuE6MXGS2q7+0Yc28Tlr02qicnKEZpJYgAAAAAAAAAAAAAAAAAHqnuhMLRpY34Gjbq329+rs+Z028TMYKdPhmyTPCrnLsHkAAAAAASBAAAAAAAAAAAAAAAAAAAmvmEr+qEMRhoRmrqdOL2b07LajvK4aajBEX/C1xFoQdTRSd+jVVuy8Wn8TS32G3PNbMXpd3nxUqedj7LPP0G/7Hos+KlTzy9l/Un6Bb9j0WfFOfnl7D+o+gW/Y9FnxTl59ft/yT9At+56LPim/Pr9r/In6BPHuT6TTi9HI0oOc8Qkl/1b+XWMWbZq4adV7onH/UA/dz+ZoZYQgAAAAAAAAAAAAAAAAAC96O1dfC0+MU4P1O30O62vJ16aq1SeySNg9skgAIGB2GnF4mFKDnN2jH7sYc+euGs3vKJnhRs2zKeInd7ILqR4c+84vXa6+pv/ABWvblwlB45Le772jpAgETET8HkH/TkIAAAAAAAAAAAAALPodidlSlwfhI/B/L9Tp9izcxONYwz2WY6RlZAAYI57DTisTClBzm7KO8w5s1MNeu6JnhR82zOeInd7IR6keHN8zi9drr6m/wDFa1+XAa/u8RDfgsJOtNQgtva+yK4staXS3z26Yeq15lP51l8MPg1GO9zi5ye+Tszea7R0waTiPLLevFVZOZ+GBLaM04yxGq1dSpyTT2prYbbacdb5eLMmKOZM8yeVCWvG7pN7H2w5Pl99/rcdttgnqp7U3pwiTUMUBAAAAAAAAAAAADsyjF+Brwn2X1Z+i97++Be0Go9DNW3w90niX0FPYd3E8xytBPfkANOKxEKUHObtGP3sMWfPTDWb3nsiZUfN8zniJ33Qj1I8Ob5nF6/XW1N/4rWt1OA1/EzLxMt+Cwk601CC2vfwiuLLGm0989+ir1WvK85Xl0KFPVirt7Zye+TO10ekppqcQs1rxDi0t8m/PH5lPevt5ecntUw41W+Uvor5UvRkbjZfuYZMXuXOpTjKLi1dNWae1M7C9IvXiyzPdTM8yaVB68buk366fJ8vvv4/cdttht1V9qveiINQxchAAAAAAAAAAAAkntK56MZh4Wj4Nvp0rLvj2P5HY7Rq/VxdE+arVJ5hNG4e2nFYmFKDnN2jHezFmzVw16rImeFIzfNJ4id90I9SPzfM4vX662pv/Fe9upHmu+WPy3YPCzrTVOCu3+iXFljT6e+e/TRNa8rzlWXQw8NVbZPbOT3yZ22i0VdNTiPPzK1WvDuLnZ6Qulnkv54mo3r/AEPGT2qYcYq/KX0W8rj6MvgbbZvuYZMXuXY7VZealNSTi1dNWae5ni9K3jpknupme5M6Dc4Juk364cny++/kNy222C3XTwr3pwhzTsUBAAAAAAAAAAAngl0YDFyo1Y1I71vW7WXai1pdTbBli0PVbcLrHOMM6fhPCK1rtNrWWzdbidjG44Ojr5WeuFSzjNJ4ifCEX0I/N8/vv5bX6+2ptx8K978o81zw3YXDTqzUIK8n7ubM2nwXz36KvUV5XjKcthh4WW2T68u1v6HbaLRU09OI8rFa8O8uvYT8nwhtLPJfzxNRvP28seX2qWcWrfKW0X8rh6MvgbbZvuasmL3LwdqsgHipBSTi1dNWae1M8XpF68WOOVMz3JnQbqQV6Tfrp8nyOR3LbJxT108K96Ic0rFyEgQAAAAAAAASEo4BE8djuEHLbhsPOrNQgryl7jPgwXz36aPVY5XjKMshh4WW2b68rbW/odrodDXTV/vysVrwkC89gGSRC6WeSv04/E1G8/byx5fapZxasldGPK4d0v7WbXZ/uasmL3LydssgGAPM4KSaaumrNPameL0raOJJjlTc9yV0W6kFek3t40/4OS3LbZwz14/CvenCGNIxQAAAAAAAAAAAABctFcPTVBVFtnO6m+1We47HZcOOMPXHmfKzjiOE2blkZJADAEPpX5K/Sj8TUbz9vLHk9qlHFqyU0Z8sp90v7WbTZ/uasmP3L0dusgGCAJGuu4qMta2rZ62ta1udzFmmvRPUT2h85r6uvLV6us9T0b7D59m6euePCnPl4MSAAAAAAAAAAAAdOBx9WhLWhK198XtjLvRb02syaeeay9VtNVsy3SCjVtGT1J8JPovuZ1Ol3bFm7T2lnpkiUwmbaJifDIySMAROk1Nyws7fhak+5Paavd8c2088PGT2qQcQqpbReDeLi1uipSfday+Jt9mpM6mJZMfuXg7RZAMECNzHOaFC6ctaf9Edr9fA1+q3HDg+eZ/Dza8QqeZ5rVxD6TtDshG9uV+Jyus3DJqJ7z2/Cva8y4Chy8cBAAAAAAAAAAAAAAETwO7BZtiKNlGfRX4Z9KPdy9Rf0+458Piez3W8wm8LpVF7KlNrnB6yfq7DdYN9pb3xwyxlSlHOsLPdVS9O8PibLHuent4s99UOqNanNbJRaezY00yz6uK8ccwnmENiNGKEpXjNxT26qs0u41GXZ8F7c1nh4nHEu/AYKhhotJrb1pTktZ95e0+DBpa9uOXqtYh6rZvhYb60fyvWfuPV9x09PNibRCNxOlNJbIQcnxfQia/NvlK+yOXicqExue4mrs1tWP8ATTuvfvNNqN0zZfE8MdssyjTWTabTzLH5CAAAAAAAAAAAAAAAAAAAAnmYO4T12/KeZCeu/wCZRzIR1T+TvIRMzJ3COAHY7AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB/9k=";
 
     const LOCAL_SHOW_ALL_KEY = "yaqeen_show_all_tools";
@@ -65,10 +58,7 @@
         }
     }
 
-    // ترتيب ظهور الأدوات بالقائمة - ثابت دايماً بغض النظر عن ترتيب تحميل
-    // Tampermonkey للسكربتات الفعلي (اللي ما يُضمن يبقى ثابت بين إعادة
-    // التثبيت والتحديثات). أي أداة جديدة ما ب هذي القائمة تنحط تلقائياً
-    // بالآخر بترتيب تسجيلها.
+    // ترتيب ظهور الأدوات بالقائمة - ثابت دايماً بغض النظر عن ترتيب تحميل Tampermonkey
     const TOOL_ORDER = [
         "fleet-inventory",
         "available-vehicles",
@@ -87,10 +77,7 @@
         "ai-chat",
     ];
 
-    // تجميع الأدوات بمجموعات قابلة للطي بالقائمة (Accordion) - شكلي بحت،
-    // ما يأثر على نظام الصلاحيات إطلاقاً (كل أداة تفلتر حسب صلاحية الموظف
-    // الفردية كما هي، والمجموعة تختفي تلقائياً لو ما فيها أي أداة ظاهرة له).
-    // أي أداة مو موجودة هنا تُعرض مستقلة برا أي مجموعة (زي "تحقق من الدفع")
+    // تجميع الأدوات بمجموعات قابلة للطي بالقائمة - شكلي بحت، ما يأثر على الصلاحيات
     const TOOL_GROUPS = {
         "fleet-inventory": "fleet",
         "available-vehicles": "fleet",
@@ -116,10 +103,7 @@
     };
 
     // ============================================================
-    // القائمة الدائرية (زر الليمونة): يضغط الموظف الزر العائم فتنفتح فقاعات
-    // التصنيفات بقوس حواليه، يضغط تصنيف فتطلع أدواته بقوس أبعد. الأدوات
-    // المستقلة (بدون تصنيف بـTOOL_GROUPS) تطلع فقاعة مباشرة بنفس حلقة
-    // التصنيفات، وتنفّذ الأداة مباشرة عند الضغط بدل ما تفتح قوس ثاني.
+    // القائمة الدائرية (زر الليمونة): ضغطة تفتح فقاعات التصنيفات بقوس، وضغطة تصنيف تفتح أدواته بقوس أبعد
     // ============================================================
 
     const RADIAL_STATE = { open: false, catIndex: null };
@@ -127,11 +111,7 @@
     const RADIAL_CAT_STEP_DEG = 32;
     const RADIAL_BASE_DEG = 183;
 
-    // فقاعات التصنيفات تتولد مرة وحدة بس وتضل نفس عناصر الـDOM - أثر
-    // "الدخول" (تكبّر من نقطة الوسط + تلاشي) يشتغل بس لما القائمة كلها
-    // تفتح/تقفل فعلياً، مو كل ما تنقل بين تصنيف وتصنيف وإنت فاتح (لأن كذا
-    // ما فيه أي تغيير حقيقي بموضع الفقاعات، فـCSS transition ما يشتغل من
-    // نفسه إلا لو غيّرنا شي فعلاً)
+    // فقاعات التصنيفات تتولد مرة وحدة بس وتضل نفس عناصر الـDOM - أثر الدخول يشتغل بس عند فتح/قفل القائمة كلها
     const RADIAL_RUNTIME = { catEls: [], catsSig: null };
 
     function buildCatsSignature(nodes) {
@@ -227,20 +207,14 @@
         fab.classList.toggle("yt-open", RADIAL_STATE.open);
         scrim.classList.toggle("yt-open", RADIAL_STATE.open);
 
-        // الفقاعات تتولد مرة وحدة بس (وتضل نفس عناصر الـDOM) طالما التصنيفات
-        // نفسها ما تغيّرت - أي تنقل بين تصنيف وتصنيف بعدها (بدون فتح/قفل
-        // القائمة كلها) بس يحدّث كلاس yt-selected، بدون ما يعيد بناء
-        // الفقاعات ولا يشغّل أثر الدخول من جديد
+        // الفقاعات تتولد مرة وحدة بس طالما التصنيفات ما تغيّرت - التنقل بينها بعدين بس يحدّث yt-selected
         const sig = buildCatsSignature(nodes);
         if (sig !== RADIAL_RUNTIME.catsSig) {
             catsLayer.innerHTML = "";
             RADIAL_RUNTIME.catEls = [];
 
             nodes.forEach((node, i) => {
-                // نعكس ترتيب المواقع على القوس (بدون ما نغيّر ترتيب العقد
-                // نفسها ولا catIndex): أول عقدة (الأسطول) تاخذ أبعد زاوية
-                // (أعلى نقطة، أبعد عن الزر)، وآخر عقدة (أدوات أخرى) تاخذ
-                // أقرب زاوية للزر
+                // نعكس ترتيب المواقع على القوس فقط (بدون تغيير ترتيب العقد أو catIndex)
                 const posIndex = nodes.length - 1 - i;
                 const deg = RADIAL_BASE_DEG + posIndex * RADIAL_CAT_STEP_DEG;
                 const [dx, dy] = radialPoint(deg, RADIAL_CAT_RADIUS);
@@ -273,9 +247,7 @@
             RADIAL_RUNTIME.catsSig = sig;
         }
 
-        // حالة الفتح/القفل (تكبّر من نقطة الوسط + تلاشي) - تطبّق دايماً على
-        // العناصر الموجودة سواء تولدت هالتو أو من رندر سابق، فما تشتغل
-        // الحركة إلا لو القيمة فعلاً تغيّرت
+        // حالة الفتح/القفل (تكبّر من نقطة الوسط + تلاشي) تطبّق دايماً على العناصر الموجودة
         if (RADIAL_STATE.open) {
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
@@ -294,8 +266,7 @@
             });
         }
 
-        // كلاس التحديد (yt-selected) يتحدّث لحاله كل رندر بدون أي علاقة
-        // ببناء الفقاعات - كذا التنقل بين تصنيف وتصنيف ما يعيد أي حركة دخول
+        // كلاس التحديد (yt-selected) يتحدّث لحاله كل رندر بدون أي علاقة ببناء الفقاعات
         RADIAL_RUNTIME.catEls.forEach((t, i) => {
             const inner = t.el.querySelector(".yt-cat-orb-inner");
             if (!inner) return;
@@ -303,10 +274,7 @@
             inner.classList.toggle("yt-selected", selected);
         });
 
-        // لوحة الأداة المنبثقة: عنصر واحد ثابت الموضع (بدل عمود فقاعات
-        // يلاحق كل تصنيف) - تفتح دايماً بمكان أعلى القوس كله بهامش أمان،
-        // فمستحيل تتقاطع مع أي فقاعة تصنيف بغض النظر عن التصنيف المختار
-        // أو حجم الشاشة (القوس نفسه ثابت الهندسة دايماً، ما يتغير)
+        // لوحة الأداة المنبثقة: عنصر ثابت الموضع أعلى القوس، يستحيل يتقاطع مع أي فقاعة تصنيف
         if (RADIAL_STATE.catIndex !== null) {
             const catNode = nodes[RADIAL_STATE.catIndex];
 
@@ -342,46 +310,29 @@
         }
     }
 
-    // اختصارات لوحة المفاتيح: كل عنصر يفتح أداة معيّنة (بالـid تبعها) مباشرة
-    // بدل فتح القائمة والبحث عنها يدوياً. نستخدم "code" (يمثّل المفتاح
-    // الفعلي بالكيبورد، مثل "KeyA") لا "key" - لأن Alt/Option على Mac يغيّر
-    // القيمة اللي يرجّعها "key" لحرف مختلف كلياً (Option+A مثلاً يرجّع "å"
-    // مو "a")، بينما "code" يبقى ثابت بغض النظر عن نظام التشغيل أو تأثير
-    // المفاتيح المُعدِّلة. لإضافة اختصار جديد مستقبلاً، ضيف سطر جديد بنفس
-    // الشكل: { alt, ctrl, shift, code, toolId } - كود المفتاح لأي حرف هو
-    // "Key" + الحرف بالإنجليزي كبير (مثال: زر B = "KeyB")
+    // اختصارات لوحة المفاتيح - نستخدم "code" لا "key" لأن Alt/Option على Mac يغيّر قيمة "key" (مثلاً Option+A يرجّع "å")
+    // إضافة اختصار: { alt, ctrl, shift, code, toolId } - كود المفتاح = "Key" + الحرف كبير (مثال: KeyB)
     const SHORTCUTS = [];
 
     // ============================================================
-    // صلاحيات المستخدم: أي أداة مسجّلة عبر add() ما تظهر بالقائمة إلا لو
-    // مفتاحها موجود ضمن القائمة اللي يرجّعها الـAPI لهذا المستخدم. الحالة
-    // الافتراضية (قبل ما نتأكد من الصلاحيات، أو لو فشل الطلب) هي "ما فيه
-    // أدوات ظاهرة إطلاقاً" - أأمن خيار افتراضي.
+    // صلاحيات المستخدم: أداة add() ما تظهر إلا لو مفتاحها ضمن قائمة الـAPI - افتراضياً ولا أداة ظاهرة (أأمن خيار)
     // ============================================================
 
     const PERMISSIONS_API_URL = "https://api.yaqeen-vip.space/api/tools";
-    // رقم إصدار الحزمة المثبتة فعلياً عند هذا الموظف (يوفّره Tampermonkey
-    // تلقائياً من @version) - يُرسل مع كل طلب صلاحيات عشان الأدمن يقدر يشوف
-    // بلوحة التحكم مين لسا على نسخة قديمة
+    // رقم إصدار السكربت الحالي (@version) - يُرسل مع طلب الصلاحيات عشان الأدمن يشوف مين على نسخة قديمة
     const SCRIPT_VERSION = (typeof GM_info !== "undefined" && GM_info.script && GM_info.script.version) || "unknown";
     const PERMISSIONS_CACHE_KEY = "yaqeen_tool_permissions";
     const PERMISSIONS_CACHE_MS = 60 * 1000; // دقيقة وحدة - سحب صلاحية موظف يتطبق بسرعة معقولة
 
     // ============================================================
-    // فحص تحديثات: نفس رابط @updateURL بالضبط - نجيب نص الملف المنشور
-    // فعلياً على السيرفر ونقارن رقم @version اللي فيه مع نسخة هذا الموظف
-    // الحالية (SCRIPT_VERSION). رقم النسخة تاريخ UTC بصيغة YYYY.MMDD.HHMM
-    // (يتولد وقت البناء بـbuild-bundle.sh)، فمقارنة نصية بسيطة (>) كافية
-    // وصحيحة لمعرفة أيهما أحدث
+    // فحص تحديثات: نجيب نص السكربت المنشور ونقارن @version نصياً (YYYY.MMDD.HHMM) مع SCRIPT_VERSION
     // ============================================================
     const UPDATE_SCRIPT_URL = "https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js";
     const UPDATE_CHECK_INTERVAL_MS = 20 * 60 * 1000;
     const UPDATE_STATE = { available: false };
 
     // ============================================================
-    // اختيار جلسة الواتساب النشطة (لو فيه أكثر من رقم مربوط بالبوت) - إعداد
-    // عام واحد يطبّق على كل الأدوات اللي ترسل واتساب، مخزّن محلياً بنفس
-    // الجهاز/المتصفح. القيمة الافتراضية "main" لو الموظف ما اختار شي بعد
+    // اختيار جلسة الواتساب النشطة - إعداد عام لكل أدوات الواتساب، مخزّن محلياً، افتراضياً "main"
     // ============================================================
     const ACTIVE_SESSION_KEY = "yaqeen_active_wa_session";
 
@@ -408,12 +359,7 @@
         return match ? match[0] : "";
     }
 
-    /**
-     * يبحث عن إيميل داخل عنصر، بفحص كل عنصر ورقة (بدون أولاد) بمفرده على
-     * حدة - لا نستخدم textContent لكامل الحاوية لأنه يدمج نصوص العناصر
-     * المتجاورة بدون أي فاصل بينها (مثلاً span "LUMI" ملاصق لـspan
-     * الإيميل يطلع "LUMIahmed@..." بدل "ahmed@..." ويكسر الريجيكس)
-     */
+    /** يبحث عن إيميل داخل عنصر ورقة بورقة (لا textContent الكامل - يدمج نصوص متجاورة بدون فاصل ويكسر الريجيكس) */
     function findEmailInElement(root) {
         if (!root) return "";
 
@@ -430,12 +376,7 @@
         return "";
     }
 
-    /**
-     * يقرأ إيميل المستخدم الحالي من زر قائمة المستخدم بأعلى يقين بدون فتح
-     * أي شيء - نص الزر أحياناً يكون بس الأحرف الأولى (Avatar)، مو الإيميل
-     * الكامل، فنبحث عن نمط إيميل داخل عناصر الزر بدل الاعتماد على عنصر
-     * محدد بالضبط
-     */
+    /** يقرأ إيميل المستخدم من زر القائمة بدون فتحها - زر الـAvatar أحياناً بس أحرف أولى، فنبحث عن نمط إيميل */
     function readCurrentUserEmail() {
         const trigger = document.querySelector('[data-testid="user-menu-button"]');
         return trigger ? findEmailInElement(trigger) : "";
@@ -450,13 +391,7 @@
         el.click();
     }
 
-    /**
-     * يلقط عنصر القائمة المنسدلة المفتوحة حالياً المرتبطة بزر المستخدم.
-     * زر قائمة المستخدم بالذات ما فيه aria-controls (خلاف بعض أزرار Radix
-     * الثانية بالنظام)، لكن محتوى القائمة نفسه يربط رجوع للزر عبر
-     * aria-labelledby="<id تبع الزر>" - هذا أدق مطابقة، مع احتياط عام لو
-     * تغيّرت الماركب مستقبلاً
-     */
+    /** يلقط القائمة المنسدلة المفتوحة لزر المستخدم عبر aria-labelledby (ما فيه aria-controls بهالزر) */
     function findOpenUserMenu(trigger) {
         if (trigger.id) {
             const byLabel = document.querySelector('[role="menu"][aria-labelledby="' + trigger.id + '"]');
@@ -472,13 +407,7 @@
         return document.querySelector('[role="menu"]');
     }
 
-    /**
-     * يجيب إيميل المستخدم الحالي: يحاول يقرأه مباشرة من زر القائمة أول شي
-     * (بدون أي فتح)، ولو ما لقاه - لأن الإيميل الكامل ما يترسم بالـDOM إلا
-     * بعد فتح القائمة المنسدلة - يفتحها تلقائياً بنفسه، يقرأ الإيميل من
-     * محتواها، ثم يقفلها زي ما كانت (لو المستخدم نفسه ما كان فاتحها أصلاً)،
-     * كل هذا بدون أي تدخل يدوي من المستخدم
-     */
+    /** يجيب إيميل المستخدم: يقرأه مباشرة، ولو ما لقاه يفتح القائمة تلقائياً ويقرأه ثم يقفلها زي ما كانت */
     function resolveUserEmail(callback) {
         const direct = readCurrentUserEmail();
         if (direct) {
@@ -536,8 +465,7 @@
                 });
                 return;
             }
-            // احتياط لو GM_xmlhttpRequest مو متاح لأي سبب - fetch العادي ممكن
-            // يترفض بسبب CORS، لكن أفضل من عدم المحاولة إطلاقاً
+            // احتياط لو GM_xmlhttpRequest مو متاح - fetch ممكن يترفض بـCORS لكن أفضل من لا شي
             fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -571,9 +499,7 @@
     /** يفحص لو فيه نسخة أحدث منشورة على السيرفر عن النسخة المثبتة حالياً، ويحدّث شارة الإشعار */
     function checkForScriptUpdate() {
         if (SCRIPT_VERSION === "unknown") return;
-        // نضيف باراميتر عشوائي لكسر أي كاش (متصفح أو GM_xmlhttpRequest) - بدونه
-        // نفس الرابط المطلوب يرجّع نفس النسخة القديمة المخزّنة حتى لو
-        // السيرفر فعلياً عنده نسخة أحدث، لأنه ما فيه أي إشارة تُجبر طلب شبكة جديد
+        // باراميتر عشوائي لكسر الكاش - بدونه يرجّع نفس النسخة القديمة حتى لو السيرفر عنده أحدث
         fetchText(UPDATE_SCRIPT_URL + "?_=" + Date.now()).then(text => {
             if (!text) return;
             const match = /@version\s+(\S+)/.exec(text);
@@ -652,16 +578,14 @@
     function applyAllowedTools(tools, sessionToken, sessionExpiresAt, waSessions) {
         HOST_WINDOW.YAQEEN_TOOLS.allowedTools = Array.isArray(tools) ? tools : [];
         HOST_WINDOW.YAQEEN_TOOLS.permissionsLoaded = true;
-        // توكن الجلسة يُستخدم بدل المفتاح الثابت القديم بطلبات /send و/ai-chat -
-        // نحدّثه بس لو رجع وحدة جديدة (نتفادى مسحه بالغلط لو صار خطأ اتصال)
+        // نحدّث توكن الجلسة بس لو رجع وحدة جديدة (نتفادى مسحه بالغلط لو صار خطأ اتصال)
         if (sessionToken) {
             HOST_WINDOW.YAQEEN_TOOLS.sessionToken = sessionToken;
             HOST_WINDOW.YAQEEN_TOOLS.sessionExpiresAt = sessionExpiresAt || 0;
         }
         if (Array.isArray(waSessions)) {
             HOST_WINDOW.YAQEEN_TOOLS.availableSessions = waSessions;
-            // لو الجلسة النشطة المخزّنة سابقاً ما عادت موجودة (اتحذفت من لوحة
-            // التحكم مثلاً)، نرجع تلقائياً لـ"main" أو أول جلسة متاحة
+            // لو الجلسة النشطة المخزّنة ما عادت موجودة، نرجع تلقائياً لـ"main" أو أول جلسة متاحة
             const current = getActiveSessionId();
             if (waSessions.length && waSessions.indexOf(current) === -1) {
                 setActiveSessionId(waSessions.indexOf("main") !== -1 ? "main" : waSessions[0]);
@@ -673,12 +597,7 @@
         HOST_WINDOW.YAQEEN_TOOLS.refresh();
     }
 
-    /**
-     * يستدعى عند تشغيل الـCore، وبعدها دورياً (setInterval بالأسفل) - يجيب
-     * صلاحيات المستخدم + توكن جلسة جديد ويطبّقهم على القائمة. التكرار الدوري
-     * ضروري عشان يجدد توكن الجلسة قبل ما ينتهي (صالح 4 ساعات من طرف السيرفر)
-     * لو الموظف سايب التبويب مفتوح لمدة طويلة بدون إعادة تحميل
-     */
+    /** يجيب صلاحيات المستخدم + توكن جلسة ويطبّقهم - يتكرر دورياً عشان يجدد التوكن قبل انتهاءه (4 ساعات) */
     function loadUserPermissions() {
         const cached = readCachedPermissions();
         if (cached) {
@@ -688,16 +607,14 @@
 
         resolveUserEmail(function (email) {
             if (!email) {
-                // ما لقينا الإيميل هالمرة (مثلاً زر القائمة لسا ما ترسم
-                // بالصفحة) - نعيد المحاولة بدل ما نفشل نهائياً
+                // ما لقينا الإيميل هالمرة (مثلاً الزر لسا ما ترسم) - نعيد المحاولة
                 setTimeout(loadUserPermissions, 1000);
                 return;
             }
 
             postJson(PERMISSIONS_API_URL, { email: email, scriptVersion: SCRIPT_VERSION }).then(data => {
                 if (!data || data.success !== true || !Array.isArray(data.tools)) {
-                    // فشل الاتصال أو success:false - ما نخزّن هذي النتيجة بالكاش
-                    // (حتى تتاح إعادة محاولة حقيقية بأقرب تحميل صفحة)، وما نظهر أي أداة
+                    // فشل الاتصال أو success:false - ما نخزّن بالكاش (نتيح إعادة محاولة)، وما نظهر أي أداة
                     applyAllowedTools([]);
                     return;
                 }
@@ -752,8 +669,7 @@
             return;
 
 
-        // خط Tajawal - يُحمَّل مرة وحدة هنا (الـCore يشتغل أول شي دايماً) عشان
-        // كل الأدوات الثانية تقدر تستخدمه مباشرة بدون ما كل وحدة تحمّله لحالها
+        // خط Tajawal - يُحمَّل مرة وحدة هنا عشان كل الأدوات الثانية تستخدمه مباشرة
         if (!document.getElementById("yt-font-tajawal")) {
             const fontLink = document.createElement("link");
             fontLink.id = "yt-font-tajawal";
@@ -778,17 +694,13 @@
         document.body.appendChild(scrim);
 
 
-        // حلقة التصنيفات/الأدوات المستقلة - مرساة عند نفس نقطة مركز زر
-        // الليمونة (تُحسب مواقع الفقاعات كإزاحة عن هذي النقطة داخل
-        // renderRadialMenu)
+        // حلقة التصنيفات/الأدوات المستقلة - مرساة عند مركز زر الليمونة
 
         const catsLayer = document.createElement("div");
         catsLayer.id = "yt-cats";
         document.body.appendChild(catsLayer);
 
-        // لوحة أدوات التصنيف المفتوح - عنصر واحد ثابت الموضع (بدل عمود
-        // فقاعات يلاحق كل تصنيف)، يفتح دايماً أعلى قوس التصنيفات كله بهامش
-        // أمان، فمستحيل تتقاطع مع أي فقاعة تصنيف مهما كان التصنيف المختار
+        // لوحة أدوات التصنيف المفتوح - عنصر ثابت الموضع أعلى قوس التصنيفات، ما يتقاطع مع أي فقاعة
 
         const toolPanel = document.createElement("div");
         toolPanel.id = "yt-tool-panel";
@@ -804,8 +716,7 @@
         document.body.appendChild(toolPanel);
 
 
-        // شارة اختيار جلسة الواتساب النشطة - تظهر بس لو فيه أكثر من رقم
-        // واحد مربوط بالبوت حالياً. الضغط عليها يدور على الجلسات المتاحة
+        // شارة جلسة الواتساب النشطة - تظهر لو فيه أكثر من رقم، والضغط عليها يدور بينها
 
         const sessionBadge = document.createElement("div");
         sessionBadge.id = "yt-session-badge";
@@ -820,13 +731,8 @@
         updateSessionBadge();
 
 
-        // شارة "فيه تحديث جديد" فوق الليمونة - تظهر بس لو checkForScriptUpdate
-        // لقى نسخة أحدث منشورة على السيرفر عن النسخة المثبتة حالياً. الضغط
-        // عليها يفتح رابط تثبيت النسخة الجديدة (نفس @updateURL) بتبويب جديد
-        // - Tampermonkey يتعرف عليه تلقائياً ويعرض نافذته الأصلية لتأكيد
-        // التحديث. ما فيه طريقة يحدّث السكربت المثبت نفسه فوراً من داخل
-        // الصفحة بدون هذا التأكيد (Tampermonkey ما يوفر أي API لذلك)
-
+        // شارة "تحديث جديد" - الضغط يفتح @updateURL بتبويب جديد فيتكفل Tampermonkey بنافذة التأكيد
+        // ما فيه API يحدّث السكربت المثبت مباشرة من داخل الصفحة بدون هذا التأكيد
         const updateBadge = document.createElement("div");
         updateBadge.id = "yt-update-badge";
         updateBadge.textContent = "🔔 تحديث جديد";
@@ -835,9 +741,7 @@
             window.open(UPDATE_SCRIPT_URL + "?_=" + Date.now(), "_blank");
         };
         document.body.appendChild(updateBadge);
-        // مزامنة دفاعية: لو checkForScriptUpdate خلص قبل ما توصل هذي النقطة
-        // (نادر - ممكن بس لو تأخر إنشاء الواجهة عبر wait()) نعكس النتيجة
-        // على الشارة فوراً بدل ما تضل مخفية لين دورة الفحص التالية بعد 20 دقيقة
+        // مزامنة دفاعية: لو checkForScriptUpdate خلص قبل هذي النقطة، نعكس النتيجة فوراً بدل الانتظار
         updateUpdateBadge();
 
 
@@ -1078,8 +982,7 @@
         document.head.appendChild(style);
 
 
-        // الضغط على الليمونة يفتح/يقفل القائمة، وأي طلب فتح جديد يصفّر
-        // التصنيف المختار سابقاً (زي زر التصنيفات بالتصميم الأصلي)
+        // الضغط على الليمونة يفتح/يقفل القائمة، وأي فتح جديد يصفّر التصنيف المختار سابقاً
 
         fab.onclick = () => {
             RADIAL_STATE.open = !RADIAL_STATE.open;
@@ -1120,17 +1023,14 @@
 
     loadUserPermissions();
     // تحديث دوري كل 20 دقيقة - يجدد توكن الجلسة قبل انتهاءه (صالح 4 ساعات)
-    // لو الموظف سايب التبويب مفتوح لمدة طويلة بدون إعادة تحميل الصفحة
     setInterval(loadUserPermissions, 20 * 60 * 1000);
 
-    // فحص دوري لوجود نسخة أداة أحدث منشورة - نفس فكرة تجديد التوكن فوق،
-    // مفيد لو الموظف سايب التبويب مفتوح أياماً بدون Refresh
+    // فحص دوري لوجود نسخة أحدث - مفيد لو الموظف سايب التبويب مفتوح أياماً بدون Refresh
     checkForScriptUpdate();
     setInterval(checkForScriptUpdate, UPDATE_CHECK_INTERVAL_MS);
 
 
     // اختصارات لوحة المفاتيح - نتجاهل الحدث لو المستخدم يكتب بحقل نص/textarea
-    // حتى ما نتعارض مع أي اختصار متصفح آخر أو كتابة عادية
     document.addEventListener("keydown", function (e) {
 
         const target = e.target;
@@ -1149,9 +1049,7 @@
         });
         if (!match) return;
 
-        // نفس شرط الصلاحيات المستخدم بعرض القائمة - الاختصار ما يشتغل لأداة
-        // المستخدم غير مصرّح له فيها، حتى لو مسجّلة بالـCore (إلا لو التجاوز
-        // المحلي مفعّل)
+        // نفس شرط صلاحيات القائمة - الاختصار ما يشتغل لأداة غير مصرّح له فيها (إلا لو التجاوز المحلي مفعّل)
         if (!isShowAllEnabled() && HOST_WINDOW.YAQEEN_TOOLS.allowedTools.indexOf(match.toolId) === -1) return;
 
         const tool = HOST_WINDOW.YAQEEN_TOOLS.tools.find(function (t) { return t.id === match.toolId; });
@@ -1278,8 +1176,7 @@
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
-        // ملاحظة: لازم نفتح النافذة المنبثقة بشكل متزامن هنا (داخل onclick مباشرة)
-        // بدون أي await قبلها، وإلا يحظرها المتصفح كنافذة منبثقة غير مرغوبة.
+        // لازم فتح النافذة متزامن جوّا onclick بدون await قبله، وإلا المتصفح يحظرها
         box.querySelector("#airport").onclick = () => start(29);
         box.querySelector("#yard").onclick = () => start(53);
         box.querySelector("#all").onclick = () => start("29,53");
@@ -1312,8 +1209,7 @@
             })
             .then(rows => {
                 showLoading("جارٍ إرجاع لغة الصفحة إلى العربية...");
-                // نرجّع اللغة عربي جوّا نفس الـiframe قبل ما نشيله، عشان لغة النظام
-                // عندك (بالتبويب الأصلي) ما تظل عالقة إنجليزي بعد استخدام الأداة
+                // نرجّع اللغة عربي قبل الإغلاق حتى ما تظل عالقة إنجليزي بالتبويب الأصلي
                 return changeLanguage(frame, "العربية").then(() => rows);
             })
             .then(rows => {
@@ -1446,8 +1342,7 @@
         });
     }
 
-    // بعض جداول Yaqeen تعرض صفوف الصفحة الحالية فقط بالـ DOM حتى لو طلبنا
-    // pageSize كبير بالرابط، فنحتاج نتنقّل بين الصفحات ونجمع كل الصفوف.
+    // بعض الجداول تعرض صفوف الصفحة الحالية فقط رغم pageSize كبير، فنتنقّل ونجمع كل الصفوف
     const NEXT_PAGE_SELECTORS = [
         '[aria-label="Next page"]',
         '[aria-label="التالي"]',
@@ -1796,8 +1691,7 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
-        // ملاحظة: لازم نفتح النافذة المنبثقة بشكل متزامن هنا (داخل onclick مباشرة)
-        // بدون أي await قبلها، وإلا يحظرها المتصفح كنافذة منبثقة غير مرغوبة.
+        // لازم فتح النافذة متزامن جوّا onclick بدون await قبله، وإلا المتصفح يحظرها
         box.querySelector("#airport").onclick = () => start("29");
         box.querySelector("#yard").onclick = () => start("53");
         box.querySelector("#all").onclick = () => start("53,29");
@@ -1902,8 +1796,7 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
         });
     }
 
-    // بعض جداول Yaqeen تعرض صفوف الصفحة الحالية فقط بالـ DOM حتى لو طلبنا
-    // pageSize كبير بالرابط، فنحتاج نتنقّل بين الصفحات ونجمع كل الصفوف.
+    // بعض الجداول تعرض صفوف الصفحة الحالية فقط رغم pageSize كبير، فنتنقّل ونجمع كل الصفوف
     const NEXT_PAGE_SELECTORS = [
         '[aria-label="Next page"]',
         '[aria-label="التالي"]',
@@ -2197,9 +2090,7 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح صلاحية GM_xmlhttpRequest يشغّل
-    // السكربت بوضع sandbox معزول، و window.YAQEEN_TOOLS المسجّلة من صفحة
-    // يقين نفسها ما تكون مرئية إلا عبر unsafeWindow بهذا الوضع
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل السكربت بوضع sandbox معزول
     var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     function waitCore() {
@@ -2442,9 +2333,7 @@ ${rowsHtml}
     // ==========================================================
     // إيميل حادث
     // ==========================================================
-    // يبحث برقم عقد التأجير، يدخل تفاصيل الحجز تلقائياً، يعرض صور "فحص
-    // التسليم" حتى يختار المستخدم منها، يحمّل المختار، ثم يبني الإيميل.
-    // ==========================================================
+    // يبحث بالعقد، يدخل التفاصيل، يعرض صور الفحص للاختيار، يحمّلها، ويبني الإيميل
 
     /** يجمع كل الإدخالات اليدوية (رقم العقد + بيانات الحادث) بنافذة وحدة قبل ما نبدأ، بدل ما نقاطع المستخدم بـprompt عدة مرات وسط التدفق */
     function showAccidentInputForm() {
@@ -2522,10 +2411,7 @@ ${rowsHtml}
 
         showAgreementStatus("جارٍ البحث عن العقد...");
 
-        // iframe مخفي بدل نافذة منبثقة لكل خطوات البحث والتصفّح - ما يظهر أي
-        // شيء فوق صفحتك. الاستثناء الوحيد نافذة طباعة الاتفاقية نفسها، اللي
-        // يفتحها يقين بكوده الخاص (مو إحنا) كنافذة منفصلة حقيقية بغض النظر
-        // عن كون الزر اللي ضغطناه جوا iframe مخفي أو لا
+        // iframe مخفي للبحث والتصفّح؛ الاستثناء: نافذة طباعة الاتفاقية يفتحها يقين نفسه كنافذة حقيقية منفصلة
         const frame = openHiddenFrame(
             `https://yaqeen.lumirental.com/rental/branches/29/bookings?agreementNo=${encodeURIComponent(agreementNo)}`
         );
@@ -2553,11 +2439,7 @@ ${rowsHtml}
             let agreementResult = await attemptAgreementDownload();
             hideAgreementStatus();
 
-            // ما نكمل للخطوة التالية إلا بعد تأكيد صريح من المستخدم إنه حفظ
-            // الاتفاقية فعلاً - قبل كذا كانت العملية تكمل تلقائياً بالخلفية
-            // فوراً بدون أي انتظار حقيقي. وفيه زر "إعادة المحاولة" يعيد الضغط
-            // على "..." ثم "تنزيل الاتفاقية" من جديد لو فشلت أول مرة (مثلاً
-            // القائمة تأخرت تفتح)، بدل ما نضطر نلغي العملية كاملة ونبدأ من الصفر
+            // ننتظر تأكيد يدوي إن المستخدم حفظ الاتفاقية قبل المتابعة، مع زر إعادة محاولة لو فشل الضغط الأول
             agreementResult = await showAgreementConfirm(agreementResult, attemptAgreementDownload);
             if (agreementResult && !agreementResult.ok) downloadIssues.push("الاتفاقية: " + agreementResult.reason);
 
@@ -2599,8 +2481,7 @@ ${rowsHtml}
             showAgreementStatus("جارٍ جلب صور الفحص...");
             let deliveryImages = [];
             try {
-                // "تقرير الفحص" أكورديون مطوي افتراضياً - محتواه (صور فحص الاستلام/التسليم)
-                // ما يترسم بالـ DOM أصلاً إلا بعد ما نفتحه
+                // تقرير الفحص أكورديون مطوي افتراضياً، لازم نفتحه قبل ما محتواه يترسم بالـDOM
                 const reportToggle = Array.from(doc2.querySelectorAll('button'))
                     .find(b => b.textContent.includes('تقرير الفحص'));
                 if (reportToggle && reportToggle.getAttribute('aria-expanded') !== 'true') {
@@ -2612,8 +2493,7 @@ ${rowsHtml}
                     Array.from(d.querySelectorAll("h3")).some(h => h.textContent.includes("فحص")) ? d : null
                 ), 8000);
 
-                // نفضّل "فحص التسليم" (صور الإرجاع) وإلا نكتفي بـ"فحص الاستلام" (صور الاستلام
-                // بداية العقد) - العقد اللي لسا ما رجع للفرع ما يكون فيه "فحص تسليم" أصلاً
+                // نفضّل فحص التسليم وإلا فحص الاستلام (العقد اللي ما رجع للفرع ما فيه تسليم بعد)
                 const section = findInspectionSection(doc2, "فحص التسليم") || findInspectionSection(doc2, "فحص الاستلام");
                 if (section) {
                     deliveryImages = await collectAllInspectionImages(frame.contentWindow, doc2, section);
@@ -2640,9 +2520,7 @@ ${rowsHtml}
                 hideAgreementStatus();
             }
 
-            // استمارة المركبة: تحتاج رقم اللوحة بالشكل الإنجليزي (زي رابط
-            // /rental/vehicles/7015%20HDS/overview) - لو ما توفر نجرب اللي سحبناه
-            // من جدول البحث كحل احتياطي، حتى لو صيغته عربي وممكن يفشل بصمت
+            // استمارة المركبة تحتاج رقم اللوحة إنجليزي؛ لو ما توفر نجرب لوحة جدول البحث كحل احتياطي
             showAgreementStatus("جارٍ تحميل استمارة المركبة...");
             const registrationResult = await downloadVehicleRegistration(plateFromDetail || plate);
             if (registrationResult && !registrationResult.ok) downloadIssues.push("الاستمارة: " + registrationResult.reason);
@@ -2788,12 +2666,7 @@ ${rowsHtml}
             .filter(Boolean);
     }
 
-    /**
-     * يجمع كل صور القسم: لو ما فيه صور مخفية (بدون شارة "+N") يرجع الصور الظاهرة
-     * مباشرة، وإلا يفتح معرض الصور (Lightbox) بالضغط على الصورة الرئيسية،
-     * ويتنقل بزر "التالي" لأن شريط المصغّرات هناك مبني بشكل تدريجي (Virtualized) -
-     * ما تظهر كل الصور بالـ DOM إلا بعد ما نتصفّح بجانبها فعلياً - ثم يغلق المعرض.
-     */
+    /** يجمع كل صور القسم: يرجع الظاهر مباشرة، أو يفتح المعرض ويتنقل بـ"التالي" (المصغّرات تُحمَّل تدريجياً) */
     async function collectAllInspectionImages(popup, doc, section) {
         const visibleImages = extractVisibleInspectionImages(section);
         if (!sectionHasMoreImages(section)) return visibleImages;
@@ -2914,13 +2787,7 @@ ${rowsHtml}
         });
     }
 
-    /**
-     * يحمّل صورة واحدة كملف عبر GM_xmlhttpRequest بدل fetch العادي - صور
-     * الفحص مستضافة على cdn.lumirental.com (نطاق مختلف عن يقين نفسها)،
-     * و fetch العادي يترفض بصمت بسبب CORS فيرجع يفتحها بتبويب جديد بدل ما
-     * ينزّلها. GM_xmlhttpRequest صلاحية من Tampermonkey نفسه فما يخضع لقيود
-     * CORS إطلاقاً.
-     */
+    /** تحميل صورة عبر GM_xmlhttpRequest بدل fetch لتفادي CORS (صور الفحص على نطاق cdn مختلف) */
     function downloadImage(url, filename) {
         return new Promise(resolve => {
             if (typeof GM_xmlhttpRequest === "undefined") {
@@ -2971,22 +2838,11 @@ ${rowsHtml}
         el.click();
     }
 
-    /**
-     * يضغط زر "..." بصف الحجز، ثم "تنزيل الاتفاقية" من القائمة. زر يقين هذا
-     * يفتح نافذة طباعة حقيقية فيها الاتفاقية - نتركها تفتح طبيعي (بدون أي
-     * اعتراض أو تصوير) عشان تختار "حفظ كـ PDF" بنفسك من قائمة الطابعات؛
-     * هذي الخطوة الوحيدة اليدوية بكل التدفق، وتنتج PDF حقيقي بمقاس A4 صحيح
-     * ونص عربي سليم، بعكس محاولات التصوير (html2canvas) اللي جربناها قبل.
-     * يرجع { ok: true } أو { ok: false, reason: "..." } - نعرض السبب للمستخدم مباشرة بدل الاكتفاء بالـ Console.
-     */
+    /** يضغط "..." ثم "تنزيل الاتفاقية"، ويترك نافذة الطباعة الحقيقية تفتح ليحفظها المستخدم PDF يدوياً (الخطوة اليدوية الوحيدة - بديل html2canvas اللي فشل بجودة الـPDF والعربي)
+     * يرجع { ok, reason } */
     async function downloadAgreementFromRow(win, row) {
-        // بعض صفوف الحجوزات فيها أكثر من زر (زي "إنهاء الاتفاقية" جنب زر
-        // "...")، فأخذ "أول button بالصف" كان يمسك زر غير زر القائمة أصلاً -
-        // يفتح القائمة الغلط (أو ما يفتح شي) فما تظهر "تنزيل الاتفاقية"
-        // بعدها. المشغّل الحقيقي (aria-haspopup="menu") أحياناً يكون على
-        // <div> غالف (Radix asChild) وليس على <button> نفسه (الزر بداخله مجرد
-        // أيقونة زخرفية) - فنستهدف أي عنصر عنده هذا الـattribute بغض النظر عن
-        // نوع الوسم، ونرجع لأول زر بالصف كحل احتياطي أخير لو ما لقينا شي
+        // "أول button بالصف" يمسك زر غلط لو فيه أكثر من زر (صفوف فيها "إنهاء الاتفاقية" مثلاً)؛
+        // نستهدف [aria-haspopup="menu"] مباشرة لأنه قد يكون على <div> غالف لا على <button> نفسه
         const menuTrigger = row.querySelector('[aria-haspopup="menu"]') || row.querySelector("button");
         if (!menuTrigger) return { ok: false, reason: 'ما لقيت زر "..." بصف الحجز' };
         dispatchFullClick(menuTrigger, win);
@@ -2996,14 +2852,8 @@ ${rowsHtml}
         let downloadBtn = null;
         const menuStart = Date.now();
         while (!downloadBtn && Date.now() - menuStart < 3000) {
-            // بعض العقود عندها عناصر تجميع/طي إضافية بالقائمة (زي "تحصيل الدفع"
-            // اللي يُغلَّف بزرّين متداخلين لأنه Radix DropdownMenuSub) - عنصر
-            // <button> الخارجي بهذي الحالات نصّه (textContent) يشمل نص أي عنصر
-            // متداخل بداخله، فلو اخترنا أول تطابق بترتيب DOM ممكن نمسك الزر
-            // الخارجي (اللي يفتح/يطوي قائمة فرعية بدل ما ينزّل شي) بدل الزر
-            // الفعلي. ترتيب DOM دايماً يحط أي عنصر أب قبل أبنائه، فنختار آخر
-            // تطابق (الأعمق/الأكثر تحديداً) بدل أول تطابق لضمان إنه هو نفسه
-            // الزر الحقيقي وليس أي غلاف حوله
+            // نختار آخر تطابق لا أول تطابق: بعض القوائم متداخلة (Radix DropdownMenuSub) وزر
+            // <button> الخارجي نصّه يشمل نص العناصر بداخله، فأول تطابق يمسك الغلاف لا الزر الفعلي
             const matches = Array.from(doc.querySelectorAll('[role="menuitem"], button'))
                 .filter(b => b.textContent.includes("تنزيل الاتفاقية"));
             downloadBtn = matches.length ? matches[matches.length - 1] : null;
@@ -3064,21 +2914,8 @@ ${rowsHtml}
         });
     }
 
-    /**
-     * يفتح صفحة مستندات المركبة (برقم اللوحة) ويضغط زر عرض "استمارة المركبة" -
-     * الضغط عليه يبدأ تحميل الملف تلقائياً على الجهاز مباشرة (بدون معاينة أو
-     * تبويب وسيط). نستخدم iframe مخفي بدل نافذة منبثقة لأن هذي الخطوة تصير
-     * بعد سلسلة طويلة من await بعيد عن ضغطة المستخدم الأصلية، والمتصفح يحظر
-     * window.open() اللي ما تُستدعى مباشرة ضمن حدث ضغطة حقيقي.
-     */
-    /**
-     * يلقط صف مستند معيّن من جدول "مستندات" حسب عمود "نوع المستند" تحديداً
-     * (مو نص الصف كامل) - مهم بالذات إن هذا الجدول أحياناً يحتوي أكثر من نوع
-     * مستند بنفس الوقت (مثلاً "استمارة المركبة" و"شهادة التأمين" معاً)،
-     * فمطابقة نص الصف كامل بدل عمود التصنيف بالذات ممكن تلخبط بينهم لو أي
-     * عمود ثاني بالصف فيه نص مشابه بالصدفة. نحاول مطابقة تامة أول شي، وإلا
-     * نرجع لمطابقة جزئية كحل احتياطي لو تغيّرت الصياغة قليلاً.
-     */
+    /** يفتح صفحة مستندات المركبة ويضغط تحميل "استمارة المركبة"؛ iframe مخفي لأن window.open يُحظر بعيد عن ضغطة المستخدم الأصلية */
+    /** يلقط صف مستند حسب عمود "نوع المستند" تحديداً (مو نص الصف كامل) لتفادي تعارض أنواع مستندات متعددة بنفس الصف */
     function findDocumentRowByType(doc, exactLabel, fallbackSubstring) {
         const tables = Array.from(doc.querySelectorAll("table"));
         for (const table of tables) {
@@ -3107,10 +2944,7 @@ ${rowsHtml}
         const frame = openHiddenFrame(`https://yaqeen.lumirental.com/rental/vehicles/${encodeURIComponent(plate)}/overview`);
 
         try {
-            // مهلة أطول من المعتاد: أول تحميل لهذي الصفحة بالجلسة أبطأ بكثير من
-            // المحاولات اللي بعدها (تحميل حزمة JS باردة)، و15 ثانية ما كانت كافية.
-            // ننتظر تحديداً صف "استمارة المركبة" (مو أي جدول عام بالصفحة) حتى
-            // نضمن إن جدول "مستندات" فعلاً انحمّل قبل ما نحاول نقرأ منه
+            // مهلة أطول (25 ثانية): أول تحميل للصفحة بالجلسة أبطأ بكثير، ننتظر صف "استمارة المركبة" تحديداً
             const doc = await waitForFrame(frame, d => (findDocumentRowByType(d, "استمارة المركبة", "استمارة") ? d : null), 25000);
             if (!doc) {
                 return { ok: false, reason: `ما تحمّلت صفحة مستندات المركبة أو ما لقينا صف "استمارة المركبة" (اللوحة: "${plate}")` };
@@ -3126,12 +2960,9 @@ ${rowsHtml}
                 return { ok: false, reason: "ما لقيت زر التحميل بصف الاستمارة" };
             }
 
-            // نفس مشكلة زر "..." بقائمة الاتفاقية - .click() لحاله ما يشغّل معالج
-            // الضغط بشكل موثوق دائماً بهذي الواجهة (Radix UI)، يحتاج أحداث
-            // pointer حقيقية قبله. هذا سبب فشل التحميل بصمت أول مرة وينجح بإعادة المحاولة
+            // نفس مشكلة زر "..." السابق: .click() لحاله ما يشغّل معالج الضغط بموثوقية بهذي الواجهة (Radix UI)
             dispatchFullClick(btn, frame.contentWindow);
-            // نستنى وقت أطول حتى يبدأ التحميل فعلياً قبل ما نشيل الـiframe - الضغط
-            // يشغّل طلب شبكة لجلب الملف قبل التحميل، وممكن ياخذ وقت أطول من ثانيتين
+            // ننتظر أطول من ثانيتين حتى يبدأ التحميل فعلياً قبل إزالة الـiframe
             await new Promise(r => setTimeout(r, 5000));
             return { ok: true };
         } catch (err) {
@@ -3158,16 +2989,7 @@ ${rowsHtml}
         document.getElementById("email-status-box")?.remove();
     }
 
-    /**
-     * نافذة تأكيد يدوي تتوقف عندها العملية فعلياً (Promise ما يُحلّ إلا بضغطة
-     * المستخدم) - تعرض هل نجحنا بفتح نافذة الطباعة أصلاً، وتطلب من المستخدم
-     * يحفظ الاتفاقية كـPDF ويضغط "التالي" قبل ما نكمل لباقي الخطوات (الصور
-     * والاستمارة). لو فشلت المحاولة (ما لقينا زر "..." أو "تنزيل الاتفاقية")
-     * يظهر زر "🔄 إعادة المحاولة" يعيد استدعاء retryFn (نفس منطق الضغط من
-     * جديد) بدون قفل النافذة أو إلغاء العملية كاملة. يرجع الـPromise بآخر
-     * نتيجة فعلية (بعد أي إعادة محاولة) حتى تنعكس صح على رسالة الأخطاء
-     * النهائية بآخر الإيميل.
-     */
+    /** نافذة تأكيد يدوي تنتظر ضغطة المستخدم بعد حفظ PDF؛ فيها زر إعادة محاولة لو فشل، وترجع آخر نتيجة فعلية */
     function showAgreementConfirm(initialResult, retryFn) {
         return new Promise(resolve => {
             let currentResult = initialResult;
@@ -3290,8 +3112,7 @@ ${rowsHtml}
 
         showAgreementStatus("جارٍ البحث عن الحجز...");
 
-        // iframe مخفي بدل نافذة منبثقة - نفس أسلوب إيميل الحادث، ما يظهر أي
-        // شيء فوق صفحتك أثناء البحث وجلب البيانات
+        // iframe مخفي (نفس أسلوب إيميل الحادث) أثناء البحث وجلب البيانات
         const frame = openHiddenFrame(
             `https://yaqeen.lumirental.com/rental/branches/29/bookings?bookingNo=${encodeURIComponent(bookingNo)}`
         );
@@ -3338,8 +3159,7 @@ ${rowsHtml}
 
             await new Promise(r => setTimeout(r, 1200));
 
-            // لوحة "معلومات السائق": كل حقل عبارة عن <p class="text-sm">التسمية</p> يتبعه
-            // <p>القيمة</p> بنفس الحاوية - نلقط التسمية "رقم الهوية" ونرجع أخوها التالي
+            // لوحة "معلومات السائق": نلقط <p> تسمية "رقم الهوية" ونرجع أخوها التالي كقيمة
             const idLabel = Array.from(doc2.querySelectorAll("p"))
                 .find(p => p.textContent.trim().startsWith("رقم الهوية"));
             const idNumber = idLabel?.nextElementSibling?.textContent.trim() || "";
@@ -3347,9 +3167,7 @@ ${rowsHtml}
             try { frame.remove(); } catch (err) { /* تجاهل */ }
             hideAgreementStatus();
 
-            // إزالة الـiframe أحياناً تسحب التركيز (focus) عن صفحتنا، و
-            // navigator.clipboard.write يرفض العمل لو المستند غير مركّز -
-            // نجبر التركيز رجوع يدوياً احتياطاً (نفس أسلوب إيميل الحادث)
+            // نجبر التركيز رجوع يدوياً: إزالة الـiframe تسحب focus وclipboard.write يرفض العمل بدونه
             window.focus();
             await new Promise(r => setTimeout(r, 150));
 
@@ -3385,9 +3203,7 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed معزول عن window الحقيقية
     var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت أداة "تقرير الحجوزات القادمة")
@@ -3429,8 +3245,7 @@ ${rowsHtml}
         'السبت': 6,
     };
 
-    // تعديلات يدوية على عدد سيارات الحوش لكل قروب - تُمسح مع كل تحديث حقيقي
-    // للبيانات (تحديث/تغيير المدة) عشان ما تطغى على الأرقام الفعلية الجديدة
+    // تعديلات يدوية على عدد سيارات الحوش لكل قروب - تُمسح مع كل تحديث حقيقي للبيانات
     var yardOverrides = {};
 
     // ==========================================================
@@ -3732,11 +3547,8 @@ ${rowsHtml}
     function runReport(hours) {
         document.getElementById('airport-hours-box')?.remove();
 
-        // ننشئ الإطارات الثلاثة فوراً (يبدأ تحميلها بالخلفية فوراً)، لكن نقرأها
-        // بالتتابع لا بالتوازي (Promise.all): فتح 3 صفحات React ثقيلة والبدء
-        // بقراءتها كلها بنفس اللحظة يسبب تنافساً على الموارد يمنع إطار
-        // "الحوش" (آخر واحد) من اكتمال تحميله ضمن المهلة، فيرجع صفوفاً فارغة
-        // رغم وجود بيانات فعلية بالصفحة الحقيقية
+        // الإطارات الثلاثة تُفتح فوراً لكن تُقرأ بالتتابع لا بالتوازي - قراءة متزامنة تسبب تنافس موارد
+        // يمنع إطار "الحوش" (آخر واحد) من اكتمال تحميله ضمن المهلة
         var bookingsFrame = openHiddenFrame(BOOKINGS_URL);
         var vehiclesFrame = openHiddenFrame(VEHICLES_URL);
         var yardFrame = openHiddenFrame(YARD_VEHICLES_URL);
@@ -3781,17 +3593,14 @@ ${rowsHtml}
                     totalVehicles++;
                 });
 
-                // عمود "سيارات الحوش" يشمل الآن كل قروبات الحوش فعلياً - حتى لو
-                // القروب ما عنده أي سيارة بالمطار نفسه ولا أي حجز، عشان يظهر
-                // بالتقرير ويصير قابل للتعديل اليدوي
+                // عمود "سيارات الحوش" يشمل كل قروبات الحوش حتى لو ما عنده سيارة بالمطار ولا حجز
                 var yardVehicleCounts = {};
                 yardRows.forEach(function (r) {
                     if (!r.group || !r.available) return;
                     yardVehicleCounts[r.group] = (yardVehicleCounts[r.group] || 0) + 1;
                 });
 
-                // تحديث حقيقي جديد للبيانات - نمسح أي تعديل يدوي سابق حتى ما يظل
-                // يطغى على الأرقام الفعلية الجديدة
+                // تحديث حقيقي جديد للبيانات - نمسح أي تعديل يدوي سابق
                 yardOverrides = {};
 
                 showReport(hours, bookingCounts, vehicleCounts, yardVehicleCounts, totalBookings, totalVehicles);
@@ -3977,8 +3786,7 @@ ${rowsHtml}
         document.getElementById('airport-hours-box')?.remove();
         injectYqStyles();
 
-        // اتحاد كل القروبات (حجوزات + سيارات مطار + سيارات حوش) عشان أي قروب
-        // له حوش فقط بدون سيارات مطار ولا حجوزات يظل يظهر بالتقرير
+        // اتحاد كل القروبات (حجوزات + سيارات مطار + سيارات حوش) عشان قروب فيه حوش فقط يظل يظهر
         var groups = Object.keys(Object.assign({}, bookingCounts, vehicleCounts, yardVehicleCounts)).sort();
 
         var rowsHtml = groups.map(function (group) {
@@ -4122,8 +3930,7 @@ ${rowsHtml}
     }
 
     // ==========================================================
-    // إرسال صورة واتساب - نفس أسلوب أداة "تقرير الحجوزات القادمة"
-    // (SVG+foreignObject لرسم الجدول كصورة، بدون أي مكتبة خارجية)
+    // إرسال صورة واتساب (SVG+foreignObject، بدون أي مكتبة خارجية)
     // ==========================================================
 
     /** يحوّل نص UTF-8 (فيه عربي) إلى base64 - btoa العادية تدعم Latin1 بس */
@@ -4209,8 +4016,7 @@ ${rowsHtml}
                     '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
                     '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
 
-                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG
-                // فيها foreignObject لو كانت محمّلة من blob: (Tainted Canvas)
+                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG فيها foreignObject من blob: (Tainted Canvas)
                 var svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
 
                 var img = new Image();
@@ -4321,8 +4127,7 @@ ${rowsHtml}
                         target: WHATSAPP_CONFIG.target,
                         sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
-                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
-                        // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
+                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن البوت يعمل Buffer.from مباشرة
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة - ' + new Date().toLocaleString('ar-SA'),
                     }),
@@ -4361,9 +4166,7 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل السكربت بوضع sandbox معزول
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -4376,9 +4179,7 @@ ${rowsHtml}
     const BRANCH_ID = 29;
     const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/' + BRANCH_ID + '/bookings?status=LATE_RETURN&pageSize=500';
     const MAX_AGREEMENTS = 300;
-    // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع
-    // تماماً بنفس منطق الفحص الأصلي، بس موزّعين على عدة إطارات بدل واحد
-    // فقط، فتسرع العملية بمقدار العدد تقريباً بدون أي تغيير بمنطق الفحص نفسه
+    // عدد الإطارات المتوازية لفحص تفاصيل العقود (نفس منطق الفحص، موزّع لتسريع العملية)
     const CHECK_CONCURRENCY = 4;
 
     function waitCore() {
@@ -4533,12 +4334,7 @@ ${rowsHtml}
         return false;
     }
 
-    /**
-     * كل صف بجدول "العقود المتأخرة" فيه عمود "الإجمالي (ريال)" برقم + أيقونة:
-     * أيقونة خضراء (fill-green-600) = تم السداد فعلياً رغم تأخر التسليم، ما نعتبره متأخر بالسداد.
-     * أيقونة رمادية (fill-slate-400) = لسا عليه مبلغ متأخر فعلاً.
-     * هذا يغنينا عن فتح كل عقد للتأكد - نفلتر أول شي من نفس القائمة، ونفتح بس اللي يستاهل.
-     */
+    /** عمود "الإجمالي" فيه أيقونة: خضراء = تم السداد فعلياً (نتجاهله)، رمادية = متأخر فعلاً */
     function readLateReturnRows(doc) {
         const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
         if (!table) return [];
@@ -4555,10 +4351,7 @@ ${rowsHtml}
             const cells = row.querySelectorAll("td");
             if (!cells.length) return null;
 
-            // عمود "اسم المدين" يكون "غير متاح" للأفراد، ويعرض اسم الشركة
-            // الفعلي للعقود التابعة لشركات - وأغلب عقود الشركات المتأخرة سببها
-            // إن الشركة نفسها ما مدّدت العقد بعد (مو تأخر سداد فردي). هذي
-            // الأداة للأفراد فقط، فنتجاهل أي صف عنده اسم شركة حقيقي بهذا العمود
+            // عمود "اسم المدين" = "غير متاح" للأفراد، أو اسم شركة حقيقي للعقود التابعة لشركات؛ الأداة للأفراد فقط فنتجاهل أي شركة
             const debtorText = debtorIdx !== -1 ? cells[debtorIdx].textContent.trim() : "";
             if (debtorText && debtorText !== "غير متاح") return null;
 
@@ -4662,10 +4455,7 @@ ${rowsHtml}
         return candidates.find(el => (el.textContent || '').trim() === text) || null;
     }
 
-    /**
-     * يحوّل رقم جوال معروض بأي صيغة شائعة (05xxxxxxxx، +9665xxxxxxxx،
-     * 9665xxxxxxxx، 5xxxxxxxx) إلى JID واتساب لرقم فردي بصيغة Baileys
-     */
+    /** يحوّل رقم جوال بأي صيغة شائعة إلى JID واتساب بصيغة Baileys */
     function normalizePhoneToJid(rawPhone) {
         let digits = (rawPhone || '').replace(/\D/g, '');
         if (digits.startsWith('00')) digits = digits.slice(2);
@@ -4705,14 +4495,7 @@ ${rowsHtml}
         return Array.from(root.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/')) || null;
     }
 
-    /**
-     * نافذة "رابط الدفع" تطلع فيها حالتين متشابهتين شكلياً (فيهما نفس بلوك
-     * تفاصيل الرابط)، بس بنص مختلف كلياً بتنبيه [role="alert"] بالأعلى:
-     * - "يوجد رابط دفع نشط": رابط قديم من قبل - ما ننشئ ولا نرسل شي جديد.
-     * - "تم إنشاء رابط الدفع وإرساله...": رابط جديد أنشأناه للتو فعلياً.
-     * الاعتماد على نص التنبيه نفسه (مو مجرد وجود رابط بالنافذة، اللي يطلع
-     * بالحالتين) هو الفيصل الموثوق - لون/شكل التنبيه تفصيل ثانوي قابل للتغيّر.
-     */
+    /** نميّز حالة نافذة "رابط الدفع" بنص تنبيه [role="alert"]: رابط نشط قديم مقابل رابط جديد أُنشئ للتو */
     function classifyPaymentDialogState(dialog) {
         if (!dialog) return null;
         const alerts = Array.from(dialog.querySelectorAll('[role="alert"]'));
@@ -4724,13 +4507,7 @@ ${rowsHtml}
         return null;
     }
 
-    /**
-     * يتحقق أول شي إذا الحالة المطلوبة متحققة أصلاً (بدون ضغط أي شي - مفيد
-     * لما نكون فعلاً بمرحلة متقدمة ومحتاجين خطوة سابقة). إذا لأ، يدور على
-     * عنصر يضغطه وينتظر تحقق الحالة، ويكرر المحاولة (ضغط جديد + انتظار جديد)
-     * لأكثر من مرة - لأن أحياناً العنصر يكون موجود بالـDOM بس لسا ما تركّبت
-     * معالجات الأحداث عليه فعلياً (سباق تحميل الصفحة)، فالضغطة الأولى تُفقد.
-     */
+    /** يتحقق من الحالة أول شي (بدون ضغط)، وإلا يضغط وينتظر ويكرر المحاولة (الضغطة الأولى قد تُفقد بسبب سباق تحميل الصفحة) */
     async function clickUntil(frame, findClickTarget, checkFn, opts) {
         const maxAttempts = (opts && opts.maxAttempts) || 3;
         const perAttemptTimeout = (opts && opts.perAttemptTimeout) || 5000;
@@ -4752,16 +4529,7 @@ ${rowsHtml}
         return lastDoc ? checkFn(lastDoc) : null;
     }
 
-    /**
-     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة بالعقد،
-     * يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع". من هذي النقطة احتمالين:
-     * - ما فيه رابط نشط: يطلع زر "إنشاء رابط الدفع" - نضغطه وننتظر الرابط
-     *   الجديد (يقين نفسه يرسله تلقائياً على واتساب العميل من رقمه فور إنشائه).
-     * - فيه رابط نشط من قبل (تنبيه "يوجد رابط دفع نشط"): نرجّع نفس الرابط
-     *   الموجود بدون إنشاء رابط جديد ولا أي إرسال إضافي - يقين يسمح برابط
-     *   نشط واحد بس، وهذا يمنع تكرار الرسائل للعميل.
-     * المبلغ بالنموذج يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
-     */
+    /** يمشي بخطوات الموظف اليدوية (تحصيل الدفع ← رابط الدفع) وينشئ رابط جديد أو يرجّع الرابط النشط الموجود لتفادي تكرار الإرسال */
     async function locateOrCreatePaymentLink(branchId, agreementNo) {
         const url = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/close-agreements/' + agreementNo + '//payment';
         const frame = openHiddenFrame(url);
@@ -4769,10 +4537,7 @@ ${rowsHtml}
             const doc1 = await waitFor(frame, d => (findButtonByText(d, 'تحصيل الدفع') ? d : null), 20000);
             if (!doc1) throw new Error('تعذّر فتح صفحة الدفع الخاصة بالعقد');
 
-            // بعد الضغط على "تحصيل الدفع" احتمالين: تطلع طرق الدفع (لازم نختار
-            // "رابط الدفع")، أو تطلع مباشرة حالة "يوجد رابط دفع نشط" أو زر
-            // "إنشاء رابط الدفع" لو كانت آخر طريقة استخدمها الموظف هي رابط
-            // الدفع (يقين يتذكر آخر طريقة مختارة) - نتحمّل كل الاحتمالات
+            // بعد "تحصيل الدفع": إما تطلع طرق الدفع، أو مباشرة حالة رابط نشط/زر إنشاء (يقين يتذكر آخر طريقة) - نتحمّل الكل
             const doc2 = await clickUntil(
                 frame,
                 d => findButtonByText(d, 'تحصيل الدفع'),
@@ -4814,10 +4579,7 @@ ${rowsHtml}
                 return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
-            // زر "إنشاء رابط الدفع" أحياناً يطلع أول شي بشكل متفائل (optimistic)
-            // قبل ما يوصل رد فحص "هل فيه رابط نشط؟" من السيرفر، وبعدها يتحوّل
-            // فجأة لتنبيه "يوجد رابط دفع نشط" - ننتظر شوي ونعيد الفحص قبل ما
-            // نضغط "إنشاء رابط الدفع" فعلياً، حتى ما نولّد رابط مكرر ونرسله بالغلط
+            // زر "إنشاء رابط الدفع" يطلع أحياناً متفائلاً (optimistic) قبل رد السيرفر؛ ننتظر ونعيد الفحص لتفادي رابط مكرر
             await new Promise(r => setTimeout(r, 1200));
             dialog = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
             state = classifyPaymentDialogState(dialog);
@@ -4846,8 +4608,7 @@ ${rowsHtml}
             if (!linkEl) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
             return { status: finalState === 'active' ? 'existing' : 'created', link: linkEl.getAttribute('href') };
         } catch (err) {
-            // تشخيص: نطبع محتوى نافذة الدفع وقت الفشل بالـconsole عشان لو
-            // تكرر الفشل نقدر نشوف بالضبط أي حالة DOM ما كنا نتوقعها
+            // تشخيص: نطبع محتوى نافذة الدفع وقت الفشل بالـconsole للمساعدة عند تكرر المشكلة
             try {
                 const failDoc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
                 const dialog = failDoc && failDoc.querySelector('[role="dialog"]');
@@ -4880,11 +4641,7 @@ ${rowsHtml}
         };
     }
 
-    /**
-     * منطق الإرسال الفعلي لصف واحد (بدون أي تأكيد - التأكيد مسؤولية المستدعي).
-     * يحدّث حالة الصف بنفسه: ⏳ جارٍ ← ✅ تم الإرسال / ℹ️ يوجد رابط مرسل بالفعل
-     * / ⚠️ لا يوجد جوال / ❌ فشل الإرسال. تُستخدم من زر الصف نفسه ومن "إرسال للجميع".
-     */
+    /** يرسل رابط الدفع لصف واحد (بدون تأكيد - مسؤولية المستدعي) ويحدّث حالة الصف؛ يُستخدم من زر الصف ومن "إرسال للجميع" */
     async function sendPaymentLinkForRecord(record, idx) {
         const { branchBtn } = rowButtons(idx);
         if (branchBtn) branchBtn.disabled = true;
@@ -4942,14 +4699,9 @@ ${rowsHtml}
     // التنفيذ الرئيسي
     // ==========================================================
 
-    /**
-     * يفحص عقداً واحداً بالتفصيل (نفس المنطق الأصلي بالضبط، بدون أي تغيير):
-     * يفتح صفحة العقد، يقرأ الرصيد المتبقي الحقيقي، ويرجع null لو تعذّر الفتح
-     * أو لو الرصيد أقل من الحد المطلوب - وإلا يوسّع بيانات العميل ويرجع النتيجة.
-     */
+    /** يفحص عقداً واحداً: يفتح صفحته، يقرأ الرصيد المتبقي الحقيقي، ويرجع null لو تعذّر أو أقل من الحد، وإلا يرجع بيانات العميل */
     async function checkOneAgreement(frame, c, threshold) {
-        // نتأكد إن الرابط فعلاً تغيّر قبل قراءة القيمة، وإلا ممكن نلقط DOM العقد السابق
-        // اللي لسا موجود لحظة التنقّل، ونظل نقرأ نفس القيمة القديمة لكل العقود اللي بعده
+        // نتأكد إن الرابط تغيّر فعلاً قبل القراءة، وإلا نلقط DOM العقد السابق ونكرر نفس القيمة
         const targetPath = new URL(c.href).pathname;
         frame.src = c.href;
         const doc2 = await waitFor(frame, d => {
@@ -4965,9 +4717,7 @@ ${rowsHtml}
         // الرصيد المتبقي الحقيقي (من صفحة العقد نفسها) هو أساس الفلترة، مو أي مؤشر بالقائمة
         if (isNaN(remaining) || remaining < threshold) return { checked: true, record: null };
 
-        // نفس زر توسيع بيانات العميل المستخدم بأدوات الإيميل - يفتح لوحة فيها الجوال ورقم الهوية.
-        // نبحث عنه بانتظار فعلي (مو محاولة وحدة) لأن مع 4 إطارات تشتغل بالتوازي
-        // ممكن العنصر يكون لسا ما تركّب لحظة وصولنا هنا رغم ظهور "الرصيد المتبقي"
+        // زر توسيع بيانات العميل (نفس أدوات الإيميل)؛ ننتظره فعلياً لأنه مع التوازي قد يتأخر تركيبه
         let expandBtn = null;
         const btnWaitStart = Date.now();
         while (Date.now() - btnWaitStart < 3000) {
@@ -4980,9 +4730,7 @@ ${rowsHtml}
             try { expandBtn.click(); } catch (err) { /* تجاهل */ }
         }
 
-        // ننتظر فعلياً لين يظهر رقم الجوال بدل انتظار ثابت 1200ms - مع 4
-        // إطارات تشتغل بالتوازي (CHECK_CONCURRENCY) ممكن يتأخر ظهور اللوحة
-        // شوي عن ذلك الوقت الثابت، فيطلع الصف بدون جوال ولا هوية بدون داعي
+        // ننتظر فعلياً ظهور الجوال بدل انتظار ثابت، لأن التوازي (CHECK_CONCURRENCY) قد يؤخر ظهور اللوحة
         const waitStart = Date.now();
         let dialog = doc2.querySelector('[role="dialog"]') || doc2;
         while (Date.now() - waitStart < 4000) {
@@ -5026,8 +4774,7 @@ ${rowsHtml}
             const allRows = await collectAllPages(frame, doc1);
             try { frame.remove(); } catch (err) { /* تجاهل */ }
 
-            // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً من زر
-            // "إنهاء الاتفاقية" ونشوف "الرصيد المتبقي" الحقيقي بصفحة التفاصيل
+            // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً ونشوف "الرصيد المتبقي" الحقيقي
             const candidates = allRows.slice(0, MAX_AGREEMENTS);
 
             if (candidates.length === 0) {
@@ -5037,14 +4784,10 @@ ${rowsHtml}
 
             let checkedCount = 0;
             let processedCount = 0;
-            // نتيجة كل عقد تُحفظ في نفس فهرسه الأصلي (وليس بترتيب الاكتمال) حتى
-            // يبقى ترتيب التقرير النهائي مطابقاً تماماً لترتيب قائمة LATE_RETURN
-            // الأصلية، بغض النظر عن أي عامل خلص قبل غيره
+            // نتيجة كل عقد تُحفظ بفهرسها الأصلي (لا بترتيب الاكتمال) حتى يطابق التقرير ترتيب LATE_RETURN الأصلي
             const recordsByIndex = new Array(candidates.length).fill(null);
 
-            // نوزّع العقود على عدة إطارات مخفية بالتناوب (round robin)، كل إطار
-            // يعالج نصيبه بالتتابع بنفس منطق الفحص الأصلي بالضبط - فقط موازاة
-            // على مستوى الإطارات، بدون أي تغيير على كيفية فحص العقد الواحد
+            // نوزّع العقود على عدة إطارات مخفية بالتناوب (round robin)؛ موازاة على مستوى الإطارات فقط
             const workerCount = Math.min(CHECK_CONCURRENCY, candidates.length);
             const workerFrames = [];
 
@@ -5362,8 +5105,7 @@ ${rowsHtml}
                     '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
                     '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
 
-                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG
-                // فيها foreignObject لو كانت محمّلة من blob: (Tainted Canvas)
+                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG فيها foreignObject من blob: (Tainted Canvas)
                 const svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
 
                 const img = new Image();
@@ -5474,8 +5216,7 @@ ${rowsHtml}
                         target: WHATSAPP_CONFIG.target,
                         sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
-                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
-                        // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
+                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن كود البوت يعمل Buffer.from مباشرة
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر) - ' + new Date().toLocaleString('ar-SA'),
                     }),
@@ -5628,9 +5369,7 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل السكربت بوضع sandbox معزول
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -5640,9 +5379,7 @@ ${rowsHtml}
         target: '120363021290047142@g.us',
     };
 
-    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع واحد بكل مرة يشغّل
-    // فيها الأداة (بعكس أداة "العقود المتأخرة في السداد (أفراد)" الأصلية
-    // اللي تفحص فرع مطار جدة فقط، وبعكس أي نسخة تفحص كل الفروع مع بعض)
+    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع واحد (أو أكثر) بكل تشغيل
     const BRANCHES = [
         { id: 29, name: 'مطار جدة' },
         { id: 11, name: 'طريق المدينة' },
@@ -5667,9 +5404,7 @@ ${rowsHtml}
     }
 
     const MAX_AGREEMENTS = 300;
-    // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع
-    // تماماً بنفس منطق الفحص الأصلي، بس موزّعين على عدة إطارات بدل واحد
-    // فقط، فتسرع العملية بمقدار العدد تقريباً بدون أي تغيير بمنطق الفحص نفسه
+    // عدد الإطارات المتوازية لفحص تفاصيل العقود (نفس منطق الفحص، موزّع لتسريع العملية)
     const CHECK_CONCURRENCY = 4;
 
     function waitCore() {
@@ -5824,12 +5559,7 @@ ${rowsHtml}
         return false;
     }
 
-    /**
-     * كل صف بجدول "العقود المتأخرة" فيه عمود "الإجمالي (ريال)" برقم + أيقونة:
-     * أيقونة خضراء (fill-green-600) = تم السداد فعلياً رغم تأخر التسليم، ما نعتبره متأخر بالسداد.
-     * أيقونة رمادية (fill-slate-400) = لسا عليه مبلغ متأخر فعلاً.
-     * هذا يغنينا عن فتح كل عقد للتأكد - نفلتر أول شي من نفس القائمة، ونفتح بس اللي يستاهل.
-     */
+    /** عمود "الإجمالي" فيه أيقونة: خضراء = تم السداد فعلياً (نتجاهله)، رمادية = متأخر فعلاً */
     function readLateReturnRows(doc) {
         const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
         if (!table) return [];
@@ -5846,10 +5576,7 @@ ${rowsHtml}
             const cells = row.querySelectorAll("td");
             if (!cells.length) return null;
 
-            // عمود "اسم المدين" يكون "غير متاح" للأفراد، ويعرض اسم الشركة
-            // الفعلي للعقود التابعة لشركات - وأغلب عقود الشركات المتأخرة سببها
-            // إن الشركة نفسها ما مدّدت العقد بعد (مو تأخر سداد فردي). هذي
-            // الأداة للأفراد فقط، فنتجاهل أي صف عنده اسم شركة حقيقي بهذا العمود
+            // عمود "اسم المدين" = "غير متاح" للأفراد، أو اسم شركة حقيقي للعقود التابعة لشركات؛ الأداة للأفراد فقط فنتجاهل أي شركة
             const debtorText = debtorIdx !== -1 ? cells[debtorIdx].textContent.trim() : "";
             if (debtorText && debtorText !== "غير متاح") return null;
 
@@ -5936,11 +5663,7 @@ ${rowsHtml}
         });
     }
 
-    /**
-     * يجمع صفوف العقود المتأخرة من الفروع المختارة فقط - فرع تلو فرع
-     * بالتتابع (لا بالتوازي) لنفس السبب المعروف بالأدوات الثانية: فتح عدة
-     * صفحات ثقيلة بنفس اللحظة يسبب تنافساً على الموارد ويفشل بعضها بصمت.
-     */
+    /** يجمع صفوف العقود المتأخرة فرع تلو فرع بالتتابع (لا بالتوازي، تجنّباً لفشل الفتح المتزامن) */
     async function collectAllRowsForBranches(branchIds) {
         let allRows = [];
         for (const branchId of branchIds) {
@@ -5980,10 +5703,7 @@ ${rowsHtml}
         return candidates.find(el => (el.textContent || '').trim() === text) || null;
     }
 
-    /**
-     * يحوّل رقم جوال معروض بأي صيغة شائعة (05xxxxxxxx، +9665xxxxxxxx،
-     * 9665xxxxxxxx، 5xxxxxxxx) إلى JID واتساب لرقم فردي بصيغة Baileys
-     */
+    /** يحوّل رقم جوال بأي صيغة شائعة إلى JID واتساب بصيغة Baileys */
     function normalizePhoneToJid(rawPhone) {
         let digits = (rawPhone || '').replace(/\D/g, '');
         if (digits.startsWith('00')) digits = digits.slice(2);
@@ -6023,14 +5743,7 @@ ${rowsHtml}
         return Array.from(root.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/')) || null;
     }
 
-    /**
-     * نافذة "رابط الدفع" تطلع فيها حالتين متشابهتين شكلياً (فيهما نفس بلوك
-     * تفاصيل الرابط)، بس بنص مختلف كلياً بتنبيه [role="alert"] بالأعلى:
-     * - "يوجد رابط دفع نشط": رابط قديم من قبل - ما ننشئ ولا نرسل شي جديد.
-     * - "تم إنشاء رابط الدفع وإرساله...": رابط جديد أنشأناه للتو فعلياً.
-     * الاعتماد على نص التنبيه نفسه (مو مجرد وجود رابط بالنافذة، اللي يطلع
-     * بالحالتين) هو الفيصل الموثوق - لون/شكل التنبيه تفصيل ثانوي قابل للتغيّر.
-     */
+    /** نميّز حالة نافذة "رابط الدفع" بنص تنبيه [role="alert"]: رابط نشط قديم مقابل رابط جديد أُنشئ للتو */
     function classifyPaymentDialogState(dialog) {
         if (!dialog) return null;
         const alerts = Array.from(dialog.querySelectorAll('[role="alert"]'));
@@ -6042,13 +5755,7 @@ ${rowsHtml}
         return null;
     }
 
-    /**
-     * يتحقق أول شي إذا الحالة المطلوبة متحققة أصلاً (بدون ضغط أي شي - مفيد
-     * لما نكون فعلاً بمرحلة متقدمة ومحتاجين خطوة سابقة). إذا لأ، يدور على
-     * عنصر يضغطه وينتظر تحقق الحالة، ويكرر المحاولة (ضغط جديد + انتظار جديد)
-     * لأكثر من مرة - لأن أحياناً العنصر يكون موجود بالـDOM بس لسا ما تركّبت
-     * معالجات الأحداث عليه فعلياً (سباق تحميل الصفحة)، فالضغطة الأولى تُفقد.
-     */
+    /** يتحقق من الحالة أول شي (بدون ضغط)، وإلا يضغط وينتظر ويكرر المحاولة (الضغطة الأولى قد تُفقد بسبب سباق تحميل الصفحة) */
     async function clickUntil(frame, findClickTarget, checkFn, opts) {
         const maxAttempts = (opts && opts.maxAttempts) || 3;
         const perAttemptTimeout = (opts && opts.perAttemptTimeout) || 5000;
@@ -6070,16 +5777,7 @@ ${rowsHtml}
         return lastDoc ? checkFn(lastDoc) : null;
     }
 
-    /**
-     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة بالعقد،
-     * يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع". من هذي النقطة احتمالين:
-     * - ما فيه رابط نشط: يطلع زر "إنشاء رابط الدفع" - نضغطه وننتظر الرابط
-     *   الجديد (يقين نفسه يرسله تلقائياً على واتساب العميل من رقمه فور إنشائه).
-     * - فيه رابط نشط من قبل (تنبيه "يوجد رابط دفع نشط"): نرجّع نفس الرابط
-     *   الموجود بدون إنشاء رابط جديد ولا أي إرسال إضافي - يقين يسمح برابط
-     *   نشط واحد بس، وهذا يمنع تكرار الرسائل للعميل.
-     * المبلغ بالنموذج يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
-     */
+    /** يمشي بخطوات الموظف اليدوية (تحصيل الدفع ← رابط الدفع) وينشئ رابط جديد أو يرجّع الرابط النشط الموجود لتفادي تكرار الإرسال */
     async function locateOrCreatePaymentLink(branchId, agreementNo) {
         const url = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/close-agreements/' + agreementNo + '//payment';
         const frame = openHiddenFrame(url);
@@ -6087,10 +5785,7 @@ ${rowsHtml}
             const doc1 = await waitFor(frame, d => (findButtonByText(d, 'تحصيل الدفع') ? d : null), 20000);
             if (!doc1) throw new Error('تعذّر فتح صفحة الدفع الخاصة بالعقد');
 
-            // بعد الضغط على "تحصيل الدفع" احتمالين: تطلع طرق الدفع (لازم نختار
-            // "رابط الدفع")، أو تطلع مباشرة حالة "يوجد رابط دفع نشط" أو زر
-            // "إنشاء رابط الدفع" لو كانت آخر طريقة استخدمها الموظف هي رابط
-            // الدفع (يقين يتذكر آخر طريقة مختارة) - نتحمّل كل الاحتمالات
+            // بعد "تحصيل الدفع": إما تطلع طرق الدفع، أو مباشرة حالة رابط نشط/زر إنشاء (يقين يتذكر آخر طريقة) - نتحمّل الكل
             const doc2 = await clickUntil(
                 frame,
                 d => findButtonByText(d, 'تحصيل الدفع'),
@@ -6132,10 +5827,7 @@ ${rowsHtml}
                 return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
-            // زر "إنشاء رابط الدفع" أحياناً يطلع أول شي بشكل متفائل (optimistic)
-            // قبل ما يوصل رد فحص "هل فيه رابط نشط؟" من السيرفر، وبعدها يتحوّل
-            // فجأة لتنبيه "يوجد رابط دفع نشط" - ننتظر شوي ونعيد الفحص قبل ما
-            // نضغط "إنشاء رابط الدفع" فعلياً، حتى ما نولّد رابط مكرر ونرسله بالغلط
+            // زر "إنشاء رابط الدفع" يطلع أحياناً متفائلاً (optimistic) قبل رد السيرفر؛ ننتظر ونعيد الفحص لتفادي رابط مكرر
             await new Promise(r => setTimeout(r, 1200));
             dialog = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
             state = classifyPaymentDialogState(dialog);
@@ -6164,8 +5856,7 @@ ${rowsHtml}
             if (!linkEl) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
             return { status: finalState === 'active' ? 'existing' : 'created', link: linkEl.getAttribute('href') };
         } catch (err) {
-            // تشخيص: نطبع محتوى نافذة الدفع وقت الفشل بالـconsole عشان لو
-            // تكرر الفشل نقدر نشوف بالضبط أي حالة DOM ما كنا نتوقعها
+            // تشخيص: نطبع محتوى نافذة الدفع وقت الفشل بالـconsole للمساعدة عند تكرر المشكلة
             try {
                 const failDoc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
                 const dialog = failDoc && failDoc.querySelector('[role="dialog"]');
@@ -6198,11 +5889,7 @@ ${rowsHtml}
         };
     }
 
-    /**
-     * منطق الإرسال الفعلي لصف واحد (بدون أي تأكيد - التأكيد مسؤولية المستدعي).
-     * يحدّث حالة الصف بنفسه: ⏳ جارٍ ← ✅ تم الإرسال / ℹ️ يوجد رابط مرسل بالفعل
-     * / ⚠️ لا يوجد جوال / ❌ فشل الإرسال. تُستخدم من زر الصف نفسه ومن "إرسال للجميع".
-     */
+    /** يرسل رابط الدفع لصف واحد (بدون تأكيد - مسؤولية المستدعي) ويحدّث حالة الصف؛ يُستخدم من زر الصف ومن "إرسال للجميع" */
     async function sendPaymentLinkForRecord(record, idx) {
         const { branchBtn } = rowButtons(idx);
         if (branchBtn) branchBtn.disabled = true;
@@ -6260,14 +5947,9 @@ ${rowsHtml}
     // التنفيذ الرئيسي
     // ==========================================================
 
-    /**
-     * يفحص عقداً واحداً بالتفصيل (نفس المنطق الأصلي بالضبط، بدون أي تغيير):
-     * يفتح صفحة العقد، يقرأ الرصيد المتبقي الحقيقي، ويرجع null لو تعذّر الفتح
-     * أو لو الرصيد أقل من الحد المطلوب - وإلا يوسّع بيانات العميل ويرجع النتيجة.
-     */
+    /** يفحص عقداً واحداً: يفتح صفحته، يقرأ الرصيد المتبقي الحقيقي، ويرجع null لو تعذّر أو أقل من الحد، وإلا يرجع بيانات العميل */
     async function checkOneAgreement(frame, c, threshold) {
-        // نتأكد إن الرابط فعلاً تغيّر قبل قراءة القيمة، وإلا ممكن نلقط DOM العقد السابق
-        // اللي لسا موجود لحظة التنقّل، ونظل نقرأ نفس القيمة القديمة لكل العقود اللي بعده
+        // نتأكد إن الرابط تغيّر فعلاً قبل القراءة، وإلا نلقط DOM العقد السابق ونكرر نفس القيمة
         const targetPath = new URL(c.href).pathname;
         frame.src = c.href;
         const doc2 = await waitFor(frame, d => {
@@ -6283,9 +5965,7 @@ ${rowsHtml}
         // الرصيد المتبقي الحقيقي (من صفحة العقد نفسها) هو أساس الفلترة، مو أي مؤشر بالقائمة
         if (isNaN(remaining) || remaining < threshold) return { checked: true, record: null };
 
-        // نفس زر توسيع بيانات العميل المستخدم بأدوات الإيميل - يفتح لوحة فيها الجوال ورقم الهوية.
-        // نبحث عنه بانتظار فعلي (مو محاولة وحدة) لأن مع 4 إطارات تشتغل بالتوازي
-        // ممكن العنصر يكون لسا ما تركّب لحظة وصولنا هنا رغم ظهور "الرصيد المتبقي"
+        // زر توسيع بيانات العميل (نفس أدوات الإيميل)؛ ننتظره فعلياً لأنه مع التوازي قد يتأخر تركيبه
         let expandBtn = null;
         const btnWaitStart = Date.now();
         while (Date.now() - btnWaitStart < 3000) {
@@ -6298,9 +5978,7 @@ ${rowsHtml}
             try { expandBtn.click(); } catch (err) { /* تجاهل */ }
         }
 
-        // ننتظر فعلياً لين يظهر رقم الجوال بدل انتظار ثابت 1200ms - مع 4
-        // إطارات تشتغل بالتوازي (CHECK_CONCURRENCY) ممكن يتأخر ظهور اللوحة
-        // شوي عن ذلك الوقت الثابت، فيطلع الصف بدون جوال ولا هوية بدون داعي
+        // ننتظر فعلياً ظهور الجوال بدل انتظار ثابت، لأن التوازي (CHECK_CONCURRENCY) قد يؤخر ظهور اللوحة
         const waitStart = Date.now();
         let dialog = doc2.querySelector('[role="dialog"]') || doc2;
         while (Date.now() - waitStart < 4000) {
@@ -6337,8 +6015,7 @@ ${rowsHtml}
 
             const allRows = await collectAllRowsForBranches(branchIds);
 
-            // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً من زر
-            // "إنهاء الاتفاقية" ونشوف "الرصيد المتبقي" الحقيقي بصفحة التفاصيل
+            // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً ونشوف "الرصيد المتبقي" الحقيقي
             const candidates = allRows.slice(0, MAX_AGREEMENTS);
 
             if (candidates.length === 0) {
@@ -6348,14 +6025,10 @@ ${rowsHtml}
 
             let checkedCount = 0;
             let processedCount = 0;
-            // نتيجة كل عقد تُحفظ في نفس فهرسه الأصلي (وليس بترتيب الاكتمال) حتى
-            // يبقى ترتيب التقرير النهائي مطابقاً تماماً لترتيب قائمة LATE_RETURN
-            // الأصلية، بغض النظر عن أي عامل خلص قبل غيره
+            // نتيجة كل عقد تُحفظ بفهرسها الأصلي (لا بترتيب الاكتمال) حتى يطابق التقرير ترتيب LATE_RETURN الأصلي
             const recordsByIndex = new Array(candidates.length).fill(null);
 
-            // نوزّع العقود على عدة إطارات مخفية بالتناوب (round robin)، كل إطار
-            // يعالج نصيبه بالتتابع بنفس منطق الفحص الأصلي بالضبط - فقط موازاة
-            // على مستوى الإطارات، بدون أي تغيير على كيفية فحص العقد الواحد
+            // نوزّع العقود على عدة إطارات مخفية بالتناوب (round robin)؛ موازاة على مستوى الإطارات فقط
             const workerCount = Math.min(CHECK_CONCURRENCY, candidates.length);
             const workerFrames = [];
 
@@ -6706,8 +6379,7 @@ ${rowsHtml}
                     '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
                     '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
 
-                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG
-                // فيها foreignObject لو كانت محمّلة من blob: (Tainted Canvas)
+                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG فيها foreignObject من blob: (Tainted Canvas)
                 const svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
 
                 const img = new Image();
@@ -6818,8 +6490,7 @@ ${rowsHtml}
                         target: WHATSAPP_CONFIG.target,
                         sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
-                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
-                        // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
+                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن كود البوت يعمل Buffer.from مباشرة
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر) - ' + branchName + ' - ' + new Date().toLocaleString('ar-SA'),
                     }),
@@ -6979,9 +6650,7 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -6993,9 +6662,7 @@ ${rowsHtml}
 
     const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings?status=LATE_RETURN&pageSize=500';
     const MAX_AGREEMENTS = 300;
-    // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع،
-    // فقط موزّعين على عدة إطارات بدل واحد فقط لتسريع العملية (نفس أسلوب أداة
-    // "العقود المتأخرة في السداد (أفراد)")
+    // عدد الإطارات المتوازية لفحص تفاصيل العقود (نفس أسلوب أداة العقود المتأخرة للأفراد)
     const CHECK_CONCURRENCY = 4;
 
     function waitCore() {
@@ -7128,11 +6795,7 @@ ${rowsHtml}
         return false;
     }
 
-    /**
-     * يقرأ صفوف قائمة "العقود المتأخرة" - بعكس أداة الأفراد، هنا نحتفظ فقط
-     * بالصفوف اللي عمود "اسم المدين" فيها اسم شركة حقيقي (مو "غير متاح")،
-     * لأن هذي الأداة مخصصة لعقود الشركات تحديداً.
-     */
+    /** يقرأ صفوف "العقود المتأخرة" ويستبعد الأفراد - يبقي فقط اللي لها اسم مدين شركة حقيقي */
     function readLateReturnRows(doc) {
         const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
         if (!table) return [];
@@ -7233,12 +6896,7 @@ ${rowsHtml}
     // التنفيذ الرئيسي
     // ==========================================================
 
-    /**
-     * يفحص عقداً واحداً: يفتح صفحة العقد، يوسّع أكورديون "المدة المحتسبة"
-     * (مطوي افتراضياً)، ويقرأ تفاصيله. عمود "متأخر بـ" ما يظهر إطلاقاً إلا
-     * لو العقد فعلاً متأخر ويحتاج تمديد - غيابه يعني العقد لسا ضمن مدته
-     * المخطط لها ولا يحتاج شي، فنستبعده.
-     */
+    /** يفحص عقد واحد: يفتح صفحته، يوسّع "المدة المحتسبة"، ويستبعده لو ما فيه عمود "متأخر بـ" */
     async function checkOneAgreement(frame, c) {
         const targetPath = new URL(c.href).pathname;
         frame.src = c.href;
@@ -7835,9 +7493,7 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed معزول عن window الحقيقية
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -7847,9 +7503,7 @@ ${rowsHtml}
         target: '120363021290047142@g.us',
     };
 
-    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع واحد بكل مرة يشغّل
-    // فيها الأداة (بعكس أداة "عقود الشركات غير الممددة" الأصلية اللي تفحص
-    // فرع مطار جدة فقط، وبعكس أي نسخة تفحص كل الفروع مع بعض)
+    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع واحد بكل مرة (بعكس الأداة الأصلية الثابتة على مطار جدة)
     const BRANCHES = [
         { id: 29, name: 'مطار جدة' },
         { id: 11, name: 'طريق المدينة' },
@@ -7874,9 +7528,7 @@ ${rowsHtml}
     }
 
     const MAX_AGREEMENTS = 300;
-    // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع،
-    // فقط موزّعين على عدة إطارات بدل واحد فقط لتسريع العملية (نفس أسلوب أداة
-    // "العقود المتأخرة في السداد (أفراد)")
+    // عدد الإطارات المتوازية لفحص تفاصيل العقود - موزّعين بدل إطار واحد لتسريع العملية
     const CHECK_CONCURRENCY = 4;
 
     function waitCore() {
@@ -8009,11 +7661,7 @@ ${rowsHtml}
         return false;
     }
 
-    /**
-     * يقرأ صفوف قائمة "العقود المتأخرة" - بعكس أداة الأفراد، هنا نحتفظ فقط
-     * بالصفوف اللي عمود "اسم المدين" فيها اسم شركة حقيقي (مو "غير متاح")،
-     * لأن هذي الأداة مخصصة لعقود الشركات تحديداً.
-     */
+    /** يقرأ صفوف قائمة "العقود المتأخرة" - نحتفظ فقط بصفوف فيها اسم شركة حقيقي بعمود "اسم المدين" (مو "غير متاح") */
     function readLateReturnRows(doc) {
         const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
         if (!table) return [];
@@ -8110,10 +7758,7 @@ ${rowsHtml}
         });
     }
 
-    /**
-     * يجمع صفوف العقود المتأخرة من الفروع المختارة فقط - فرع تلو فرع
-     * بالتتابع (لا بالتوازي) لنفس السبب المعروف بالأدوات الثانية.
-     */
+    /** يجمع صفوف العقود المتأخرة من الفروع المختارة فرع تلو فرع بالتتابع (لا بالتوازي، تجنّباً لتنافس الموارد) */
     async function collectAllRowsForBranches(branchIds) {
         let allRows = [];
         for (const branchId of branchIds) {
@@ -8141,10 +7786,8 @@ ${rowsHtml}
     // ==========================================================
 
     /**
-     * يفحص عقداً واحداً: يفتح صفحة العقد، يوسّع أكورديون "المدة المحتسبة"
-     * (مطوي افتراضياً)، ويقرأ تفاصيله. عمود "متأخر بـ" ما يظهر إطلاقاً إلا
-     * لو العقد فعلاً متأخر ويحتاج تمديد - غيابه يعني العقد لسا ضمن مدته
-     * المخطط لها ولا يحتاج شي، فنستبعده.
+     * يفحص عقداً واحداً: يوسّع أكورديون "المدة المحتسبة" ويقرأ تفاصيله.
+     * غياب عنصر "متأخر بـ" يعني العقد لسا ضمن مدته المخطط لها، فنستبعده.
      */
     async function checkOneAgreement(frame, c) {
         const targetPath = new URL(c.href).pathname;
@@ -8795,9 +8438,7 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed معزول عن window الحقيقية
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -8810,23 +8451,10 @@ ${rowsHtml}
     const LIST_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings/needs-action?pendingActions=TAJEER_SUSPENDED&pageSize=500';
     // سقف أمان لعدد صفحات التفاصيل اللي نفتحها فعلياً بجلسة واحدة
     const MAX_VISITS = 300;
-    // عدد الإطارات المتوازية اللي تفحص العقود بنفس الوقت. جرّبنا التوازي
-    // سابقاً بس بمنطق الضغط على صفوف القائمة الكبيرة المشتركة، وفشل (توقف
-    // بالضبط عند عدد الإطارات). اتضح لاحقاً إن السبب الحقيقي كان خللين
-    // بالتوقيت (hydration الصف + سباق تحديث الرابط) مو تعارض جلسات - وصرنا
-    // نصلحهم الاثنين. بما إن كل عامل الحين يفتح رابط قائمته المصغّرة
-    // الخاصة به (مستقل تماماً عن بقية العمّال)، التوازي المفروض يصير آمن.
-    // نبدأ برقم متحفّظ (3) بدل 4 المستخدمة بأدوات ثانية.
+    // عدد الإطارات المتوازية لفحص العقود - كل عامل يفتح قائمته المصغّرة الخاصة فالتوازي آمن، نبدأ برقم متحفّظ
     const CHECK_CONCURRENCY = 3;
 
-    /**
-     * قائمة مفلترة برقم اتفاقية واحد بالضبط - ترجّع صف واحد بس (نفس رقم
-     * الاتفاقية اللي طلبناه)، فنضغط عليه وندخل تفاصيله بدون الحاجة لتصفّح
-     * القائمة الكبيرة (500 عقد) والبحث فيها كل مرة، وبدون الحاجة نرجع لها
-     * بعدها (نروح مباشرة لرابط العقد التالي). أخف وأسرع بكثير من إعادة
-     * تحميل القائمة الكاملة، وبما إنه صف واحد بس يترسم أسرع فيصير الضغط
-     * عليه أوثق (وقت أقل لمشكلة hydration اللي واجهناها بالقائمة الكبيرة).
-     */
+    /** قائمة مفلترة برقم اتفاقية واحد - أسرع وأخف من تصفّح القائمة الكبيرة (500 عقد) والبحث فيها */
     function buildMiniListUrl(agreementNo) {
         return 'https://yaqeen.lumirental.com/rental/branches/29/bookings?agreementNo=' + encodeURIComponent(agreementNo);
     }
@@ -8890,13 +8518,7 @@ ${rowsHtml}
         });
     }
 
-    /**
-     * يجيب مستند الـiframe الحالي طازة - لا نخزّن أي مرجع document بمتغيّر
-     * طويل العمر عبر عدة عمليات تنقّل، لأنه لو صار تنقّل حقيقي (لا SPA) بأي
-     * لحظة، المستند القديم اللي كنا ماسكينه يصير "ميت" و.location فيه يرجع
-     * null، وأي قراءة مباشرة لـ.location.href عليه تكسر بخطأ Cannot read
-     * properties of null
-     */
+    /** يجيب مستند الـiframe طازة كل مرة - لا نخزّنه بمتغيّر طويل العمر لأن تنقّل حقيقي يجعله "ميت" ويكسر .location */
     function getDoc(frame) {
         try {
             return frame.contentDocument || (frame.contentWindow && frame.contentWindow.document) || null;
@@ -8996,12 +8618,7 @@ ${rowsHtml}
         'نوفمبر': 11, 'ديسمبر': 12,
     };
 
-    /**
-     * يحوّل "17, يناير 2026" (صيغة عمود "وقت التسليم" بالقائمة) لشهر/سنة -
-     * نستخدمه فقط لتجميع العقود حسب الشهر عشان المستخدم يختار أي شهر يبيه
-     * (لا علاقة له بأي استبعاد تلقائي - الاستبعاد بالتاريخ انشال نهائياً،
-     * المستخدم هو اللي يحدد الشهور يدوياً).
-     */
+    /** يحوّل "17, يناير 2026" (عمود وقت التسليم) لشهر/سنة - لتجميع العقود حسب الشهر فقط */
     function parseListMonth(dateText) {
         if (!dateText) return null;
         const m = dateText.match(/(\d{1,2}),?\s*([؀-ۿ]+)\s*(\d{4})/);
@@ -9015,11 +8632,7 @@ ${rowsHtml}
         };
     }
 
-    /**
-     * يقرأ بيانات صف واحد بجدول "تتطلب إجراء" - ترتيب الأعمدة ثابت (مأخوذ
-     * من الـHTML الفعلي للجدول): 0=رقم الحجز، 1=رقم الاتفاقية، 2=وقت
-     * التسليم، 3=السائق، 4=اسم المدين، البقية غير مستخدمة هنا.
-     */
+    /** يقرأ صف بجدول "تتطلب إجراء" - ترتيب أعمدة ثابت: 0=حجز، 1=اتفاقية، 2=تسليم، 3=سائق، 4=مدين */
     function readListRow(rowEl) {
         const cells = rowEl.querySelectorAll('td');
         if (cells.length < 9) return null;
@@ -9066,11 +8679,7 @@ ${rowsHtml}
     // التنفيذ الرئيسي
     // ==========================================================
 
-    /**
-     * يمر على كل صفحات القائمة (بدون فتح أي تفاصيل) ويجمع بيانات كل صف
-     * (بما فيها شهر/سنة التسليم) - يُستخدم لبناء قائمة الشهور المتاحة
-     * وتحديد الصفوف المستهدفة قبل مرحلة الضغط الفعلي على كل صف.
-     */
+    /** يمر على كل صفحات القائمة ويجمع بيانات كل صف - لبناء قائمة الشهور المتاحة قبل مرحلة الضغط الفعلي */
     async function collectAllCandidates(frame) {
         const seen = {};
         const candidates = [];
@@ -9114,11 +8723,8 @@ ${rowsHtml}
     }
 
     /**
-     * يفتح صفحة تفاصيل عقد واحد عبر الضغط على صفّه بالجدول مباشرة (بدل
-     * رابط مباشر) - هذا الجدول ما فيه رابط <a href> إطلاقاً، والرقم
-     * الداخلي المستخدم برابط التفاصيل غير ظاهر بأي عمود بالجدول، فالضغط
-     * الفعلي على الصف هو الطريقة اللي يقين نفسه يعتمدها للتنقّل، وبالتالي
-     * أدق من أي رابط نبنيه يدوياً.
+     * يفتح تفاصيل عقد بالضغط على صفّه بالجدول (لا رابط <a href> ولا رقم داخلي ظاهر بالأعمدة).
+     * هذا هو أسلوب التنقّل اللي يقين نفسه يعتمده.
      */
     async function visitRowDetail(frame, rowEl, label) {
         const startDoc = getDoc(frame);
@@ -9128,11 +8734,7 @@ ${rowsHtml}
         }
         const beforeHref = startDoc.location.href;
 
-        // بعض المرات الضغطة الأولى تُتجاهل بصمت (الصف لسا ما خلص React ربط
-        // مستمع الضغط عليه - hydration - رغم مهلة الاستقرار قبلها). بدل
-        // انتظار 20 ثانية كاملة على أمل ضغطة وحدة، نعيد الضغط كل 2.5 ثانية
-        // (على نفس الصف، نعيد استعلامه طازة كل مرة) لين ينجح التنقّل أو
-        // تخلص المهلة الكلية - هذا يصحّح نفسه تلقائياً لو الضغطة الأولى ضاعت
+        // الضغطة الأولى قد تُتجاهل بصمت (hydration) - نعيد الضغط كل 2.5 ثانية لين ينجح التنقّل أو تخلص المهلة
         const totalBudgetMs = 20000;
         const retryEveryMs = 2500;
         const overallStart = Date.now();
@@ -9168,10 +8770,7 @@ ${rowsHtml}
             return null;
         }
 
-        // هذي الصفحة فيها زرّين بنفس أيقونة السهم (M181.66,133.66): "عرض
-        // التفاصيل" (نص ظاهر، لأكورديون ثاني ما له علاقة ببيانات العميل)
-        // وزر توسيع بيانات العميل الحقيقي (أيقونة بس، بدون أي نص). نفلتر
-        // على عدم وجود نص عشان نضمن نضغط الزر الصحيح
+        // زرّين بنفس أيقونة السهم - نفلتر على عدم وجود نص عشان نضغط زر توسيع بيانات العميل الصحيح (مو الأكورديون الثاني)
         const expandBtn = Array.from(detailDoc.querySelectorAll('button'))
             .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66') && x.textContent.trim() === '');
         if (expandBtn) {
@@ -9179,9 +8778,7 @@ ${rowsHtml}
         } else {
             console.warn('[عقود أغلقت كمديونية] ما لقينا زر توسيع بيانات العميل بصفحة التفاصيل:', label);
         }
-        // بدل انتظار ثابت 1200ms دايماً، نستنى فعلياً لين تترسم لوحة بيانات
-        // العميل (رقم الهوية) - أسرع لو الشبكة سريعة، وسقف 2500ms احتياطي
-        // لو تأخرت
+        // نستنى فعلياً لين تترسم لوحة بيانات العميل (رقم الهوية) بدل انتظار ثابت، بسقف 2500ms احتياطي
         const dialogWaitStart = Date.now();
         let dialog = detailDoc.querySelector('[role="dialog"]') || detailDoc;
         while (Date.now() - dialogWaitStart < 2500) {
@@ -9211,16 +8808,9 @@ ${rowsHtml}
         return { idNumber, phone, remaining, driverName };
     }
 
-    /**
-     * يفحص عقداً واحداً عبر قائمة مصغّرة برقم اتفاقيته (buildMiniListUrl) -
-     * تطلع صف واحد بس، نستنى استقرار الصف (hydration، نفس مشكلة القائمة
-     * الكبيرة) ثم نضغطه وندخل تفاصيله عبر visitRowDetail. ما فيه أي رجوع
-     * لأي قائمة بعدها - العقد التالي يروح لرابطه الخاص مباشرة.
-     */
+    /** يفحص عقداً واحداً عبر قائمة مصغّرة برقم اتفاقيته - يستنى استقرار الصف ثم يدخل تفاصيله عبر visitRowDetail */
     async function checkOneAgreement(frame, candidate) {
-        // مهم: نتحقق إن رابط الإطار فعلاً تحوّل لرابط هذا العقد بالذات
-        // (مو بس "فيه صف بجدول") - لو التنقّل لسا ما خلص، ممكن نلقط صفحة
-        // العقد السابق (لسا مرسومة) ونظن إننا وصلنا للعقد الجديد
+        // نتحقق إن رابط الإطار تحوّل فعلاً لرابط هذا العقد، مو بس "فيه صف" (تجنّباً لالتقاط صفحة العقد السابق)
         const expectedUrlFragment = 'agreementNo=' + encodeURIComponent(candidate.agreementNo);
         frame.src = buildMiniListUrl(candidate.agreementNo);
         const listDoc = await waitFor(frame, d => {
@@ -9237,9 +8827,7 @@ ${rowsHtml}
             return null;
         }
 
-        // الصف قد يظهر لحظياً ثم يُعاد رسمه (يختفي مؤقتاً) قبل ما يستقر -
-        // فحص وحيد بتوقيت ثابت ممكن يقع بالضبط بفجوة إعادة الرسم هذي.
-        // نتأكد من وجوده بشكل متكرر لين يثبت (أو تنتهي المهلة)
+        // الصف قد يظهر ثم يُعاد رسمه (يختفي مؤقتاً) - نتأكد من وجوده بشكل متكرر لين يثبت
         let rowEl = null;
         const rowWaitStart = Date.now();
         while (!rowEl && Date.now() - rowWaitStart < 5000) {
@@ -9486,11 +9074,7 @@ ${rowsHtml}
         showToast(text, type || 'error');
     }
 
-    /**
-     * يعرض قائمة الشهور المتوفّرة (مبنية من عمود "وقت التسليم" بالقائمة)
-     * كـcheckboxes يختار منها المستخدم شهر أو أكثر - يرجّع مصفوفة مفاتيح
-     * الشهور المختارة، أو null لو ألغى.
-     */
+    /** يعرض قائمة الشهور كـcheckboxes ويرجّع مصفوفة الشهور المختارة، أو null لو ألغى */
     function showMonthPrompt(months) {
         return new Promise(resolve => {
             document.getElementById('closed-debt-box')?.remove();
@@ -9915,9 +9499,7 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed معزول عن window الحقيقية
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -9927,9 +9509,7 @@ ${rowsHtml}
         target: '120363021290047142@g.us',
     };
 
-    // قائمة الفروع المتاحة للاختيار (نفس قائمة أدوات "اختيار الفرع" الثانية) -
-    // المستخدم يختار فرع أو أكثر بكل مرة يشغّل فيها الأداة (بعكس أداة "عقود
-    // أغلقت كمديونية" الأصلية اللي تفحص فرع مطار جدة فقط)
+    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع أو أكثر بكل مرة (بعكس الأداة الأصلية الثابتة على مطار جدة)
     const BRANCHES = [
         { id: 29, name: 'مطار جدة' },
         { id: 11, name: 'طريق المدينة' },
@@ -9955,14 +9535,10 @@ ${rowsHtml}
 
     // سقف أمان لعدد صفحات التفاصيل اللي نفتحها فعلياً بجلسة واحدة (كل الفروع مع بعض)
     const MAX_VISITS = 300;
-    // عدد الإطارات المتوازية اللي تفحص العقود بنفس الوقت - نفس منطق الأداة
-    // الأصلية بالضبط (راجع تعليقها هناك لتفاصيل ليش التوازي آمن هنا)
+    // عدد الإطارات المتوازية لفحص العقود بنفس الوقت (نفس منطق الأداة الأصلية - التوازي آمن)
     const CHECK_CONCURRENCY = 3;
 
-    /**
-     * قائمة مفلترة برقم اتفاقية واحد بالضبط ضمن فرع معيّن - نفس فكرة الأداة
-     * الأصلية بالضبط، بس رقم الفرع بارامتر بدل ثابت (29)
-     */
+    /** قائمة مفلترة برقم اتفاقية واحد ضمن فرع معيّن - نفس فكرة الأداة الأصلية، بس رقم الفرع بارامتر */
     function buildMiniListUrl(branchId, agreementNo) {
         return 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings?agreementNo=' + encodeURIComponent(agreementNo);
     }
@@ -10026,13 +9602,7 @@ ${rowsHtml}
         });
     }
 
-    /**
-     * يجيب مستند الـiframe الحالي طازة - لا نخزّن أي مرجع document بمتغيّر
-     * طويل العمر عبر عدة عمليات تنقّل، لأنه لو صار تنقّل حقيقي (لا SPA) بأي
-     * لحظة، المستند القديم اللي كنا ماسكينه يصير "ميت" و.location فيه يرجع
-     * null، وأي قراءة مباشرة لـ.location.href عليه تكسر بخطأ Cannot read
-     * properties of null
-     */
+    /** يجيب مستند الـiframe طازة كل مرة - لا نخزّنه بمتغيّر طويل العمر لأن تنقّل حقيقي يجعله "ميت" ويكسر .location */
     function getDoc(frame) {
         try {
             return frame.contentDocument || (frame.contentWindow && frame.contentWindow.document) || null;
@@ -10145,11 +9715,7 @@ ${rowsHtml}
         };
     }
 
-    /**
-     * يقرأ بيانات صف واحد بجدول "تتطلب إجراء" - ترتيب الأعمدة ثابت (نفس
-     * الأداة الأصلية بالضبط: 0=رقم الحجز، 1=رقم الاتفاقية، 2=وقت التسليم،
-     * 3=السائق، 4=اسم المدين). branchId/branchName يُضافان بعدها من الخارج.
-     */
+    /** يقرأ صف بجدول "تتطلب إجراء" - ترتيب أعمدة ثابت: 0=حجز، 1=اتفاقية، 2=تسليم، 3=سائق، 4=مدين */
     function readListRow(rowEl) {
         const cells = rowEl.querySelectorAll('td');
         if (cells.length < 9) return null;
@@ -10229,11 +9795,7 @@ ${rowsHtml}
         return candidates;
     }
 
-    /**
-     * يمر على الفروع المختارة فرع تلو فرع (لا بالتوازي - نفس سبب أدوات
-     * "اختيار الفرع" الثانية: عدة قوائم ثقيلة بنفس اللحظة تتنافس على الموارد)،
-     * ويجمع مرشّحي كل فرع مع وسم كل واحد بفرعه.
-     */
+    /** يمر على الفروع المختارة فرع تلو فرع (لا بالتوازي - تجنّباً لتنافس الموارد) ويجمع مرشّحي كل فرع موسومين بفرعه */
     async function collectAllCandidatesForBranches(branchIds) {
         let allCandidates = [];
         for (const branchId of branchIds) {
@@ -10349,10 +9911,7 @@ ${rowsHtml}
         return { idNumber, phone, remaining, driverName };
     }
 
-    /**
-     * نفس checkOneAgreement بالأداة الأصلية بالضبط، بس رابط القائمة المصغّرة
-     * يُبنى برقم فرع المرشّح (candidate.branchId) بدل فرع ثابت
-     */
+    /** نفس checkOneAgreement بالأداة الأصلية، بس رابط القائمة المصغّرة يُبنى برقم فرع المرشّح */
     async function checkOneAgreement(frame, candidate) {
         const expectedUrlFragment = 'agreementNo=' + encodeURIComponent(candidate.agreementNo);
         frame.src = buildMiniListUrl(candidate.branchId, candidate.agreementNo);
@@ -11083,13 +10642,10 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-    // إعدادات بوت واتساب (نفس بوت باقي الأدوات) - هنا بدون target ثابت لأن
-    // كل رسالة تروح لجوال عميل مختلف (نحسبه وقت الإرسال)
+    // إعدادات بوت واتساب - بدون target ثابت لأن كل رسالة تروح لجوال عميل مختلف
     const WHATSAPP_CONFIG = {
         apiUrl: 'https://api.yaqeen-vip.space/send',
         apiKey: 'Firas_2026_SuperSecret_Key',
@@ -11197,12 +10753,7 @@ ${rowsHtml}
         return "";
     }
 
-    /**
-     * يحوّل رقم جوال معروض بأي صيغة شائعة (05xxxxxxxx، +9665xxxxxxxx،
-     * 9665xxxxxxxx، 5xxxxxxxx) إلى JID واتساب لرقم فردي بصيغة Baileys
-     * (رقم دولي كامل بدون + متبوع بـ@s.whatsapp.net) - افتراض قابل للتعديل
-     * لو تبيّن إن صيغة البوت مختلفة
-     */
+    /** يحوّل رقم جوال بأي صيغة شائعة إلى JID واتساب بصيغة Baileys (رقم دولي@s.whatsapp.net) */
     function normalizePhoneToJid(rawPhone) {
         let digits = (rawPhone || '').replace(/\D/g, '');
         if (digits.startsWith('00')) digits = digits.slice(2);
@@ -11249,11 +10800,7 @@ ${rowsHtml}
     // قراءة بيانات العميل من صفحة العقد المفتوحة حالياً
     // ==========================================================
 
-    /**
-     * يقرأ اسم ورقم جوال العميل من الصفحة المفتوحة حالياً - يفتح لوحة
-     * "بيانات العميل" لو كانت مطوية (نفس زر التوسيع بأيقونة SVG المستخدم
-     * بباقي الأدوات) وينتظر فعلياً لين تترسم البيانات بدل انتظار ثابت.
-     */
+    /** يقرأ اسم وجوال العميل من الصفحة الحالية، يوسّع لوحة "بيانات العميل" لو مطوية */
     async function extractCustomerInfo() {
         const expandBtn = Array.from(document.querySelectorAll('button'))
             .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));
@@ -11476,27 +11023,11 @@ ${rowsHtml}
 // المصدر: tampermonkey/source/yaqeen-booking-report.user.js
 // ============================================================
 
-/**
- * أداة "تقرير الحجوزات القادمة"
- * ------------------------------------------------------------
- * أداة مستقلة تُسجَّل داخل نظام الأدوات الحالي عبر YAQEEN_TOOLS.add()
- * ولا تُعدّل أي شيء في الـ Core أو بقية الأدوات.
- *
- * مصادر البيانات (بدون أي API خارجي):
- *  1) صفحة الحجوزات القادمة.
- *  2) صفحة المركبات الجاهزة (حسب مصدر السيارات الذي يختاره المستخدم).
- *  3) صفحة السيارات المستأجرة الحالية (المسترجعة) - نأخذ منها فقط الراجعة
- *     لنفس الفرع، ونعرض عددها تحت كل عمود يوم كمعلومة إضافية (وتُضاف على
- *     السيارات الجاهزة حالياً عند حساب نسبة الإشغال والفرق).
- *
- * تُقرأ الصفحات عبر iframe مخفي (نفس النطاق، بدون نافذة منبثقة حقيقية)، ثم
- * تُستخرج البيانات مباشرة من جدول HTML الظاهر في الصفحة - دون الضغط على أي فلتر.
- */
+/** أداة "تقرير الحجوزات القادمة" - تُسجَّل عبر YAQEEN_TOOLS.add()، تقرأ الحجوزات/السيارات/المسترجعة عبر iframe مخفي بدون أي API خارجي */
 (function () {
   'use strict';
 
-  // نستخدم unsafeWindow (إن وُجد) لأن أدوات Tampermonkey المختلفة
-  // قد تُسجَّل في نافذة الصفحة الحقيقية وليس في الـ sandbox الخاص بالسكربت.
+  // unsafeWindow (إن وُجد): أدوات Tampermonkey ممكن تتسجّل بنافذة الصفحة الحقيقية لا بالـ sandbox
   var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
   // لا نلمس الـ Core إطلاقاً: إن لم يكن موجوداً نتوقف بصمت (مع تحذير في الـ console).
@@ -11540,11 +11071,7 @@ ${rowsHtml}
       '&sort=dropoffDate&order=desc&pageNumber=0',
   };
 
-  /**
-   * ترتيب الأيام بالضبط زي ما يعرضه يقين: "اليوم"، "غداً"، ثم بقية أيام الأسبوع
-   * السبعة بترتيبها الحقيقي (السبت موجود ضمنها) بدءاً من اليوم اللي بعد "غداً"
-   * مباشرة - مو قائمة ثابتة تبدأ دائماً بالأحد بغض النظر عن يوم اليوم الفعلي.
-   */
+  /** ترتيب الأيام زي يقين بالضبط: "اليوم"، "غداً"، ثم بقية الأسبوع بدءاً من اليوم اللي بعد "غداً" */
   var WEEKDAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   function buildDayChips() {
     var chips = ['اليوم', 'غداً'];
@@ -11586,9 +11113,7 @@ ${rowsHtml}
     dropoffText: ['تاريخ التسليم'],
   };
 
-  // عمود "المجموعة" موجود في الجدولين معاً، لذلك نستخدمه لتمييز جدول البيانات
-  // الحقيقي عن أي جداول أخرى بالصفحة (بدل الاعتماد على عدد الصفوف الذي يفشل
-  // عندما يكون عدد السيارات قليلاً، كما هو الحال غالباً في الساحة)
+  // عمود "المجموعة" يميّز جدول البيانات الحقيقي عن باقي الجداول (بدل عدد الصفوف اللي يفشل لو قليلة)
   var GROUP_COLUMN_HINT = ['المجموعة'];
 
   var OCCUPANCY_WARNING_THRESHOLD = 80;
@@ -11606,11 +11131,7 @@ ${rowsHtml}
     selectedSource: 'all',
     selectedDays: new Set(['اليوم']),
     sort: { key: null, dir: 1 },
-    // تعديلات يدوية لعدد سيارات "الساحة" فقط لكل مجموعة (مفتاحها "yard::مجموعة" -
-    // ثابت بغض النظر عن مصدر السيارات المختار حالياً بالعرض). أسطول "الفرع" غير
-    // قابل للتعديل أبداً؛ في وضع "الكل" يُجمع أسطول الفرع الثابت مع رقم الساحة
-    // هذا (المعدَّل أو الأصلي) - تُستخدم لإعادة حساب نسبة الإشغال والفرق فوراً
-    // بدون أي طلب شبكة جديد
+    // تعديلات يدوية لعدد سيارات "الساحة" فقط (مفتاحها "yard::مجموعة"، ثابت بغض النظر عن المصدر المعروض)
     vehicleOverrides: {},
   };
 
@@ -11651,12 +11172,7 @@ ${rowsHtml}
   // تحميل صفحة أخرى من نفس الموقع عبر iframe مخفي (بدون نافذة منبثقة)
   // ==========================================================
 
-  /**
-   * يحدد جدول البيانات الحقيقي داخل الصفحة.
-   * الأولوية لأي جدول يحتوي عمود "المجموعة" في رأسه (أدق وسيلة، تعمل حتى لو
-   * كان عدد الصفوف قليلاً كما في حالة الساحة). في حال لم يوجد أي جدول مطابق
-   * بالرأس، نرجع لاختيار الجدول الأكبر عدد صفوف كحل احتياطي.
-   */
+  /** يحدد جدول البيانات الحقيقي: أولوية لجدول برأس فيه عمود "المجموعة"، وإلا أكبر جدول عدد صفوف */
   function findDataTable(doc, requiredColumnVariants) {
     var tables = Array.prototype.slice.call(doc.querySelectorAll('table'));
     if (tables.length === 0) return null;
@@ -11690,12 +11206,8 @@ ${rowsHtml}
     return best;
   }
 
-  /**
-   * صفحات ثقيلة (مثل صفحة المستأجرة بمئات الصفوف) ممكن تظهر أول صفوفها
-   * بخلايا فارغة مؤقتاً أثناء التحميل. الاكتفاء بوجود صفوف (tbody tr) فقط
-   * يخدع المنطق فيعتبر التحميل مكتمل وهو لسا فاضي. هذا الفحص يتأكد من وجود
-   * نص فعلي بعمود "المجموعة" على الأقل بصف واحد قبل اعتبار الصفحة جاهزة.
-   */
+  /** تحذير: الصفوف قد تظهر فارغة مؤقتاً أثناء التحميل - وجود tbody tr وحده يخدع المنطق
+   * فيعتبرها جاهزة، فنتأكد من نص فعلي بعمود "المجموعة" أولاً */
   function tableHasMeaningfulData(doc, columnsMap) {
     var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
     if (!table) return false;
@@ -11713,12 +11225,7 @@ ${rowsHtml}
     });
   }
 
-  /**
-   * ينشئ iframe مخفي (خارج حدود الشاشة تماماً) ويحمّل الرابط المطلوب بداخله،
-   * بدل فتح نافذة منبثقة حقيقية. هذا يمنع أي نافذة تظهر فوق صفحتك أو تسرق
-   * التركيز أثناء جلب البيانات - جُرّب وتحقّقنا إن Yaqeen ما يتصرف مختلف ولا
-   * يتجاهل فلاتر الرابط لما يكتشف إنه محمّل داخل إطار (window.self !== window.top).
-   */
+  /** iframe مخفي بدل نافذة منبثقة حقيقية - تحقّقنا إن Yaqeen ما يتصرف مختلف ولا يتجاهل فلاتر الرابط لما يكتشف إنه بإطار */
   function openHiddenFrame(url) {
     var iframe = document.createElement('iframe');
     iframe.src = url;
@@ -11727,10 +11234,7 @@ ${rowsHtml}
     return iframe;
   }
 
-  /**
-   * يستنى حتى تظهر أول صفحة بيانات في الجدول داخل الـiframe (لا نزيله من
-   * الصفحة، لأنه لازم نبقى نتصفّح صفحاته لاحقاً لجمع كل الصفوف قبل الإزالة).
-   */
+  /** يستنى أول صفحة بيانات بالجدول داخل الـiframe - ما نزيله لأننا لازم نتصفّح باقي صفحاته لاحقاً */
   function waitForFirstFrame(iframe, requestedUrl, columnsMap, timeoutMs) {
     timeoutMs = timeoutMs || 20000;
     return new Promise(function (resolve, reject) {
@@ -11766,9 +11270,7 @@ ${rowsHtml}
 
 
   // ==========================================================
-  // ترقيم الصفحات (Pagination) - بعض جداول Yaqeen تعرض صفوف الصفحة
-  // الحالية فقط بالـ DOM حتى لو طلبنا pageSize كبير بالرابط، فنحتاج نتنقّل
-  // بين الصفحات ونجمع كل الصفوف قبل ما نعتبر التحميل مكتمل.
+  // ترقيم الصفحات (Pagination) - بعض جداول Yaqeen تعرض صفوف الصفحة الحالية فقط رغم pageSize كبير بالرابط
   // ==========================================================
 
   var NEXT_PAGE_SELECTORS = [
@@ -11837,11 +11339,7 @@ ${rowsHtml}
       .filter(Boolean);
   }
 
-  /**
-   * يجمع صفوف كل صفحات الجدول: يقرأ الصفحة الحالية، يضغط "التالي" إن
-   * وُجد ونشِط، وينتظر تغيّر محتوى الجدول قبل قراءة الصفحة الجديدة، وهكذا
-   * حتى ينتهي الترقيم أو يصل لحد أقصى من الصفحات (حماية من التكرار اللانهائي).
-   */
+  /** يجمع صفوف كل الصفحات: يقرأ، يضغط "التالي"، ينتظر تغيّر الجدول، ويكرر حتى ينتهي أو يصل حد أقصى */
   function collectAllPages(iframe, doc, columnsMap) {
     return new Promise(function (resolve) {
       var allRows = [];
@@ -11917,10 +11415,7 @@ ${rowsHtml}
     });
   }
 
-  /**
-   * يستنى أول صفحة، يجمع كل الصفحات التالية، ثم يزيل الـiframe من الصفحة
-   * ويعيد السجلات الخام + مستند آخر صفحة (للتشخيص).
-   */
+  /** يستنى أول صفحة، يجمع باقي الصفحات، ثم يزيل الـiframe ويعيد السجلات الخام + مستند آخر صفحة */
   function fetchAllRecordsFromFrame(iframe, requestedUrl, columnsMap, timeoutMs) {
     return waitForFirstFrame(iframe, requestedUrl, columnsMap, timeoutMs).then(function (doc) {
       return collectAllPages(iframe, doc, columnsMap).then(function (records) {
@@ -12013,12 +11508,7 @@ ${rowsHtml}
     return null;
   }
 
-  /**
-   * يحوّل تاريخ التسليم إلى اسم شريحة اليوم بنفس مفردات DAY_CHIPS (اليوم/غداً/
-   * أيام الأسبوع). السيارات المتأخرة عن تاريخ تسليمها (راجعة من قبل ولسا ما
-   * تسلمت فعلياً) تُستثنى بالكامل ولا تُحتسب ضمن أي يوم - وجودها بالنظام متأخر
-   * عن الموعد، فما نعتمد عليها كـ"سيارة راح ترجع اليوم" لأنها فعلياً متأخرة.
-   */
+  /** يحوّل تاريخ التسليم لاسم شريحة يوم (DAY_CHIPS) - السيارات المتأخرة عن تسليمها تُستثنى بالكامل من أي يوم */
   function computeReturnDayLabel(dropoffText) {
     var dateOnly = parseDropoffDateOnly(dropoffText);
     if (!dateOnly) return null;
@@ -12048,7 +11538,6 @@ ${rowsHtml}
 
   // ==========================================================
   // تشخيص (Console) - يساعد على معرفة سبب عدم ظهور بيانات مصدر معيّن
-  // دون الحاجة للوصول المباشر لموقع Yaqeen
   // ==========================================================
 
   function logSourceDiagnostics(label, requestedUrl, doc, groups) {
@@ -12084,11 +11573,7 @@ ${rowsHtml}
   // تحميل كل البيانات (مع الكاش)
   // ==========================================================
 
-  /**
-   * صفحة "المستأجرة" ثقيلة (مئات الصفوف)، فأحياناً رغم فحص tableHasMeaningfulData
-   * ترجع محاولة واحدة بصفر سجلات خام (لسا ما اكتمل تحميلها بالكامل). نعيد
-   * المحاولة تلقائياً بدل ما نعرض عمود "مسترجعة" فاضي بالغلط.
-   */
+  /** صفحة "المستأجرة" ثقيلة، ممكن ترجع محاولة واحدة بصفر سجلات - نعيد المحاولة تلقائياً بدل عرض عمود فاضي بالغلط */
   function delay(ms) {
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
   }
@@ -12099,9 +11584,7 @@ ${rowsHtml}
     return fetchAllRecordsFromFrame(frame, URLS.returned, RETURNED_COLUMNS_MAP, RETURNED_FETCH_TIMEOUT_MS).then(function (result) {
       if (result.records.length === 0 && attempt < MAX_FETCH_ATTEMPTS) {
         console.warn('[تقرير الحجوزات القادمة] محاولة جلب المسترجعة ' + attempt + ' رجعت بدون بيانات، إعادة محاولة بعد مهلة قصيرة...');
-        // مهلة قبل إعادة المحاولة - صفحة "المستأجرة" ثقيلة وممكن تحتاج وقت
-        // إضافي قبل ما تصير جاهزة فعلياً، إعادة المحاولة فوراً بدون انتظار
-        // غالباً تصطدم بنفس حالة "لسا ما اكتمل التحميل"
+        // مهلة قبل إعادة المحاولة - إعادة فورية غالباً تصطدم بنفس حالة "لسا ما اكتمل التحميل"
         return delay(RETRY_DELAY_MS).then(function () {
           return fetchReturnedRecordsWithRetry(attempt + 1);
         });
@@ -12116,9 +11599,7 @@ ${rowsHtml}
     setStatus('جارٍ تحميل بيانات الحجوزات والسيارات...', 'loading');
     showLoadingOverlay();
 
-    // ننشئ الإطارات فوراً - بعكس النوافذ المنبثقة، الـiframe عنصر
-    // DOM عادي، فما فيه خطر حظر Popup ولا حاجة نفتحه بشكل متزامن ضمن نفس
-    // ضغطة المستخدم.
+    // ننشئ الإطارات فوراً - الـiframe عنصر DOM عادي، ما فيه خطر حظر Popup بعكس النوافذ المنبثقة
     var bookingsFrame = openHiddenFrame(URLS.bookings);
     var branchFrame = openHiddenFrame(URLS.vehicles.branch);
     var yardFrame = openHiddenFrame(URLS.vehicles.yard);
@@ -12180,12 +11661,7 @@ ${rowsHtml}
   // بناء صفوف التقرير (تجميع حسب المجموعة)
   // ==========================================================
 
-  /**
-   * أسطول "الفرع" ثابت دائماً (غير قابل للتعديل). أسطول "الساحة" هو الوحيد
-   * القابل للتعديل اليدوي، بمفتاح ثابت لا يعتمد على مصدر السيارات المعروض
-   * حالياً - عشان لو المستخدم يعدّل وهو بوضع "الساحة" ثم يرجع لوضع "الكل"،
-   * التعديل يبقى منعكساً بنفس القيمة.
-   */
+  /** أسطول "الفرع" ثابت غير قابل للتعديل، وأسطول "الساحة" وحده القابل للتعديل بمفتاح ثابت مستقل عن المصدر المعروض */
   function buildReportRows(bookings, vehiclesBySource, selectedSource, selectedDaysOrdered, vehicleOverrides, returns) {
     var branchCountByGroup = {};
     (vehiclesBySource.branch || []).forEach(function (group) {
@@ -12245,9 +11721,7 @@ ${rowsHtml}
         totalReturns += returnCount;
       });
 
-      // نضيف السيارات المسترجعة (نفس الفرع) خلال الأيام المختارة للسيارات
-      // الجاهزة حالياً، عشان نسبة الإشغال والفرق تعكس أنه فيه سيارات راح
-      // ترجع وتغطي جزء من النقص - بدل ما تُحسب فقط من الجاهز الآن
+      // نضيف السيارات المسترجعة (نفس الفرع) للجاهزة حالياً، عشان نسبة الإشغال والفرق تعكس التغطية القادمة
       var effectiveVehicleCount = vehicleCount + totalReturns;
 
       var occupancyPercent = effectiveVehicleCount > 0 ? (totalBookings / effectiveVehicleCount) * 100 : totalBookings > 0 ? Infinity : 0;
@@ -12364,11 +11838,7 @@ ${rowsHtml}
     return td;
   }
 
-  /**
-   * خانة عدد السيارات قابلة للتعديل يدوياً: أي تغيير يحفظ قيمة بديلة لهذه
-   * المجموعة (بالمصدر الحالي) ويعيد رسم الجدول فوراً حتى تنعكس نسبة الإشغال
-   * والفرق على القيمة الجديدة بدون أي طلب شبكة.
-   */
+  /** خانة عدد السيارات قابلة للتعديل يدوياً - أي تغيير يحفظ قيمة بديلة ويعيد رسم الجدول فوراً بدون طلب شبكة */
   function buildYardInput(row, onCommit) {
     var input = document.createElement('input');
     input.type = 'number';
@@ -12386,20 +11856,12 @@ ${rowsHtml}
     return input;
   }
 
-  /**
-   * أسطول "الفرع" ثابت وغير قابل للتعديل دائماً. الوحيد القابل للتعديل هو
-   * أسطول "الساحة":
-   *  - بوضع "الفرع": رقم ثابت فقط، بدون أي حقل تعديل.
-   *  - بوضع "الساحة": الرقم المعروض هو نفسه رقم الساحة القابل للتعديل مباشرة.
-   *  - بوضع "الكل": نعرض المجموع (ثابت الفرع + ساحة قابلة للتعديل) بالأعلى،
-   *    وتحته حقل تعديل صغير مخصص لرقم الساحة فقط - أي تعديل فيه يُعاد حساب
-   *    المجموع فوراً (فرع + الساحة الجديدة) دون لمس رقم الفرع.
-   */
+  /** خلية السيارات: وضع "الفرع" رقم ثابت، "الساحة" حقل تعديل مباشر، "الكل" مجموع ثابت بالأعلى
+   * + حقل تعديل ساحة صغير تحته يعيد حساب المجموع دون لمس رقم الفرع */
   function buildVehiclesCell(row, extraClassName) {
     var td = document.createElement('td');
     td.className = ['yqn-vehicles-cell', extraClassName].filter(Boolean).join(' ');
-    // نضبط الـ attribute (مو بس الـ property) حتى تنعكس القيمة الحالية بشكل
-    // صحيح عند نسخ outerHTML الجدول (بالطباعة/تصدير الصورة لواتساب)
+    // نضبط الـ attribute (مو بس الـ property) حتى تنعكس القيمة عند نسخ outerHTML (طباعة/تصدير صورة)
     td.dataset.copyText = row.vehicleCount;
 
     if (state.selectedSource === 'branch') {
@@ -12556,8 +12018,7 @@ ${rowsHtml}
         returnsByDay[day] = (returnsByDay[day] || 0) + r.dayReturns[day];
       });
     });
-    // نفس منطق الصف الفردي: نضيف السيارات المسترجعة للأيام المختارة على
-    // الجاهزة حالياً قبل حساب نسبة الإشغال والفرق الإجمالية
+    // نفس منطق الصف الفردي: نضيف المسترجعة للجاهزة قبل حساب النسبة والفرق الإجمالية
     var totalEffectiveVehicles = totalVehicles + totalReturns;
     var totalOccupancy = totalEffectiveVehicles > 0 ? (totalBookings / totalEffectiveVehicles) * 100 : totalBookings > 0 ? Infinity : 0;
     var totalDifference = totalEffectiveVehicles - totalBookings;
@@ -12607,9 +12068,7 @@ ${rowsHtml}
   function getCurrentReportData() {
     var selectedDaysOrdered = getSelectedDaysOrdered();
     var rows = buildReportRows(state.bookings || [], state.vehiclesBySource, state.selectedSource, selectedDaysOrdered, state.vehicleOverrides, state.returns || []);
-    // نعرض أي مجموعة عندها سيارات جاهزة حتى لو بدون أي حجز، أو عندها حجوزات
-    // حتى لو بدون سيارات جاهزة حالياً - نخفي فقط الصفوف الفارغة كلياً (لا
-    // سيارات ولا حجوزات) لأنها ما تضيف أي معلومة للتقرير
+    // نخفي فقط الصفوف الفارغة كلياً (لا سيارات ولا حجوزات) لأنها ما تضيف أي معلومة
     rows = rows.filter(function (r) {
       return r.vehicleCount > 0 || r.totalBookings > 0;
     });
@@ -12669,8 +12128,7 @@ ${rowsHtml}
   // ==========================================================
 
   function handleRefresh() {
-    // التحديث يجيب أعداد السيارات الحقيقية من يقين من جديد، فنمسح أي تعديل
-    // يدوي سابق حتى ما يظل يطغى على البيانات الفعلية الجديدة
+    // التحديث يجيب الأعداد الحقيقية من جديد، فنمسح أي تعديل يدوي سابق حتى ما يطغى عليها
     state.vehicleOverrides = {};
     fetchAllData(true)
       .then(renderTable)
@@ -12763,8 +12221,7 @@ ${rowsHtml}
     setStatus('تم تصدير الملف بنجاح', 'success');
   }
 
-  // تنسيقات ثابتة للجدول تُستخدم بمعزل عن نافذة الأداة (بالطباعة وبتصدير الصورة) -
-  // مستقلة عن MODAL_CSS لأنها بلا Sticky/تمرير، وبألوان صريحة تُطبَع/تُرسم دائماً
+  // تنسيقات الجدول للطباعة/تصدير الصورة - مستقلة عن MODAL_CSS (بلا Sticky/تمرير، ألوان صريحة دائماً)
   var TABLE_EXPORT_CSS =
     '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
     'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
@@ -12797,15 +12254,8 @@ ${rowsHtml}
     '.yqn-diff-zero{color:#b45309;font-weight:bold;}' +
     '.yqn-return-sub{font-size:11.5px;color:#16a34a;font-weight:bold;margin-top:2px;}';
 
-  /**
-   * ينسخ جدول التقرير كنص HTML ثابت (بدون عناصر <input> التفاعلية لتعديل
-   * السيارات) للاستخدام بالطباعة/تصدير الصورة. مهم بالذات لصورة واتساب: عنصر
-   * <input> يُسلسَل عبر outerHTML بدون إغلاق ذاتي (مثل <input ...> بدون />)،
-   * وهذا غير صالح كـ XML صحيح داخل foreignObject بالـ SVG، فيفشل رسم الصورة
-   * بصمت (تعذّر تحويل SVG لصورة) - الحل نستبدل أي خلية فيها عنصر <input>
-   * بقيمة data-copy-text النهائية للخلية (المجموع الصحيح، مو رقم حقل الساحة
-   * وحده - بوضع "الكل" الخلية فيها رقمان: مجموع ثابت + حقل تعديل الساحة).
-   */
+  /** يستبدل عناصر <input> بقيمة data-copy-text النهائية قبل التصدير: outerHTML لـ<input> بدون /> يكسر XML
+   * داخل foreignObject بالـ SVG فيفشل رسم الصورة بصمت */
   function buildStaticTableHtml() {
     var clone = modalEls.table.cloneNode(true);
     Array.prototype.slice.call(clone.querySelectorAll('input')).forEach(function (input) {
@@ -12852,10 +12302,7 @@ ${rowsHtml}
     printWindow.print();
   }
 
-  /**
-   * يرسم الجدول الحالي (بعنوانه وبياناته الوصفية) كصورة PNG عبر SVG+foreignObject
-   * بدون أي مكتبة خارجية. يعيد Promise بصيغة data URL (data:image/png;base64,...).
-   */
+  /** يرسم الجدول الحالي كصورة PNG عبر SVG+foreignObject بدون مكتبة خارجية، يعيد Promise بصيغة data URL */
   /** يحوّل نص UTF-8 (فيه عربي) إلى base64 - btoa العادية تدعم Latin1 بس */
   function utf8ToBase64(str) {
     return btoa(unescape(encodeURIComponent(str)));
@@ -12880,11 +12327,7 @@ ${rowsHtml}
         var wrapperStyle =
           'font-family:Tahoma,Arial,sans-serif;background:#fff;padding:20px;display:inline-block;';
 
-        // نقيس الحجم الطبيعي للمحتوى المُصدَّر فعلياً (بمعزل عن عرض المودال 100%)
-        // بدل الاعتماد على قياسات الجدول داخل المودال - لأن الجدول هناك يتمدد
-        // width:100% على عرض المودال الواسع (min 1560px)، بينما نفس الجدول بتصميم
-        // التصدير المستقل (TABLE_EXPORT_CSS) يرجع لحجمه الطبيعي الأصغر، فكان يترك
-        // مساحة فارغة كبيرة حول المحتوى بدل ما يملأ الصورة.
+        // نقيس الحجم الطبيعي للمحتوى المُصدَّر فعلياً - جدول المودال يتمدد width:100% (1560px) فيترك فراغ لو اعتمدنا عليه
         var measureEl = document.createElement('div');
         measureEl.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;' + wrapperStyle;
         measureEl.innerHTML = innerHtml;
@@ -12901,9 +12344,7 @@ ${rowsHtml}
           '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
           '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
 
-        // نستخدم data URI (مش blob:) لأن كروم بيعتبر الصورة "ملوّثة" (Tainted Canvas)
-        // لو كانت SVG فيها foreignObject ومحمّلة من blob:، فيرفض canvas.toDataURL()
-        // بصمت (استثناء غير ملتقط داخل onload) وتظل العملية عالقة للأبد.
+        // data URI لا blob: - كروم يعتبر SVG بـforeignObject من blob: "ملوّثة" ويرفض toDataURL() بصمت (يعلّق للأبد)
         var svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
 
         var img = new Image();
@@ -12914,9 +12355,7 @@ ${rowsHtml}
         img.onload = function () {
           clearTimeout(timeoutId);
           try {
-            // نقص أي مساحة فاضية (بيضاء) تبقى يمين/تحت المحتوى الفعلي - بغض النظر عن
-            // سبب الفرق بين القياس المتوقع والمرسوم فعلياً (مثلاً فروقات محرك رسم
-            // foreignObject)، هذا يضمن عدم وجود إطار فاضي حول الصورة النهائية.
+            // نقص أي مساحة بيضاء فاضية تبقى يمين/تحت المحتوى (فروقات محرك رسم foreignObject)
             function trimWhitespace(canvas) {
               var ctx2d = canvas.getContext('2d');
               var w = canvas.width;
@@ -12954,8 +12393,7 @@ ${rowsHtml}
               return trimmed;
             }
 
-            // نرسم بدقة عالية أول شي، ونطلع جودة/دقة أقل بس لو تجاوزت حد كبير جداً
-            // (السيرفر الآن يقبل حتى 100mb، فما في داعي نصغّر الصورة كأول خيار)
+            // نرسم بدقة عالية أول شي، ونقلل الجودة بس لو تجاوزت حد كبير (السيرفر يقبل حتى 100mb)
             function drawAtScale(scale) {
               var canvas = document.createElement('canvas');
               canvas.width = width * scale;
@@ -13036,8 +12474,7 @@ ${rowsHtml}
             target: WHATSAPP_CONFIG.target,
             sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
             type: 'image',
-            // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
-            // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
+            // base64 خام بدون بادئة data:image/...;base64, - أغلب البوتات تعمل Buffer.from مباشرة والبادئة تفسدها
             imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
             caption: '📊 تقرير الحجوزات القادمة - ' + new Date().toLocaleString('ar-SA'),
           }),
@@ -13225,10 +12662,7 @@ ${rowsHtml}
       fetchAllData(false)
         .then(function () {
           renderTable();
-          // أول فتح: لو المسترجعة رجعت صفر رغم كل محاولات إعادة الجلب
-          // الداخلية (صفحة "المستأجرة" ثقيلة وأحياناً تحتاج وقت إضافي)، نعيد
-          // دورة تحميل كاملة صامتة مرة وحدة تلقائياً - نفس اللي كان المستخدم
-          // يضطر يسويه يدوياً بالضغط على "تحديث البيانات"
+          // أول فتح: لو المسترجعة رجعت صفر رغم إعادة المحاولات الداخلية، نعيد تحميل كامل صامت تلقائياً
           if ((state.returns || []).length === 0) {
             return fetchAllData(true).then(renderTable);
           }
@@ -13282,9 +12716,7 @@ ${rowsHtml}
     '.yqn-filter-group--grow{flex:1;min-width:220px;}' +
     '.yqn-filter-label{font-size:11.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
     '.yqn-filter-divider{align-self:stretch;width:1px;background:#e9e7df;}' +
-    // مصدر السيارات كشرائح داكنة مدمجة (segmented control) بدل radio عادي -
-    // الـinput مخفي (visually hidden مو display:none حتى يبقى قابل للوصول
-    // بلوحة المفاتيح)، ونستخدم :has() لتلوين الـlabel نفسه عند التحديد
+    // مصدر السيارات كشرائح مدمجة (segmented control) - input مخفي بصرياً (لا display:none، يبقى قابل للوصول)، :has() يلوّن الـlabel
     '.yqn-source-filter{display:flex;align-items:center;gap:4px;border:0;padding:4px;margin:0;flex-wrap:wrap;' +
     'background:#f1f0ea;border-radius:12px;}' +
     '.yqn-source-filter label{display:inline-flex;align-items:center;justify-content:center;' +
@@ -13297,10 +12729,7 @@ ${rowsHtml}
     'padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:700;transition:all .15s;}' +
     '.yqn-chip:hover{border-color:#a19c92;}' +
     '.yqn-chip--active{background:linear-gradient(160deg,#A3E635,#79a916);border-color:transparent;color:#3c4a10;font-weight:800;}' +
-    // --- الجدول ---
-    // تمرير مرئي بوضوح (سماكة ولون واضحين) حتى يظهر جلياً إن المنطقة قابلة
-    // للتمرير حتى بدون تحريك الماوس فوقها - يحل مشكلة عدم ملاحظة إمكانية
-    // النزول/الصعود داخل الجدول عند طول قائمة المجموعات
+    // --- الجدول --- (تمرير مرئي بوضوح حتى يظهر جلياً إن المنطقة قابلة للتمرير بدون تحريك الماوس)
     '.yqn-table-wrapper{overflow:auto;flex:1;padding:0 28px;position:relative;' +
     'scrollbar-width:auto;scrollbar-color:#c7c3b8 #f0efe9;}' +
     '.yqn-table-wrapper::-webkit-scrollbar{width:14px;height:14px;}' +
@@ -13333,9 +12762,7 @@ ${rowsHtml}
     '.yqn-totals-row{font-weight:800;position:sticky;bottom:0;z-index:2;}' +
     '.yqn-totals-row td{background-color:#1c1c1a !important;color:#fff;border-bottom:0;border-top:2px solid #1c1c1a;' +
     'padding-block:14px;}' +
-    // نمدّد لون خلفية الصف الداكن 28px إضافية بـbox-shadow (بدون تغيير هندسة
-    // الخلية نفسها ولا كسر حسابات الأعمدة الثابتة sticky) حتى يلامس فعلياً
-    // حواف الكرت الحقيقية بدل ما يبان طرفه مقطوع وسط الحشو الجانبي للجدول
+    // نمدّد خلفية الصف الداكن 28px بـbox-shadow (بدون كسر حسابات sticky) حتى يلامس حواف الكرت فعلياً
     '.yqn-totals-row td:first-child{border-end-start-radius:16px;box-shadow:28px 0 0 0 #1c1c1a;}' +
     '.yqn-totals-row td:last-child{border-end-end-radius:16px;box-shadow:-28px 0 0 0 #1c1c1a;}' +
     '.yqn-totals-row .yqn-bar-text{color:#fff !important;}' +
@@ -13400,14 +12827,10 @@ ${rowsHtml}
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لنفس سبب باقي الأدوات - GM_xmlhttpRequest
-    // يشغّل السكربت بوضع sandbox معزول عن window الحقيقية لصفحة يقين
+    // unsafeWindow: نفس مرجع window المستخدم بباقي أدوات الحزمة الموحّدة
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-    // ==========================================================
-    // نفس إعدادات موقع vip-reservations (js/config.js بذاك الريبو) - أي
-    // تغيير هناك (خصوصاً SUPABASE_ANON_KEY لو تغيّر يوماً) لازم ينعكس هنا يدوياً
-    // ==========================================================
+    // مطابق لـjs/config.js بموقع vip-reservations - لو SUPABASE_ANON_KEY تغيّر هناك لازم يتحدّث هنا يدوياً
     const SUPABASE_URL = 'https://ycguqfilerlkrukiykiy.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljZ3VxZmlsZXJsa3J1a2l5a2l5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4OTY0MTMsImV4cCI6MjA5NjQ3MjQxM30.mcA2Bak3OFZSVnz00vAjY68UUaFOh_fmD-b5aCwfyF4';
 
@@ -13422,8 +12845,7 @@ ${rowsHtml}
     const INS_LIST = ['عادي', 'شامل'];
     const MGR_LIST = ['انمار عطية', 'احمد هجرس', 'يحيى هتاني', 'عبدالله الغامدي', 'حياة الرايقي'];
 
-    // نفس قالب الرسالة الافتراضي بالموقع (DEFAULT_WA_TEMPLATE بـjs/config.js) -
-    // لو المستخدم غيّر القالب من إعدادات الموقع، هذي النسخة هنا ما تتحدّث تلقائياً
+    // مطابق لـDEFAULT_WA_TEMPLATE بـjs/config.js - تغيير القالب بإعدادات الموقع ما ينعكس هنا تلقائياً
     const WA_TEMPLATE =
         '*📋 حجز VIP*\n' +
         '───────────────\n' +
@@ -13527,8 +12949,7 @@ ${rowsHtml}
     }
 
     // ==========================================================
-    // بناء رسالة الواتساب - نفس منطق applyTemplate() بـjs/whatsapp.js
-    // بموقع vip-reservations (يشيل السطور/الأقسام الفاضية تلقائياً)
+    // بناء رسالة الواتساب (نفس منطق applyTemplate() بـjs/whatsapp.js) - يشيل الأقسام الفاضية
     // ==========================================================
 
     function fmtDateAr(v) {
@@ -13884,9 +13305,7 @@ ${rowsHtml}
 
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-    // نفس بوت السيرفر المستخدم بباقي الأدوات - هنا يستخدمه فقط كتوثيق للوصول
-    // لـendpoint الشات (/ai-chat)، والسيرفر هو اللي يستدعي OpenAI بمفتاحه الخاص
-    // المخزّن كـenvironment variable هناك - المفتاح ما يمر أبداً عبر المتصفح
+    // السيرفر هو اللي يستدعي OpenAI بمفتاحه الخاص - المفتاح ما يمر عبر المتصفح
     const AI_CHAT_CONFIG = {
         apiUrl: 'https://api.yaqeen-vip.space/ai-chat',
         apiKey: 'Firas_2026_SuperSecret_Key',
@@ -13923,9 +13342,7 @@ ${rowsHtml}
     }
 
     // ==========================================================
-    // إعادة حجم/ضغط الصورة قبل الإرسال - الصور مباشرة من الجوال/screenshot
-    // ممكن توصل لعدة ميجابايت، وبصيغة base64 يكبر حجمها أكثر، فنصغّرها
-    // ونحوّلها JPEG بجودة معقولة حتى ما يتضخم حجم الطلب أو تكلفة كل رسالة
+    // إعادة حجم/ضغط الصورة (JPEG) قبل الإرسال - تقليل حجم الطلب
     // ==========================================================
     function resizeImageFile(file) {
         return new Promise((resolve, reject) => {
@@ -13954,8 +13371,7 @@ ${rowsHtml}
     }
 
     function askAi(pageContext, messages) {
-        // نحوّل رسائل المستخدم اللي فيها صورة لصيغة OpenAI (content كمصفوفة
-        // نص+صورة) - رسائل المساعد ورسائل المستخدم بدون صورة تبقى نص عادي
+        // نحوّل رسائل المستخدم اللي فيها صورة لصيغة OpenAI (content كمصفوفة نص+صورة)
         const apiMessages = messages.map(m => {
             if (m.role === 'user' && m.image) {
                 return {
@@ -14057,12 +13473,7 @@ ${rowsHtml}
         };
     }
 
-    /**
-     * نافذة عائمة (مو حوار كامل الشاشة) - بدون أي خلفية معتمة تغطي الصفحة،
-     * حتى يقدر المستخدم يشتغل بيقين وهي مفتوحة بنفس الوقت. تُسحب من الهيدر
-     * لأي مكان بالشاشة (نفس فكرة نوافذ الدردشة العائمة العادية)، وما تُغلق
-     * إلا بالضغط الصريح على ✕ - تبقى مفتوحة طول ما يشتغل المستخدم بالصفحة.
-     */
+    /** نافذة عائمة قابلة للسحب من الهيدر - بدون خلفية معتمة تمنع التفاعل مع الصفحة */
     function makeDraggable(panel, handle) {
         let dragging = false;
         let startX = 0, startY = 0, startLeft = 0, startTop = 0;
@@ -14075,8 +13486,7 @@ ${rowsHtml}
             startY = e.clientY;
             startLeft = rect.left;
             startTop = rect.top;
-            // نحوّل من التموضع الأصلي (right/bottom) لـleft/top ثابتة أول
-            // سحبة، حتى تصير حسابات السحب بعدها بسيطة (فرق مباشر من نقطة البداية)
+            // نحوّل التموضع من right/bottom لـleft/top ثابتة لتبسيط حسابات السحب
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
             panel.style.left = startLeft + 'px';
@@ -14129,9 +13539,7 @@ ${rowsHtml}
             '<input id="ai-chat-file" type="file" accept="image/*" style="display:none;" />' +
             '</div>';
 
-        // ما فيه أي غلاف كامل الشاشة (لا inset:0 ولا خلفية معتمة) - النافذة
-        // نفسها بس عنصر position:fixed بحجمها الطبيعي، فباقي الصفحة (يقين)
-        // تفضل قابلة للتفاعل الكامل حواليها وتحتها
+        // بدون غلاف كامل الشاشة - النافذة عنصر position:fixed بس، باقي الصفحة تفضل تفاعلية
         document.body.insertAdjacentHTML('beforeend',
             '<div id="ai-chat-box" style="' +
             'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:20px;' +
@@ -14206,8 +13614,7 @@ ${rowsHtml}
     }
 
     async function runAiChatTool() {
-        // لو النافذة مفتوحة أصلاً، ما نعيد إنشاءها (بيمسح المحادثة الحالية) -
-        // بس نرجّعها للواجهة ونركّز حقل الكتابة
+        // لو النافذة مفتوحة أصلاً نرجّعها للواجهة بدل إعادة إنشائها (يمسح المحادثة)
         const existing = document.getElementById('ai-chat-box');
         if (existing) {
             existing.style.display = '';

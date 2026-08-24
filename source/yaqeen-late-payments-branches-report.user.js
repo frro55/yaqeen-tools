@@ -17,9 +17,7 @@
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل السكربت بوضع sandbox معزول
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -29,9 +27,7 @@
         target: '120363021290047142@g.us',
     };
 
-    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع واحد بكل مرة يشغّل
-    // فيها الأداة (بعكس أداة "العقود المتأخرة في السداد (أفراد)" الأصلية
-    // اللي تفحص فرع مطار جدة فقط، وبعكس أي نسخة تفحص كل الفروع مع بعض)
+    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع واحد (أو أكثر) بكل تشغيل
     const BRANCHES = [
         { id: 29, name: 'مطار جدة' },
         { id: 11, name: 'طريق المدينة' },
@@ -56,9 +52,7 @@
     }
 
     const MAX_AGREEMENTS = 300;
-    // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع
-    // تماماً بنفس منطق الفحص الأصلي، بس موزّعين على عدة إطارات بدل واحد
-    // فقط، فتسرع العملية بمقدار العدد تقريباً بدون أي تغيير بمنطق الفحص نفسه
+    // عدد الإطارات المتوازية لفحص تفاصيل العقود (نفس منطق الفحص، موزّع لتسريع العملية)
     const CHECK_CONCURRENCY = 4;
 
     function waitCore() {
@@ -213,12 +207,7 @@
         return false;
     }
 
-    /**
-     * كل صف بجدول "العقود المتأخرة" فيه عمود "الإجمالي (ريال)" برقم + أيقونة:
-     * أيقونة خضراء (fill-green-600) = تم السداد فعلياً رغم تأخر التسليم، ما نعتبره متأخر بالسداد.
-     * أيقونة رمادية (fill-slate-400) = لسا عليه مبلغ متأخر فعلاً.
-     * هذا يغنينا عن فتح كل عقد للتأكد - نفلتر أول شي من نفس القائمة، ونفتح بس اللي يستاهل.
-     */
+    /** عمود "الإجمالي" فيه أيقونة: خضراء = تم السداد فعلياً (نتجاهله)، رمادية = متأخر فعلاً */
     function readLateReturnRows(doc) {
         const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
         if (!table) return [];
@@ -235,10 +224,7 @@
             const cells = row.querySelectorAll("td");
             if (!cells.length) return null;
 
-            // عمود "اسم المدين" يكون "غير متاح" للأفراد، ويعرض اسم الشركة
-            // الفعلي للعقود التابعة لشركات - وأغلب عقود الشركات المتأخرة سببها
-            // إن الشركة نفسها ما مدّدت العقد بعد (مو تأخر سداد فردي). هذي
-            // الأداة للأفراد فقط، فنتجاهل أي صف عنده اسم شركة حقيقي بهذا العمود
+            // عمود "اسم المدين" = "غير متاح" للأفراد، أو اسم شركة حقيقي للعقود التابعة لشركات؛ الأداة للأفراد فقط فنتجاهل أي شركة
             const debtorText = debtorIdx !== -1 ? cells[debtorIdx].textContent.trim() : "";
             if (debtorText && debtorText !== "غير متاح") return null;
 
@@ -325,11 +311,7 @@
         });
     }
 
-    /**
-     * يجمع صفوف العقود المتأخرة من الفروع المختارة فقط - فرع تلو فرع
-     * بالتتابع (لا بالتوازي) لنفس السبب المعروف بالأدوات الثانية: فتح عدة
-     * صفحات ثقيلة بنفس اللحظة يسبب تنافساً على الموارد ويفشل بعضها بصمت.
-     */
+    /** يجمع صفوف العقود المتأخرة فرع تلو فرع بالتتابع (لا بالتوازي، تجنّباً لفشل الفتح المتزامن) */
     async function collectAllRowsForBranches(branchIds) {
         let allRows = [];
         for (const branchId of branchIds) {
@@ -369,10 +351,7 @@
         return candidates.find(el => (el.textContent || '').trim() === text) || null;
     }
 
-    /**
-     * يحوّل رقم جوال معروض بأي صيغة شائعة (05xxxxxxxx، +9665xxxxxxxx،
-     * 9665xxxxxxxx، 5xxxxxxxx) إلى JID واتساب لرقم فردي بصيغة Baileys
-     */
+    /** يحوّل رقم جوال بأي صيغة شائعة إلى JID واتساب بصيغة Baileys */
     function normalizePhoneToJid(rawPhone) {
         let digits = (rawPhone || '').replace(/\D/g, '');
         if (digits.startsWith('00')) digits = digits.slice(2);
@@ -412,14 +391,7 @@
         return Array.from(root.querySelectorAll('a')).find(x => (x.getAttribute('href') || '').includes('/payment/quickpay/')) || null;
     }
 
-    /**
-     * نافذة "رابط الدفع" تطلع فيها حالتين متشابهتين شكلياً (فيهما نفس بلوك
-     * تفاصيل الرابط)، بس بنص مختلف كلياً بتنبيه [role="alert"] بالأعلى:
-     * - "يوجد رابط دفع نشط": رابط قديم من قبل - ما ننشئ ولا نرسل شي جديد.
-     * - "تم إنشاء رابط الدفع وإرساله...": رابط جديد أنشأناه للتو فعلياً.
-     * الاعتماد على نص التنبيه نفسه (مو مجرد وجود رابط بالنافذة، اللي يطلع
-     * بالحالتين) هو الفيصل الموثوق - لون/شكل التنبيه تفصيل ثانوي قابل للتغيّر.
-     */
+    /** نميّز حالة نافذة "رابط الدفع" بنص تنبيه [role="alert"]: رابط نشط قديم مقابل رابط جديد أُنشئ للتو */
     function classifyPaymentDialogState(dialog) {
         if (!dialog) return null;
         const alerts = Array.from(dialog.querySelectorAll('[role="alert"]'));
@@ -431,13 +403,7 @@
         return null;
     }
 
-    /**
-     * يتحقق أول شي إذا الحالة المطلوبة متحققة أصلاً (بدون ضغط أي شي - مفيد
-     * لما نكون فعلاً بمرحلة متقدمة ومحتاجين خطوة سابقة). إذا لأ، يدور على
-     * عنصر يضغطه وينتظر تحقق الحالة، ويكرر المحاولة (ضغط جديد + انتظار جديد)
-     * لأكثر من مرة - لأن أحياناً العنصر يكون موجود بالـDOM بس لسا ما تركّبت
-     * معالجات الأحداث عليه فعلياً (سباق تحميل الصفحة)، فالضغطة الأولى تُفقد.
-     */
+    /** يتحقق من الحالة أول شي (بدون ضغط)، وإلا يضغط وينتظر ويكرر المحاولة (الضغطة الأولى قد تُفقد بسبب سباق تحميل الصفحة) */
     async function clickUntil(frame, findClickTarget, checkFn, opts) {
         const maxAttempts = (opts && opts.maxAttempts) || 3;
         const perAttemptTimeout = (opts && opts.perAttemptTimeout) || 5000;
@@ -459,16 +425,7 @@
         return lastDoc ? checkFn(lastDoc) : null;
     }
 
-    /**
-     * يمشي فعلياً بنفس خطوات الموظف اليدوية: يفتح صفحة الدفع الخاصة بالعقد،
-     * يضغط "تحصيل الدفع"، يختار طريقة "رابط الدفع". من هذي النقطة احتمالين:
-     * - ما فيه رابط نشط: يطلع زر "إنشاء رابط الدفع" - نضغطه وننتظر الرابط
-     *   الجديد (يقين نفسه يرسله تلقائياً على واتساب العميل من رقمه فور إنشائه).
-     * - فيه رابط نشط من قبل (تنبيه "يوجد رابط دفع نشط"): نرجّع نفس الرابط
-     *   الموجود بدون إنشاء رابط جديد ولا أي إرسال إضافي - يقين يسمح برابط
-     *   نشط واحد بس، وهذا يمنع تكرار الرسائل للعميل.
-     * المبلغ بالنموذج يجيه معبّى تلقائياً بالرصيد المتبقي من نظام يقين نفسه، فما نلمسه.
-     */
+    /** يمشي بخطوات الموظف اليدوية (تحصيل الدفع ← رابط الدفع) وينشئ رابط جديد أو يرجّع الرابط النشط الموجود لتفادي تكرار الإرسال */
     async function locateOrCreatePaymentLink(branchId, agreementNo) {
         const url = 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/close-agreements/' + agreementNo + '//payment';
         const frame = openHiddenFrame(url);
@@ -476,10 +433,7 @@
             const doc1 = await waitFor(frame, d => (findButtonByText(d, 'تحصيل الدفع') ? d : null), 20000);
             if (!doc1) throw new Error('تعذّر فتح صفحة الدفع الخاصة بالعقد');
 
-            // بعد الضغط على "تحصيل الدفع" احتمالين: تطلع طرق الدفع (لازم نختار
-            // "رابط الدفع")، أو تطلع مباشرة حالة "يوجد رابط دفع نشط" أو زر
-            // "إنشاء رابط الدفع" لو كانت آخر طريقة استخدمها الموظف هي رابط
-            // الدفع (يقين يتذكر آخر طريقة مختارة) - نتحمّل كل الاحتمالات
+            // بعد "تحصيل الدفع": إما تطلع طرق الدفع، أو مباشرة حالة رابط نشط/زر إنشاء (يقين يتذكر آخر طريقة) - نتحمّل الكل
             const doc2 = await clickUntil(
                 frame,
                 d => findButtonByText(d, 'تحصيل الدفع'),
@@ -521,10 +475,7 @@
                 return { status: state === 'active' ? 'existing' : 'created', link: link ? link.getAttribute('href') : null };
             }
 
-            // زر "إنشاء رابط الدفع" أحياناً يطلع أول شي بشكل متفائل (optimistic)
-            // قبل ما يوصل رد فحص "هل فيه رابط نشط؟" من السيرفر، وبعدها يتحوّل
-            // فجأة لتنبيه "يوجد رابط دفع نشط" - ننتظر شوي ونعيد الفحص قبل ما
-            // نضغط "إنشاء رابط الدفع" فعلياً، حتى ما نولّد رابط مكرر ونرسله بالغلط
+            // زر "إنشاء رابط الدفع" يطلع أحياناً متفائلاً (optimistic) قبل رد السيرفر؛ ننتظر ونعيد الفحص لتفادي رابط مكرر
             await new Promise(r => setTimeout(r, 1200));
             dialog = (frame.contentDocument || (frame.contentWindow && frame.contentWindow.document))?.querySelector('[role="dialog"]');
             state = classifyPaymentDialogState(dialog);
@@ -553,8 +504,7 @@
             if (!linkEl) throw new Error('تعذّر الحصول على رابط الدفع (تأكد إن العقد لسا عليه مبلغ متبقي)');
             return { status: finalState === 'active' ? 'existing' : 'created', link: linkEl.getAttribute('href') };
         } catch (err) {
-            // تشخيص: نطبع محتوى نافذة الدفع وقت الفشل بالـconsole عشان لو
-            // تكرر الفشل نقدر نشوف بالضبط أي حالة DOM ما كنا نتوقعها
+            // تشخيص: نطبع محتوى نافذة الدفع وقت الفشل بالـconsole للمساعدة عند تكرر المشكلة
             try {
                 const failDoc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
                 const dialog = failDoc && failDoc.querySelector('[role="dialog"]');
@@ -587,11 +537,7 @@
         };
     }
 
-    /**
-     * منطق الإرسال الفعلي لصف واحد (بدون أي تأكيد - التأكيد مسؤولية المستدعي).
-     * يحدّث حالة الصف بنفسه: ⏳ جارٍ ← ✅ تم الإرسال / ℹ️ يوجد رابط مرسل بالفعل
-     * / ⚠️ لا يوجد جوال / ❌ فشل الإرسال. تُستخدم من زر الصف نفسه ومن "إرسال للجميع".
-     */
+    /** يرسل رابط الدفع لصف واحد (بدون تأكيد - مسؤولية المستدعي) ويحدّث حالة الصف؛ يُستخدم من زر الصف ومن "إرسال للجميع" */
     async function sendPaymentLinkForRecord(record, idx) {
         const { branchBtn } = rowButtons(idx);
         if (branchBtn) branchBtn.disabled = true;
@@ -649,14 +595,9 @@
     // التنفيذ الرئيسي
     // ==========================================================
 
-    /**
-     * يفحص عقداً واحداً بالتفصيل (نفس المنطق الأصلي بالضبط، بدون أي تغيير):
-     * يفتح صفحة العقد، يقرأ الرصيد المتبقي الحقيقي، ويرجع null لو تعذّر الفتح
-     * أو لو الرصيد أقل من الحد المطلوب - وإلا يوسّع بيانات العميل ويرجع النتيجة.
-     */
+    /** يفحص عقداً واحداً: يفتح صفحته، يقرأ الرصيد المتبقي الحقيقي، ويرجع null لو تعذّر أو أقل من الحد، وإلا يرجع بيانات العميل */
     async function checkOneAgreement(frame, c, threshold) {
-        // نتأكد إن الرابط فعلاً تغيّر قبل قراءة القيمة، وإلا ممكن نلقط DOM العقد السابق
-        // اللي لسا موجود لحظة التنقّل، ونظل نقرأ نفس القيمة القديمة لكل العقود اللي بعده
+        // نتأكد إن الرابط تغيّر فعلاً قبل القراءة، وإلا نلقط DOM العقد السابق ونكرر نفس القيمة
         const targetPath = new URL(c.href).pathname;
         frame.src = c.href;
         const doc2 = await waitFor(frame, d => {
@@ -672,9 +613,7 @@
         // الرصيد المتبقي الحقيقي (من صفحة العقد نفسها) هو أساس الفلترة، مو أي مؤشر بالقائمة
         if (isNaN(remaining) || remaining < threshold) return { checked: true, record: null };
 
-        // نفس زر توسيع بيانات العميل المستخدم بأدوات الإيميل - يفتح لوحة فيها الجوال ورقم الهوية.
-        // نبحث عنه بانتظار فعلي (مو محاولة وحدة) لأن مع 4 إطارات تشتغل بالتوازي
-        // ممكن العنصر يكون لسا ما تركّب لحظة وصولنا هنا رغم ظهور "الرصيد المتبقي"
+        // زر توسيع بيانات العميل (نفس أدوات الإيميل)؛ ننتظره فعلياً لأنه مع التوازي قد يتأخر تركيبه
         let expandBtn = null;
         const btnWaitStart = Date.now();
         while (Date.now() - btnWaitStart < 3000) {
@@ -687,9 +626,7 @@
             try { expandBtn.click(); } catch (err) { /* تجاهل */ }
         }
 
-        // ننتظر فعلياً لين يظهر رقم الجوال بدل انتظار ثابت 1200ms - مع 4
-        // إطارات تشتغل بالتوازي (CHECK_CONCURRENCY) ممكن يتأخر ظهور اللوحة
-        // شوي عن ذلك الوقت الثابت، فيطلع الصف بدون جوال ولا هوية بدون داعي
+        // ننتظر فعلياً ظهور الجوال بدل انتظار ثابت، لأن التوازي (CHECK_CONCURRENCY) قد يؤخر ظهور اللوحة
         const waitStart = Date.now();
         let dialog = doc2.querySelector('[role="dialog"]') || doc2;
         while (Date.now() - waitStart < 4000) {
@@ -726,8 +663,7 @@
 
             const allRows = await collectAllRowsForBranches(branchIds);
 
-            // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً من زر
-            // "إنهاء الاتفاقية" ونشوف "الرصيد المتبقي" الحقيقي بصفحة التفاصيل
+            // أيقونة "الإجمالي" بالقائمة مو مؤشر موثوق - لازم ندخل كل عقد فعلياً ونشوف "الرصيد المتبقي" الحقيقي
             const candidates = allRows.slice(0, MAX_AGREEMENTS);
 
             if (candidates.length === 0) {
@@ -737,14 +673,10 @@
 
             let checkedCount = 0;
             let processedCount = 0;
-            // نتيجة كل عقد تُحفظ في نفس فهرسه الأصلي (وليس بترتيب الاكتمال) حتى
-            // يبقى ترتيب التقرير النهائي مطابقاً تماماً لترتيب قائمة LATE_RETURN
-            // الأصلية، بغض النظر عن أي عامل خلص قبل غيره
+            // نتيجة كل عقد تُحفظ بفهرسها الأصلي (لا بترتيب الاكتمال) حتى يطابق التقرير ترتيب LATE_RETURN الأصلي
             const recordsByIndex = new Array(candidates.length).fill(null);
 
-            // نوزّع العقود على عدة إطارات مخفية بالتناوب (round robin)، كل إطار
-            // يعالج نصيبه بالتتابع بنفس منطق الفحص الأصلي بالضبط - فقط موازاة
-            // على مستوى الإطارات، بدون أي تغيير على كيفية فحص العقد الواحد
+            // نوزّع العقود على عدة إطارات مخفية بالتناوب (round robin)؛ موازاة على مستوى الإطارات فقط
             const workerCount = Math.min(CHECK_CONCURRENCY, candidates.length);
             const workerFrames = [];
 
@@ -1095,8 +1027,7 @@
                     '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
                     '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
 
-                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG
-                // فيها foreignObject لو كانت محمّلة من blob: (Tainted Canvas)
+                // data URI (مش blob:) لأن كروم يرفض canvas.toDataURL() بصمت على SVG فيها foreignObject من blob: (Tainted Canvas)
                 const svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
 
                 const img = new Image();
@@ -1207,8 +1138,7 @@
                         target: WHATSAPP_CONFIG.target,
                         sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
                         type: 'image',
-                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
-                        // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
+                        // نرسل base64 خام بدون بادئة data:image/...;base64, لأن كود البوت يعمل Buffer.from مباشرة
                         imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
                         caption: '💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر) - ' + branchName + ' - ' + new Date().toLocaleString('ar-SA'),
                     }),

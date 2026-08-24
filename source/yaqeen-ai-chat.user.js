@@ -19,9 +19,7 @@
 
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-    // نفس بوت السيرفر المستخدم بباقي الأدوات - هنا يستخدمه فقط كتوثيق للوصول
-    // لـendpoint الشات (/ai-chat)، والسيرفر هو اللي يستدعي OpenAI بمفتاحه الخاص
-    // المخزّن كـenvironment variable هناك - المفتاح ما يمر أبداً عبر المتصفح
+    // السيرفر هو اللي يستدعي OpenAI بمفتاحه الخاص - المفتاح ما يمر عبر المتصفح
     const AI_CHAT_CONFIG = {
         apiUrl: 'https://api.yaqeen-vip.space/ai-chat',
         apiKey: 'Firas_2026_SuperSecret_Key',
@@ -58,9 +56,7 @@
     }
 
     // ==========================================================
-    // إعادة حجم/ضغط الصورة قبل الإرسال - الصور مباشرة من الجوال/screenshot
-    // ممكن توصل لعدة ميجابايت، وبصيغة base64 يكبر حجمها أكثر، فنصغّرها
-    // ونحوّلها JPEG بجودة معقولة حتى ما يتضخم حجم الطلب أو تكلفة كل رسالة
+    // إعادة حجم/ضغط الصورة (JPEG) قبل الإرسال - تقليل حجم الطلب
     // ==========================================================
     function resizeImageFile(file) {
         return new Promise((resolve, reject) => {
@@ -89,8 +85,7 @@
     }
 
     function askAi(pageContext, messages) {
-        // نحوّل رسائل المستخدم اللي فيها صورة لصيغة OpenAI (content كمصفوفة
-        // نص+صورة) - رسائل المساعد ورسائل المستخدم بدون صورة تبقى نص عادي
+        // نحوّل رسائل المستخدم اللي فيها صورة لصيغة OpenAI (content كمصفوفة نص+صورة)
         const apiMessages = messages.map(m => {
             if (m.role === 'user' && m.image) {
                 return {
@@ -192,12 +187,7 @@
         };
     }
 
-    /**
-     * نافذة عائمة (مو حوار كامل الشاشة) - بدون أي خلفية معتمة تغطي الصفحة،
-     * حتى يقدر المستخدم يشتغل بيقين وهي مفتوحة بنفس الوقت. تُسحب من الهيدر
-     * لأي مكان بالشاشة (نفس فكرة نوافذ الدردشة العائمة العادية)، وما تُغلق
-     * إلا بالضغط الصريح على ✕ - تبقى مفتوحة طول ما يشتغل المستخدم بالصفحة.
-     */
+    /** نافذة عائمة قابلة للسحب من الهيدر - بدون خلفية معتمة تمنع التفاعل مع الصفحة */
     function makeDraggable(panel, handle) {
         let dragging = false;
         let startX = 0, startY = 0, startLeft = 0, startTop = 0;
@@ -210,8 +200,7 @@
             startY = e.clientY;
             startLeft = rect.left;
             startTop = rect.top;
-            // نحوّل من التموضع الأصلي (right/bottom) لـleft/top ثابتة أول
-            // سحبة، حتى تصير حسابات السحب بعدها بسيطة (فرق مباشر من نقطة البداية)
+            // نحوّل التموضع من right/bottom لـleft/top ثابتة لتبسيط حسابات السحب
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
             panel.style.left = startLeft + 'px';
@@ -264,9 +253,7 @@
             '<input id="ai-chat-file" type="file" accept="image/*" style="display:none;" />' +
             '</div>';
 
-        // ما فيه أي غلاف كامل الشاشة (لا inset:0 ولا خلفية معتمة) - النافذة
-        // نفسها بس عنصر position:fixed بحجمها الطبيعي، فباقي الصفحة (يقين)
-        // تفضل قابلة للتفاعل الكامل حواليها وتحتها
+        // بدون غلاف كامل الشاشة - النافذة عنصر position:fixed بس، باقي الصفحة تفضل تفاعلية
         document.body.insertAdjacentHTML('beforeend',
             '<div id="ai-chat-box" style="' +
             'position:fixed;right:30px;bottom:190px;width:360px;background:#fff;border-radius:20px;' +
@@ -341,8 +328,7 @@
     }
 
     async function runAiChatTool() {
-        // لو النافذة مفتوحة أصلاً، ما نعيد إنشاءها (بيمسح المحادثة الحالية) -
-        // بس نرجّعها للواجهة ونركّز حقل الكتابة
+        // لو النافذة مفتوحة أصلاً نرجّعها للواجهة بدل إعادة إنشائها (يمسح المحادثة)
         const existing = document.getElementById('ai-chat-box');
         if (existing) {
             existing.style.display = '';

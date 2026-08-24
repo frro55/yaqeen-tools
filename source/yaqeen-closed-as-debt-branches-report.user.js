@@ -17,9 +17,7 @@
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed معزول عن window الحقيقية
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -29,9 +27,7 @@
         target: '120363021290047142@g.us',
     };
 
-    // قائمة الفروع المتاحة للاختيار (نفس قائمة أدوات "اختيار الفرع" الثانية) -
-    // المستخدم يختار فرع أو أكثر بكل مرة يشغّل فيها الأداة (بعكس أداة "عقود
-    // أغلقت كمديونية" الأصلية اللي تفحص فرع مطار جدة فقط)
+    // قائمة الفروع المتاحة للاختيار - المستخدم يختار فرع أو أكثر بكل مرة (بعكس الأداة الأصلية الثابتة على مطار جدة)
     const BRANCHES = [
         { id: 29, name: 'مطار جدة' },
         { id: 11, name: 'طريق المدينة' },
@@ -57,14 +53,10 @@
 
     // سقف أمان لعدد صفحات التفاصيل اللي نفتحها فعلياً بجلسة واحدة (كل الفروع مع بعض)
     const MAX_VISITS = 300;
-    // عدد الإطارات المتوازية اللي تفحص العقود بنفس الوقت - نفس منطق الأداة
-    // الأصلية بالضبط (راجع تعليقها هناك لتفاصيل ليش التوازي آمن هنا)
+    // عدد الإطارات المتوازية لفحص العقود بنفس الوقت (نفس منطق الأداة الأصلية - التوازي آمن)
     const CHECK_CONCURRENCY = 3;
 
-    /**
-     * قائمة مفلترة برقم اتفاقية واحد بالضبط ضمن فرع معيّن - نفس فكرة الأداة
-     * الأصلية بالضبط، بس رقم الفرع بارامتر بدل ثابت (29)
-     */
+    /** قائمة مفلترة برقم اتفاقية واحد ضمن فرع معيّن - نفس فكرة الأداة الأصلية، بس رقم الفرع بارامتر */
     function buildMiniListUrl(branchId, agreementNo) {
         return 'https://yaqeen.lumirental.com/rental/branches/' + branchId + '/bookings?agreementNo=' + encodeURIComponent(agreementNo);
     }
@@ -128,13 +120,7 @@
         });
     }
 
-    /**
-     * يجيب مستند الـiframe الحالي طازة - لا نخزّن أي مرجع document بمتغيّر
-     * طويل العمر عبر عدة عمليات تنقّل، لأنه لو صار تنقّل حقيقي (لا SPA) بأي
-     * لحظة، المستند القديم اللي كنا ماسكينه يصير "ميت" و.location فيه يرجع
-     * null، وأي قراءة مباشرة لـ.location.href عليه تكسر بخطأ Cannot read
-     * properties of null
-     */
+    /** يجيب مستند الـiframe طازة كل مرة - لا نخزّنه بمتغيّر طويل العمر لأن تنقّل حقيقي يجعله "ميت" ويكسر .location */
     function getDoc(frame) {
         try {
             return frame.contentDocument || (frame.contentWindow && frame.contentWindow.document) || null;
@@ -247,11 +233,7 @@
         };
     }
 
-    /**
-     * يقرأ بيانات صف واحد بجدول "تتطلب إجراء" - ترتيب الأعمدة ثابت (نفس
-     * الأداة الأصلية بالضبط: 0=رقم الحجز، 1=رقم الاتفاقية، 2=وقت التسليم،
-     * 3=السائق، 4=اسم المدين). branchId/branchName يُضافان بعدها من الخارج.
-     */
+    /** يقرأ صف بجدول "تتطلب إجراء" - ترتيب أعمدة ثابت: 0=حجز، 1=اتفاقية، 2=تسليم، 3=سائق، 4=مدين */
     function readListRow(rowEl) {
         const cells = rowEl.querySelectorAll('td');
         if (cells.length < 9) return null;
@@ -331,11 +313,7 @@
         return candidates;
     }
 
-    /**
-     * يمر على الفروع المختارة فرع تلو فرع (لا بالتوازي - نفس سبب أدوات
-     * "اختيار الفرع" الثانية: عدة قوائم ثقيلة بنفس اللحظة تتنافس على الموارد)،
-     * ويجمع مرشّحي كل فرع مع وسم كل واحد بفرعه.
-     */
+    /** يمر على الفروع المختارة فرع تلو فرع (لا بالتوازي - تجنّباً لتنافس الموارد) ويجمع مرشّحي كل فرع موسومين بفرعه */
     async function collectAllCandidatesForBranches(branchIds) {
         let allCandidates = [];
         for (const branchId of branchIds) {
@@ -451,10 +429,7 @@
         return { idNumber, phone, remaining, driverName };
     }
 
-    /**
-     * نفس checkOneAgreement بالأداة الأصلية بالضبط، بس رابط القائمة المصغّرة
-     * يُبنى برقم فرع المرشّح (candidate.branchId) بدل فرع ثابت
-     */
+    /** نفس checkOneAgreement بالأداة الأصلية، بس رابط القائمة المصغّرة يُبنى برقم فرع المرشّح */
     async function checkOneAgreement(frame, candidate) {
         const expectedUrlFragment = 'agreementNo=' + encodeURIComponent(candidate.agreementNo);
         frame.src = buildMiniListUrl(candidate.branchId, candidate.agreementNo);

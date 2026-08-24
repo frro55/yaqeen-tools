@@ -127,8 +127,7 @@
 
         box.querySelector("#cancel").onclick = () => box.remove();
 
-        // ملاحظة: لازم نفتح النافذة المنبثقة بشكل متزامن هنا (داخل onclick مباشرة)
-        // بدون أي await قبلها، وإلا يحظرها المتصفح كنافذة منبثقة غير مرغوبة.
+        // لازم فتح النافذة متزامن جوّا onclick بدون await قبله، وإلا المتصفح يحظرها
         box.querySelector("#airport").onclick = () => start("29");
         box.querySelector("#yard").onclick = () => start("53");
         box.querySelector("#all").onclick = () => start("53,29");
@@ -233,8 +232,7 @@
         });
     }
 
-    // بعض جداول Yaqeen تعرض صفوف الصفحة الحالية فقط بالـ DOM حتى لو طلبنا
-    // pageSize كبير بالرابط، فنحتاج نتنقّل بين الصفحات ونجمع كل الصفوف.
+    // بعض الجداول تعرض صفوف الصفحة الحالية فقط رغم pageSize كبير، فنتنقّل ونجمع كل الصفوف
     const NEXT_PAGE_SELECTORS = [
         '[aria-label="Next page"]',
         '[aria-label="التالي"]',

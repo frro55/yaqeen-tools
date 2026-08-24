@@ -18,14 +18,10 @@
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لنفس سبب باقي الأدوات - GM_xmlhttpRequest
-    // يشغّل السكربت بوضع sandbox معزول عن window الحقيقية لصفحة يقين
+    // unsafeWindow: نفس مرجع window المستخدم بباقي أدوات الحزمة الموحّدة
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-    // ==========================================================
-    // نفس إعدادات موقع vip-reservations (js/config.js بذاك الريبو) - أي
-    // تغيير هناك (خصوصاً SUPABASE_ANON_KEY لو تغيّر يوماً) لازم ينعكس هنا يدوياً
-    // ==========================================================
+    // مطابق لـjs/config.js بموقع vip-reservations - لو SUPABASE_ANON_KEY تغيّر هناك لازم يتحدّث هنا يدوياً
     const SUPABASE_URL = 'https://ycguqfilerlkrukiykiy.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljZ3VxZmlsZXJsa3J1a2l5a2l5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4OTY0MTMsImV4cCI6MjA5NjQ3MjQxM30.mcA2Bak3OFZSVnz00vAjY68UUaFOh_fmD-b5aCwfyF4';
 
@@ -40,8 +36,7 @@
     const INS_LIST = ['عادي', 'شامل'];
     const MGR_LIST = ['انمار عطية', 'احمد هجرس', 'يحيى هتاني', 'عبدالله الغامدي', 'حياة الرايقي'];
 
-    // نفس قالب الرسالة الافتراضي بالموقع (DEFAULT_WA_TEMPLATE بـjs/config.js) -
-    // لو المستخدم غيّر القالب من إعدادات الموقع، هذي النسخة هنا ما تتحدّث تلقائياً
+    // مطابق لـDEFAULT_WA_TEMPLATE بـjs/config.js - تغيير القالب بإعدادات الموقع ما ينعكس هنا تلقائياً
     const WA_TEMPLATE =
         '*📋 حجز VIP*\n' +
         '───────────────\n' +
@@ -145,8 +140,7 @@
     }
 
     // ==========================================================
-    // بناء رسالة الواتساب - نفس منطق applyTemplate() بـjs/whatsapp.js
-    // بموقع vip-reservations (يشيل السطور/الأقسام الفاضية تلقائياً)
+    // بناء رسالة الواتساب (نفس منطق applyTemplate() بـjs/whatsapp.js) - يشيل الأقسام الفاضية
     // ==========================================================
 
     function fmtDateAr(v) {

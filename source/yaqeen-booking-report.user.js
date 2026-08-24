@@ -13,27 +13,11 @@
 // @downloadURL  https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
 // ==/UserScript==
 
-/**
- * أداة "تقرير الحجوزات القادمة"
- * ------------------------------------------------------------
- * أداة مستقلة تُسجَّل داخل نظام الأدوات الحالي عبر YAQEEN_TOOLS.add()
- * ولا تُعدّل أي شيء في الـ Core أو بقية الأدوات.
- *
- * مصادر البيانات (بدون أي API خارجي):
- *  1) صفحة الحجوزات القادمة.
- *  2) صفحة المركبات الجاهزة (حسب مصدر السيارات الذي يختاره المستخدم).
- *  3) صفحة السيارات المستأجرة الحالية (المسترجعة) - نأخذ منها فقط الراجعة
- *     لنفس الفرع، ونعرض عددها تحت كل عمود يوم كمعلومة إضافية (وتُضاف على
- *     السيارات الجاهزة حالياً عند حساب نسبة الإشغال والفرق).
- *
- * تُقرأ الصفحات عبر iframe مخفي (نفس النطاق، بدون نافذة منبثقة حقيقية)، ثم
- * تُستخرج البيانات مباشرة من جدول HTML الظاهر في الصفحة - دون الضغط على أي فلتر.
- */
+/** أداة "تقرير الحجوزات القادمة" - تُسجَّل عبر YAQEEN_TOOLS.add()، تقرأ الحجوزات/السيارات/المسترجعة عبر iframe مخفي بدون أي API خارجي */
 (function () {
   'use strict';
 
-  // نستخدم unsafeWindow (إن وُجد) لأن أدوات Tampermonkey المختلفة
-  // قد تُسجَّل في نافذة الصفحة الحقيقية وليس في الـ sandbox الخاص بالسكربت.
+  // unsafeWindow (إن وُجد): أدوات Tampermonkey ممكن تتسجّل بنافذة الصفحة الحقيقية لا بالـ sandbox
   var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
   // لا نلمس الـ Core إطلاقاً: إن لم يكن موجوداً نتوقف بصمت (مع تحذير في الـ console).
@@ -77,11 +61,7 @@
       '&sort=dropoffDate&order=desc&pageNumber=0',
   };
 
-  /**
-   * ترتيب الأيام بالضبط زي ما يعرضه يقين: "اليوم"، "غداً"، ثم بقية أيام الأسبوع
-   * السبعة بترتيبها الحقيقي (السبت موجود ضمنها) بدءاً من اليوم اللي بعد "غداً"
-   * مباشرة - مو قائمة ثابتة تبدأ دائماً بالأحد بغض النظر عن يوم اليوم الفعلي.
-   */
+  /** ترتيب الأيام زي يقين بالضبط: "اليوم"، "غداً"، ثم بقية الأسبوع بدءاً من اليوم اللي بعد "غداً" */
   var WEEKDAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   function buildDayChips() {
     var chips = ['اليوم', 'غداً'];
@@ -123,9 +103,7 @@
     dropoffText: ['تاريخ التسليم'],
   };
 
-  // عمود "المجموعة" موجود في الجدولين معاً، لذلك نستخدمه لتمييز جدول البيانات
-  // الحقيقي عن أي جداول أخرى بالصفحة (بدل الاعتماد على عدد الصفوف الذي يفشل
-  // عندما يكون عدد السيارات قليلاً، كما هو الحال غالباً في الساحة)
+  // عمود "المجموعة" يميّز جدول البيانات الحقيقي عن باقي الجداول (بدل عدد الصفوف اللي يفشل لو قليلة)
   var GROUP_COLUMN_HINT = ['المجموعة'];
 
   var OCCUPANCY_WARNING_THRESHOLD = 80;
@@ -143,11 +121,7 @@
     selectedSource: 'all',
     selectedDays: new Set(['اليوم']),
     sort: { key: null, dir: 1 },
-    // تعديلات يدوية لعدد سيارات "الساحة" فقط لكل مجموعة (مفتاحها "yard::مجموعة" -
-    // ثابت بغض النظر عن مصدر السيارات المختار حالياً بالعرض). أسطول "الفرع" غير
-    // قابل للتعديل أبداً؛ في وضع "الكل" يُجمع أسطول الفرع الثابت مع رقم الساحة
-    // هذا (المعدَّل أو الأصلي) - تُستخدم لإعادة حساب نسبة الإشغال والفرق فوراً
-    // بدون أي طلب شبكة جديد
+    // تعديلات يدوية لعدد سيارات "الساحة" فقط (مفتاحها "yard::مجموعة"، ثابت بغض النظر عن المصدر المعروض)
     vehicleOverrides: {},
   };
 
@@ -188,12 +162,7 @@
   // تحميل صفحة أخرى من نفس الموقع عبر iframe مخفي (بدون نافذة منبثقة)
   // ==========================================================
 
-  /**
-   * يحدد جدول البيانات الحقيقي داخل الصفحة.
-   * الأولوية لأي جدول يحتوي عمود "المجموعة" في رأسه (أدق وسيلة، تعمل حتى لو
-   * كان عدد الصفوف قليلاً كما في حالة الساحة). في حال لم يوجد أي جدول مطابق
-   * بالرأس، نرجع لاختيار الجدول الأكبر عدد صفوف كحل احتياطي.
-   */
+  /** يحدد جدول البيانات الحقيقي: أولوية لجدول برأس فيه عمود "المجموعة"، وإلا أكبر جدول عدد صفوف */
   function findDataTable(doc, requiredColumnVariants) {
     var tables = Array.prototype.slice.call(doc.querySelectorAll('table'));
     if (tables.length === 0) return null;
@@ -227,12 +196,8 @@
     return best;
   }
 
-  /**
-   * صفحات ثقيلة (مثل صفحة المستأجرة بمئات الصفوف) ممكن تظهر أول صفوفها
-   * بخلايا فارغة مؤقتاً أثناء التحميل. الاكتفاء بوجود صفوف (tbody tr) فقط
-   * يخدع المنطق فيعتبر التحميل مكتمل وهو لسا فاضي. هذا الفحص يتأكد من وجود
-   * نص فعلي بعمود "المجموعة" على الأقل بصف واحد قبل اعتبار الصفحة جاهزة.
-   */
+  /** تحذير: الصفوف قد تظهر فارغة مؤقتاً أثناء التحميل - وجود tbody tr وحده يخدع المنطق
+   * فيعتبرها جاهزة، فنتأكد من نص فعلي بعمود "المجموعة" أولاً */
   function tableHasMeaningfulData(doc, columnsMap) {
     var table = findDataTable(doc, columnsMap.group || GROUP_COLUMN_HINT);
     if (!table) return false;
@@ -250,12 +215,7 @@
     });
   }
 
-  /**
-   * ينشئ iframe مخفي (خارج حدود الشاشة تماماً) ويحمّل الرابط المطلوب بداخله،
-   * بدل فتح نافذة منبثقة حقيقية. هذا يمنع أي نافذة تظهر فوق صفحتك أو تسرق
-   * التركيز أثناء جلب البيانات - جُرّب وتحقّقنا إن Yaqeen ما يتصرف مختلف ولا
-   * يتجاهل فلاتر الرابط لما يكتشف إنه محمّل داخل إطار (window.self !== window.top).
-   */
+  /** iframe مخفي بدل نافذة منبثقة حقيقية - تحقّقنا إن Yaqeen ما يتصرف مختلف ولا يتجاهل فلاتر الرابط لما يكتشف إنه بإطار */
   function openHiddenFrame(url) {
     var iframe = document.createElement('iframe');
     iframe.src = url;
@@ -264,10 +224,7 @@
     return iframe;
   }
 
-  /**
-   * يستنى حتى تظهر أول صفحة بيانات في الجدول داخل الـiframe (لا نزيله من
-   * الصفحة، لأنه لازم نبقى نتصفّح صفحاته لاحقاً لجمع كل الصفوف قبل الإزالة).
-   */
+  /** يستنى أول صفحة بيانات بالجدول داخل الـiframe - ما نزيله لأننا لازم نتصفّح باقي صفحاته لاحقاً */
   function waitForFirstFrame(iframe, requestedUrl, columnsMap, timeoutMs) {
     timeoutMs = timeoutMs || 20000;
     return new Promise(function (resolve, reject) {
@@ -303,9 +260,7 @@
 
 
   // ==========================================================
-  // ترقيم الصفحات (Pagination) - بعض جداول Yaqeen تعرض صفوف الصفحة
-  // الحالية فقط بالـ DOM حتى لو طلبنا pageSize كبير بالرابط، فنحتاج نتنقّل
-  // بين الصفحات ونجمع كل الصفوف قبل ما نعتبر التحميل مكتمل.
+  // ترقيم الصفحات (Pagination) - بعض جداول Yaqeen تعرض صفوف الصفحة الحالية فقط رغم pageSize كبير بالرابط
   // ==========================================================
 
   var NEXT_PAGE_SELECTORS = [
@@ -374,11 +329,7 @@
       .filter(Boolean);
   }
 
-  /**
-   * يجمع صفوف كل صفحات الجدول: يقرأ الصفحة الحالية، يضغط "التالي" إن
-   * وُجد ونشِط، وينتظر تغيّر محتوى الجدول قبل قراءة الصفحة الجديدة، وهكذا
-   * حتى ينتهي الترقيم أو يصل لحد أقصى من الصفحات (حماية من التكرار اللانهائي).
-   */
+  /** يجمع صفوف كل الصفحات: يقرأ، يضغط "التالي"، ينتظر تغيّر الجدول، ويكرر حتى ينتهي أو يصل حد أقصى */
   function collectAllPages(iframe, doc, columnsMap) {
     return new Promise(function (resolve) {
       var allRows = [];
@@ -454,10 +405,7 @@
     });
   }
 
-  /**
-   * يستنى أول صفحة، يجمع كل الصفحات التالية، ثم يزيل الـiframe من الصفحة
-   * ويعيد السجلات الخام + مستند آخر صفحة (للتشخيص).
-   */
+  /** يستنى أول صفحة، يجمع باقي الصفحات، ثم يزيل الـiframe ويعيد السجلات الخام + مستند آخر صفحة */
   function fetchAllRecordsFromFrame(iframe, requestedUrl, columnsMap, timeoutMs) {
     return waitForFirstFrame(iframe, requestedUrl, columnsMap, timeoutMs).then(function (doc) {
       return collectAllPages(iframe, doc, columnsMap).then(function (records) {
@@ -550,12 +498,7 @@
     return null;
   }
 
-  /**
-   * يحوّل تاريخ التسليم إلى اسم شريحة اليوم بنفس مفردات DAY_CHIPS (اليوم/غداً/
-   * أيام الأسبوع). السيارات المتأخرة عن تاريخ تسليمها (راجعة من قبل ولسا ما
-   * تسلمت فعلياً) تُستثنى بالكامل ولا تُحتسب ضمن أي يوم - وجودها بالنظام متأخر
-   * عن الموعد، فما نعتمد عليها كـ"سيارة راح ترجع اليوم" لأنها فعلياً متأخرة.
-   */
+  /** يحوّل تاريخ التسليم لاسم شريحة يوم (DAY_CHIPS) - السيارات المتأخرة عن تسليمها تُستثنى بالكامل من أي يوم */
   function computeReturnDayLabel(dropoffText) {
     var dateOnly = parseDropoffDateOnly(dropoffText);
     if (!dateOnly) return null;
@@ -585,7 +528,6 @@
 
   // ==========================================================
   // تشخيص (Console) - يساعد على معرفة سبب عدم ظهور بيانات مصدر معيّن
-  // دون الحاجة للوصول المباشر لموقع Yaqeen
   // ==========================================================
 
   function logSourceDiagnostics(label, requestedUrl, doc, groups) {
@@ -621,11 +563,7 @@
   // تحميل كل البيانات (مع الكاش)
   // ==========================================================
 
-  /**
-   * صفحة "المستأجرة" ثقيلة (مئات الصفوف)، فأحياناً رغم فحص tableHasMeaningfulData
-   * ترجع محاولة واحدة بصفر سجلات خام (لسا ما اكتمل تحميلها بالكامل). نعيد
-   * المحاولة تلقائياً بدل ما نعرض عمود "مسترجعة" فاضي بالغلط.
-   */
+  /** صفحة "المستأجرة" ثقيلة، ممكن ترجع محاولة واحدة بصفر سجلات - نعيد المحاولة تلقائياً بدل عرض عمود فاضي بالغلط */
   function delay(ms) {
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
   }
@@ -636,9 +574,7 @@
     return fetchAllRecordsFromFrame(frame, URLS.returned, RETURNED_COLUMNS_MAP, RETURNED_FETCH_TIMEOUT_MS).then(function (result) {
       if (result.records.length === 0 && attempt < MAX_FETCH_ATTEMPTS) {
         console.warn('[تقرير الحجوزات القادمة] محاولة جلب المسترجعة ' + attempt + ' رجعت بدون بيانات، إعادة محاولة بعد مهلة قصيرة...');
-        // مهلة قبل إعادة المحاولة - صفحة "المستأجرة" ثقيلة وممكن تحتاج وقت
-        // إضافي قبل ما تصير جاهزة فعلياً، إعادة المحاولة فوراً بدون انتظار
-        // غالباً تصطدم بنفس حالة "لسا ما اكتمل التحميل"
+        // مهلة قبل إعادة المحاولة - إعادة فورية غالباً تصطدم بنفس حالة "لسا ما اكتمل التحميل"
         return delay(RETRY_DELAY_MS).then(function () {
           return fetchReturnedRecordsWithRetry(attempt + 1);
         });
@@ -653,9 +589,7 @@
     setStatus('جارٍ تحميل بيانات الحجوزات والسيارات...', 'loading');
     showLoadingOverlay();
 
-    // ننشئ الإطارات فوراً - بعكس النوافذ المنبثقة، الـiframe عنصر
-    // DOM عادي، فما فيه خطر حظر Popup ولا حاجة نفتحه بشكل متزامن ضمن نفس
-    // ضغطة المستخدم.
+    // ننشئ الإطارات فوراً - الـiframe عنصر DOM عادي، ما فيه خطر حظر Popup بعكس النوافذ المنبثقة
     var bookingsFrame = openHiddenFrame(URLS.bookings);
     var branchFrame = openHiddenFrame(URLS.vehicles.branch);
     var yardFrame = openHiddenFrame(URLS.vehicles.yard);
@@ -717,12 +651,7 @@
   // بناء صفوف التقرير (تجميع حسب المجموعة)
   // ==========================================================
 
-  /**
-   * أسطول "الفرع" ثابت دائماً (غير قابل للتعديل). أسطول "الساحة" هو الوحيد
-   * القابل للتعديل اليدوي، بمفتاح ثابت لا يعتمد على مصدر السيارات المعروض
-   * حالياً - عشان لو المستخدم يعدّل وهو بوضع "الساحة" ثم يرجع لوضع "الكل"،
-   * التعديل يبقى منعكساً بنفس القيمة.
-   */
+  /** أسطول "الفرع" ثابت غير قابل للتعديل، وأسطول "الساحة" وحده القابل للتعديل بمفتاح ثابت مستقل عن المصدر المعروض */
   function buildReportRows(bookings, vehiclesBySource, selectedSource, selectedDaysOrdered, vehicleOverrides, returns) {
     var branchCountByGroup = {};
     (vehiclesBySource.branch || []).forEach(function (group) {
@@ -782,9 +711,7 @@
         totalReturns += returnCount;
       });
 
-      // نضيف السيارات المسترجعة (نفس الفرع) خلال الأيام المختارة للسيارات
-      // الجاهزة حالياً، عشان نسبة الإشغال والفرق تعكس أنه فيه سيارات راح
-      // ترجع وتغطي جزء من النقص - بدل ما تُحسب فقط من الجاهز الآن
+      // نضيف السيارات المسترجعة (نفس الفرع) للجاهزة حالياً، عشان نسبة الإشغال والفرق تعكس التغطية القادمة
       var effectiveVehicleCount = vehicleCount + totalReturns;
 
       var occupancyPercent = effectiveVehicleCount > 0 ? (totalBookings / effectiveVehicleCount) * 100 : totalBookings > 0 ? Infinity : 0;
@@ -901,11 +828,7 @@
     return td;
   }
 
-  /**
-   * خانة عدد السيارات قابلة للتعديل يدوياً: أي تغيير يحفظ قيمة بديلة لهذه
-   * المجموعة (بالمصدر الحالي) ويعيد رسم الجدول فوراً حتى تنعكس نسبة الإشغال
-   * والفرق على القيمة الجديدة بدون أي طلب شبكة.
-   */
+  /** خانة عدد السيارات قابلة للتعديل يدوياً - أي تغيير يحفظ قيمة بديلة ويعيد رسم الجدول فوراً بدون طلب شبكة */
   function buildYardInput(row, onCommit) {
     var input = document.createElement('input');
     input.type = 'number';
@@ -923,20 +846,12 @@
     return input;
   }
 
-  /**
-   * أسطول "الفرع" ثابت وغير قابل للتعديل دائماً. الوحيد القابل للتعديل هو
-   * أسطول "الساحة":
-   *  - بوضع "الفرع": رقم ثابت فقط، بدون أي حقل تعديل.
-   *  - بوضع "الساحة": الرقم المعروض هو نفسه رقم الساحة القابل للتعديل مباشرة.
-   *  - بوضع "الكل": نعرض المجموع (ثابت الفرع + ساحة قابلة للتعديل) بالأعلى،
-   *    وتحته حقل تعديل صغير مخصص لرقم الساحة فقط - أي تعديل فيه يُعاد حساب
-   *    المجموع فوراً (فرع + الساحة الجديدة) دون لمس رقم الفرع.
-   */
+  /** خلية السيارات: وضع "الفرع" رقم ثابت، "الساحة" حقل تعديل مباشر، "الكل" مجموع ثابت بالأعلى
+   * + حقل تعديل ساحة صغير تحته يعيد حساب المجموع دون لمس رقم الفرع */
   function buildVehiclesCell(row, extraClassName) {
     var td = document.createElement('td');
     td.className = ['yqn-vehicles-cell', extraClassName].filter(Boolean).join(' ');
-    // نضبط الـ attribute (مو بس الـ property) حتى تنعكس القيمة الحالية بشكل
-    // صحيح عند نسخ outerHTML الجدول (بالطباعة/تصدير الصورة لواتساب)
+    // نضبط الـ attribute (مو بس الـ property) حتى تنعكس القيمة عند نسخ outerHTML (طباعة/تصدير صورة)
     td.dataset.copyText = row.vehicleCount;
 
     if (state.selectedSource === 'branch') {
@@ -1093,8 +1008,7 @@
         returnsByDay[day] = (returnsByDay[day] || 0) + r.dayReturns[day];
       });
     });
-    // نفس منطق الصف الفردي: نضيف السيارات المسترجعة للأيام المختارة على
-    // الجاهزة حالياً قبل حساب نسبة الإشغال والفرق الإجمالية
+    // نفس منطق الصف الفردي: نضيف المسترجعة للجاهزة قبل حساب النسبة والفرق الإجمالية
     var totalEffectiveVehicles = totalVehicles + totalReturns;
     var totalOccupancy = totalEffectiveVehicles > 0 ? (totalBookings / totalEffectiveVehicles) * 100 : totalBookings > 0 ? Infinity : 0;
     var totalDifference = totalEffectiveVehicles - totalBookings;
@@ -1144,9 +1058,7 @@
   function getCurrentReportData() {
     var selectedDaysOrdered = getSelectedDaysOrdered();
     var rows = buildReportRows(state.bookings || [], state.vehiclesBySource, state.selectedSource, selectedDaysOrdered, state.vehicleOverrides, state.returns || []);
-    // نعرض أي مجموعة عندها سيارات جاهزة حتى لو بدون أي حجز، أو عندها حجوزات
-    // حتى لو بدون سيارات جاهزة حالياً - نخفي فقط الصفوف الفارغة كلياً (لا
-    // سيارات ولا حجوزات) لأنها ما تضيف أي معلومة للتقرير
+    // نخفي فقط الصفوف الفارغة كلياً (لا سيارات ولا حجوزات) لأنها ما تضيف أي معلومة
     rows = rows.filter(function (r) {
       return r.vehicleCount > 0 || r.totalBookings > 0;
     });
@@ -1206,8 +1118,7 @@
   // ==========================================================
 
   function handleRefresh() {
-    // التحديث يجيب أعداد السيارات الحقيقية من يقين من جديد، فنمسح أي تعديل
-    // يدوي سابق حتى ما يظل يطغى على البيانات الفعلية الجديدة
+    // التحديث يجيب الأعداد الحقيقية من جديد، فنمسح أي تعديل يدوي سابق حتى ما يطغى عليها
     state.vehicleOverrides = {};
     fetchAllData(true)
       .then(renderTable)
@@ -1300,8 +1211,7 @@
     setStatus('تم تصدير الملف بنجاح', 'success');
   }
 
-  // تنسيقات ثابتة للجدول تُستخدم بمعزل عن نافذة الأداة (بالطباعة وبتصدير الصورة) -
-  // مستقلة عن MODAL_CSS لأنها بلا Sticky/تمرير، وبألوان صريحة تُطبَع/تُرسم دائماً
+  // تنسيقات الجدول للطباعة/تصدير الصورة - مستقلة عن MODAL_CSS (بلا Sticky/تمرير، ألوان صريحة دائماً)
   var TABLE_EXPORT_CSS =
     '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
     'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
@@ -1334,15 +1244,8 @@
     '.yqn-diff-zero{color:#b45309;font-weight:bold;}' +
     '.yqn-return-sub{font-size:11.5px;color:#16a34a;font-weight:bold;margin-top:2px;}';
 
-  /**
-   * ينسخ جدول التقرير كنص HTML ثابت (بدون عناصر <input> التفاعلية لتعديل
-   * السيارات) للاستخدام بالطباعة/تصدير الصورة. مهم بالذات لصورة واتساب: عنصر
-   * <input> يُسلسَل عبر outerHTML بدون إغلاق ذاتي (مثل <input ...> بدون />)،
-   * وهذا غير صالح كـ XML صحيح داخل foreignObject بالـ SVG، فيفشل رسم الصورة
-   * بصمت (تعذّر تحويل SVG لصورة) - الحل نستبدل أي خلية فيها عنصر <input>
-   * بقيمة data-copy-text النهائية للخلية (المجموع الصحيح، مو رقم حقل الساحة
-   * وحده - بوضع "الكل" الخلية فيها رقمان: مجموع ثابت + حقل تعديل الساحة).
-   */
+  /** يستبدل عناصر <input> بقيمة data-copy-text النهائية قبل التصدير: outerHTML لـ<input> بدون /> يكسر XML
+   * داخل foreignObject بالـ SVG فيفشل رسم الصورة بصمت */
   function buildStaticTableHtml() {
     var clone = modalEls.table.cloneNode(true);
     Array.prototype.slice.call(clone.querySelectorAll('input')).forEach(function (input) {
@@ -1389,10 +1292,7 @@
     printWindow.print();
   }
 
-  /**
-   * يرسم الجدول الحالي (بعنوانه وبياناته الوصفية) كصورة PNG عبر SVG+foreignObject
-   * بدون أي مكتبة خارجية. يعيد Promise بصيغة data URL (data:image/png;base64,...).
-   */
+  /** يرسم الجدول الحالي كصورة PNG عبر SVG+foreignObject بدون مكتبة خارجية، يعيد Promise بصيغة data URL */
   /** يحوّل نص UTF-8 (فيه عربي) إلى base64 - btoa العادية تدعم Latin1 بس */
   function utf8ToBase64(str) {
     return btoa(unescape(encodeURIComponent(str)));
@@ -1417,11 +1317,7 @@
         var wrapperStyle =
           'font-family:Tahoma,Arial,sans-serif;background:#fff;padding:20px;display:inline-block;';
 
-        // نقيس الحجم الطبيعي للمحتوى المُصدَّر فعلياً (بمعزل عن عرض المودال 100%)
-        // بدل الاعتماد على قياسات الجدول داخل المودال - لأن الجدول هناك يتمدد
-        // width:100% على عرض المودال الواسع (min 1560px)، بينما نفس الجدول بتصميم
-        // التصدير المستقل (TABLE_EXPORT_CSS) يرجع لحجمه الطبيعي الأصغر، فكان يترك
-        // مساحة فارغة كبيرة حول المحتوى بدل ما يملأ الصورة.
+        // نقيس الحجم الطبيعي للمحتوى المُصدَّر فعلياً - جدول المودال يتمدد width:100% (1560px) فيترك فراغ لو اعتمدنا عليه
         var measureEl = document.createElement('div');
         measureEl.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;' + wrapperStyle;
         measureEl.innerHTML = innerHtml;
@@ -1438,9 +1334,7 @@
           '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
           '<foreignObject width="100%" height="100%">' + contentHtml + '</foreignObject></svg>';
 
-        // نستخدم data URI (مش blob:) لأن كروم بيعتبر الصورة "ملوّثة" (Tainted Canvas)
-        // لو كانت SVG فيها foreignObject ومحمّلة من blob:، فيرفض canvas.toDataURL()
-        // بصمت (استثناء غير ملتقط داخل onload) وتظل العملية عالقة للأبد.
+        // data URI لا blob: - كروم يعتبر SVG بـforeignObject من blob: "ملوّثة" ويرفض toDataURL() بصمت (يعلّق للأبد)
         var svgDataUrl = 'data:image/svg+xml;charset=utf-8;base64,' + utf8ToBase64(svgString);
 
         var img = new Image();
@@ -1451,9 +1345,7 @@
         img.onload = function () {
           clearTimeout(timeoutId);
           try {
-            // نقص أي مساحة فاضية (بيضاء) تبقى يمين/تحت المحتوى الفعلي - بغض النظر عن
-            // سبب الفرق بين القياس المتوقع والمرسوم فعلياً (مثلاً فروقات محرك رسم
-            // foreignObject)، هذا يضمن عدم وجود إطار فاضي حول الصورة النهائية.
+            // نقص أي مساحة بيضاء فاضية تبقى يمين/تحت المحتوى (فروقات محرك رسم foreignObject)
             function trimWhitespace(canvas) {
               var ctx2d = canvas.getContext('2d');
               var w = canvas.width;
@@ -1491,8 +1383,7 @@
               return trimmed;
             }
 
-            // نرسم بدقة عالية أول شي، ونطلع جودة/دقة أقل بس لو تجاوزت حد كبير جداً
-            // (السيرفر الآن يقبل حتى 100mb، فما في داعي نصغّر الصورة كأول خيار)
+            // نرسم بدقة عالية أول شي، ونقلل الجودة بس لو تجاوزت حد كبير (السيرفر يقبل حتى 100mb)
             function drawAtScale(scale) {
               var canvas = document.createElement('canvas');
               canvas.width = width * scale;
@@ -1573,8 +1464,7 @@
             target: WHATSAPP_CONFIG.target,
             sessionId: HOST_WINDOW.YAQEEN_TOOLS.activeSessionId || 'main',
             type: 'image',
-            // نرسل base64 خام بدون بادئة data:image/...;base64, لأن أغلب أكواد
-            // البوتات تعمل Buffer.from(imageBase64,'base64') مباشرة، والبادئة تفسد البيانات
+            // base64 خام بدون بادئة data:image/...;base64, - أغلب البوتات تعمل Buffer.from مباشرة والبادئة تفسدها
             imageBase64: dataUrl.replace(/^data:[^;]+;base64,/, ''),
             caption: '📊 تقرير الحجوزات القادمة - ' + new Date().toLocaleString('ar-SA'),
           }),
@@ -1762,10 +1652,7 @@
       fetchAllData(false)
         .then(function () {
           renderTable();
-          // أول فتح: لو المسترجعة رجعت صفر رغم كل محاولات إعادة الجلب
-          // الداخلية (صفحة "المستأجرة" ثقيلة وأحياناً تحتاج وقت إضافي)، نعيد
-          // دورة تحميل كاملة صامتة مرة وحدة تلقائياً - نفس اللي كان المستخدم
-          // يضطر يسويه يدوياً بالضغط على "تحديث البيانات"
+          // أول فتح: لو المسترجعة رجعت صفر رغم إعادة المحاولات الداخلية، نعيد تحميل كامل صامت تلقائياً
           if ((state.returns || []).length === 0) {
             return fetchAllData(true).then(renderTable);
           }
@@ -1819,9 +1706,7 @@
     '.yqn-filter-group--grow{flex:1;min-width:220px;}' +
     '.yqn-filter-label{font-size:11.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
     '.yqn-filter-divider{align-self:stretch;width:1px;background:#e9e7df;}' +
-    // مصدر السيارات كشرائح داكنة مدمجة (segmented control) بدل radio عادي -
-    // الـinput مخفي (visually hidden مو display:none حتى يبقى قابل للوصول
-    // بلوحة المفاتيح)، ونستخدم :has() لتلوين الـlabel نفسه عند التحديد
+    // مصدر السيارات كشرائح مدمجة (segmented control) - input مخفي بصرياً (لا display:none، يبقى قابل للوصول)، :has() يلوّن الـlabel
     '.yqn-source-filter{display:flex;align-items:center;gap:4px;border:0;padding:4px;margin:0;flex-wrap:wrap;' +
     'background:#f1f0ea;border-radius:12px;}' +
     '.yqn-source-filter label{display:inline-flex;align-items:center;justify-content:center;' +
@@ -1834,10 +1719,7 @@
     'padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:700;transition:all .15s;}' +
     '.yqn-chip:hover{border-color:#a19c92;}' +
     '.yqn-chip--active{background:linear-gradient(160deg,#A3E635,#79a916);border-color:transparent;color:#3c4a10;font-weight:800;}' +
-    // --- الجدول ---
-    // تمرير مرئي بوضوح (سماكة ولون واضحين) حتى يظهر جلياً إن المنطقة قابلة
-    // للتمرير حتى بدون تحريك الماوس فوقها - يحل مشكلة عدم ملاحظة إمكانية
-    // النزول/الصعود داخل الجدول عند طول قائمة المجموعات
+    // --- الجدول --- (تمرير مرئي بوضوح حتى يظهر جلياً إن المنطقة قابلة للتمرير بدون تحريك الماوس)
     '.yqn-table-wrapper{overflow:auto;flex:1;padding:0 28px;position:relative;' +
     'scrollbar-width:auto;scrollbar-color:#c7c3b8 #f0efe9;}' +
     '.yqn-table-wrapper::-webkit-scrollbar{width:14px;height:14px;}' +
@@ -1870,9 +1752,7 @@
     '.yqn-totals-row{font-weight:800;position:sticky;bottom:0;z-index:2;}' +
     '.yqn-totals-row td{background-color:#1c1c1a !important;color:#fff;border-bottom:0;border-top:2px solid #1c1c1a;' +
     'padding-block:14px;}' +
-    // نمدّد لون خلفية الصف الداكن 28px إضافية بـbox-shadow (بدون تغيير هندسة
-    // الخلية نفسها ولا كسر حسابات الأعمدة الثابتة sticky) حتى يلامس فعلياً
-    // حواف الكرت الحقيقية بدل ما يبان طرفه مقطوع وسط الحشو الجانبي للجدول
+    // نمدّد خلفية الصف الداكن 28px بـbox-shadow (بدون كسر حسابات sticky) حتى يلامس حواف الكرت فعلياً
     '.yqn-totals-row td:first-child{border-end-start-radius:16px;box-shadow:28px 0 0 0 #1c1c1a;}' +
     '.yqn-totals-row td:last-child{border-end-end-radius:16px;box-shadow:-28px 0 0 0 #1c1c1a;}' +
     '.yqn-totals-row .yqn-bar-text{color:#fff !important;}' +

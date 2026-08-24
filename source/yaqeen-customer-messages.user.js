@@ -17,13 +17,10 @@
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-    // إعدادات بوت واتساب (نفس بوت باقي الأدوات) - هنا بدون target ثابت لأن
-    // كل رسالة تروح لجوال عميل مختلف (نحسبه وقت الإرسال)
+    // إعدادات بوت واتساب - بدون target ثابت لأن كل رسالة تروح لجوال عميل مختلف
     const WHATSAPP_CONFIG = {
         apiUrl: 'https://api.yaqeen-vip.space/send',
         apiKey: 'Firas_2026_SuperSecret_Key',
@@ -131,12 +128,7 @@
         return "";
     }
 
-    /**
-     * يحوّل رقم جوال معروض بأي صيغة شائعة (05xxxxxxxx، +9665xxxxxxxx،
-     * 9665xxxxxxxx، 5xxxxxxxx) إلى JID واتساب لرقم فردي بصيغة Baileys
-     * (رقم دولي كامل بدون + متبوع بـ@s.whatsapp.net) - افتراض قابل للتعديل
-     * لو تبيّن إن صيغة البوت مختلفة
-     */
+    /** يحوّل رقم جوال بأي صيغة شائعة إلى JID واتساب بصيغة Baileys (رقم دولي@s.whatsapp.net) */
     function normalizePhoneToJid(rawPhone) {
         let digits = (rawPhone || '').replace(/\D/g, '');
         if (digits.startsWith('00')) digits = digits.slice(2);
@@ -183,11 +175,7 @@
     // قراءة بيانات العميل من صفحة العقد المفتوحة حالياً
     // ==========================================================
 
-    /**
-     * يقرأ اسم ورقم جوال العميل من الصفحة المفتوحة حالياً - يفتح لوحة
-     * "بيانات العميل" لو كانت مطوية (نفس زر التوسيع بأيقونة SVG المستخدم
-     * بباقي الأدوات) وينتظر فعلياً لين تترسم البيانات بدل انتظار ثابت.
-     */
+    /** يقرأ اسم وجوال العميل من الصفحة الحالية، يوسّع لوحة "بيانات العميل" لو مطوية */
     async function extractCustomerInfo() {
         const expandBtn = Array.from(document.querySelectorAll('button'))
             .find(x => x.querySelector('svg')?.outerHTML.includes('M181.66,133.66'));

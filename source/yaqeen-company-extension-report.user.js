@@ -17,9 +17,7 @@
 
     'use strict';
 
-    // نستخدم unsafeWindow (إن وُجد) لأن منح GM_xmlhttpRequest يحوّل التنفيذ
-    // لوضع sandboxed، فتصبح window معزولة عن نافذة الصفحة الحقيقية (وعن
-    // YAQEEN_TOOLS المسجّلة فيها) إلا عبر unsafeWindow
+    // unsafeWindow: مطلوب لأن GM_xmlhttpRequest يشغّل الكود بوضع sandboxed
     const HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
     // إعدادات بوت واتساب (نفس بوت باقي الأدوات)
@@ -31,9 +29,7 @@
 
     const LATE_RETURN_URL = 'https://yaqeen.lumirental.com/rental/branches/29/bookings?status=LATE_RETURN&pageSize=500';
     const MAX_AGREEMENTS = 300;
-    // عدد الإطارات المتوازية لفحص تفاصيل العقود - كل إطار يفحص عقوده بالتتابع،
-    // فقط موزّعين على عدة إطارات بدل واحد فقط لتسريع العملية (نفس أسلوب أداة
-    // "العقود المتأخرة في السداد (أفراد)")
+    // عدد الإطارات المتوازية لفحص تفاصيل العقود (نفس أسلوب أداة العقود المتأخرة للأفراد)
     const CHECK_CONCURRENCY = 4;
 
     function waitCore() {
@@ -166,11 +162,7 @@
         return false;
     }
 
-    /**
-     * يقرأ صفوف قائمة "العقود المتأخرة" - بعكس أداة الأفراد، هنا نحتفظ فقط
-     * بالصفوف اللي عمود "اسم المدين" فيها اسم شركة حقيقي (مو "غير متاح")،
-     * لأن هذي الأداة مخصصة لعقود الشركات تحديداً.
-     */
+    /** يقرأ صفوف "العقود المتأخرة" ويستبعد الأفراد - يبقي فقط اللي لها اسم مدين شركة حقيقي */
     function readLateReturnRows(doc) {
         const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
         if (!table) return [];
@@ -271,12 +263,7 @@
     // التنفيذ الرئيسي
     // ==========================================================
 
-    /**
-     * يفحص عقداً واحداً: يفتح صفحة العقد، يوسّع أكورديون "المدة المحتسبة"
-     * (مطوي افتراضياً)، ويقرأ تفاصيله. عمود "متأخر بـ" ما يظهر إطلاقاً إلا
-     * لو العقد فعلاً متأخر ويحتاج تمديد - غيابه يعني العقد لسا ضمن مدته
-     * المخطط لها ولا يحتاج شي، فنستبعده.
-     */
+    /** يفحص عقد واحد: يفتح صفحته، يوسّع "المدة المحتسبة"، ويستبعده لو ما فيه عمود "متأخر بـ" */
     async function checkOneAgreement(frame, c) {
         const targetPath = new URL(c.href).pathname;
         frame.src = c.href;
