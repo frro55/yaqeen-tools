@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0357
+// @version      2026.0824.0407
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -577,14 +577,27 @@
 
     /** يفحص لو فيه نسخة أحدث منشورة على السيرفر عن النسخة المثبتة حالياً، ويحدّث شارة الإشعار */
     function checkForScriptUpdate() {
-        if (SCRIPT_VERSION === "unknown") return;
+        console.log("[yaqeen-update-check] بدأ الفحص، النسخة المثبتة:", SCRIPT_VERSION);
+        if (SCRIPT_VERSION === "unknown") {
+            console.log("[yaqeen-update-check] توقف: SCRIPT_VERSION = unknown");
+            return;
+        }
         fetchText(UPDATE_SCRIPT_URL).then(text => {
-            if (!text) return;
+            if (!text) {
+                console.log("[yaqeen-update-check] توقف: fetchText رجع فاضي (فشل الطلب)");
+                return;
+            }
+            console.log("[yaqeen-update-check] وصل رد بطول", text.length, "حرف");
             const match = /@version\s+(\S+)/.exec(text);
-            if (!match) return;
+            if (!match) {
+                console.log("[yaqeen-update-check] توقف: ما لقيت @version بالرد");
+                return;
+            }
+            console.log("[yaqeen-update-check] النسخة بالسيرفر:", match[1], "| المثبتة:", SCRIPT_VERSION, "| أحدث؟", match[1] > SCRIPT_VERSION);
             if (match[1] > SCRIPT_VERSION) {
                 UPDATE_STATE.available = true;
                 updateUpdateBadge();
+                console.log("[yaqeen-update-check] فيه تحديث - الشارة لازم تظهر الحين");
             }
         });
     }
