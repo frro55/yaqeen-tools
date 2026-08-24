@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0003
+// @version      2026.0824.0017
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1508,9 +1508,9 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
@@ -3610,14 +3610,14 @@ ${rowsHtml}
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
         '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
-        'cursor:pointer;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
+        'cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
@@ -4848,14 +4848,14 @@ ${rowsHtml}
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
         '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
-        'cursor:pointer;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
+        'cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
@@ -6136,14 +6136,14 @@ ${rowsHtml}
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
         '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
-        'cursor:pointer;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
+        'cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
@@ -7044,14 +7044,14 @@ ${rowsHtml}
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
         '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
-        'cursor:pointer;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
+        'cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
@@ -7924,9 +7924,9 @@ ${rowsHtml}
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
@@ -9007,14 +9007,14 @@ ${rowsHtml}
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
         '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
-        'cursor:pointer;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
+        'cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
@@ -10095,14 +10095,14 @@ ${rowsHtml}
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-report-actions button.yq-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;}' +
         '.yq-report-actions button.yq-send{background:#16a34a;color:#fff;}' +
-        '.yq-report-table{width:100%;border-collapse:collapse;font-size:14.5px;}' +
+        '.yq-report-table{width:100%;border-collapse:collapse;font-size:16px;}' +
         '.yq-report-table thead th{position:sticky;top:0;background:#fafaf6;padding:12px 10px;' +
-        'font-size:12px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
+        'font-size:13.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;' +
         'border-bottom:1.5px solid #cec7b4;}' +
         '.yq-report-table td{padding:12px 10px;border-bottom:1px solid #cec7b4;}' +
         '.yq-report-table tbody tr:nth-child(even){background:#fafaf6;}' +
         '.yq-row-send-btn{padding:7px 12px;border:0;border-radius:9px;background:#16a34a;color:#fff;' +
-        'cursor:pointer;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
+        'cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;white-space:nowrap;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
@@ -12663,13 +12663,6 @@ ${rowsHtml}
       '  <button type="button" class="yqn-close" aria-label="إغلاق">✕</button>' +
       '</header>' +
       '<div class="yqn-toolbar">' +
-      '  <div class="yqn-actions">' +
-      '    <button type="button" class="yqn-icon-btn" data-action="refresh" title="تحديث البيانات">🔄</button>' +
-      '    <button type="button" class="yqn-icon-btn" data-action="copy" title="نسخ الجدول">📋</button>' +
-      '    <button type="button" class="yqn-icon-btn" data-action="export" title="تصدير Excel">📊</button>' +
-      '    <button type="button" class="yqn-icon-btn" data-action="print" title="طباعة التقرير">🖨️</button>' +
-      '    <button type="button" class="yqn-icon-btn yqn-icon-btn--whatsapp" data-action="whatsapp" title="إرسال صورة واتساب">📱</button>' +
-      '  </div>' +
       '  <div class="yqn-filters">' +
       '    <div class="yqn-filter-group">' +
       '      <span class="yqn-filter-label">مصدر السيارات</span>' +
@@ -12680,6 +12673,13 @@ ${rowsHtml}
       '      <span class="yqn-filter-label">الأيام</span>' +
       '      <div class="yqn-day-chips"></div>' +
       '    </div>' +
+      '  </div>' +
+      '  <div class="yqn-actions">' +
+      '    <button type="button" class="yqn-icon-btn" data-action="refresh" title="تحديث البيانات">🔄</button>' +
+      '    <button type="button" class="yqn-icon-btn" data-action="copy" title="نسخ الجدول">📋</button>' +
+      '    <button type="button" class="yqn-icon-btn" data-action="export" title="تصدير Excel">📊</button>' +
+      '    <button type="button" class="yqn-icon-btn" data-action="print" title="طباعة التقرير">🖨️</button>' +
+      '    <button type="button" class="yqn-btn-whatsapp" data-action="whatsapp" title="إرسال صورة واتساب">📱 إرسال</button>' +
       '  </div>' +
       '</div>' +
       '<div class="yqn-table-wrapper">' +
@@ -12810,19 +12810,27 @@ ${rowsHtml}
     'width:38px;height:38px;border-radius:11px;font-size:16px;line-height:1;transition:background .15s,border-color .15s;' +
     'display:flex;align-items:center;justify-content:center;}' +
     '.yqn-icon-btn:hover{background:#f1f0ea;border-color:#a19c92;}' +
-    '.yqn-icon-btn--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);border-color:transparent;' +
-    'color:#fff;box-shadow:0 6px 14px -6px rgba(22,163,74,.55);}' +
-    '.yqn-icon-btn--whatsapp:hover{background:linear-gradient(160deg,#25D366,#16a34a);filter:brightness(1.06);' +
-    'border-color:transparent;}' +
+    '.yqn-btn-whatsapp{cursor:pointer;border:0;border-radius:11px;font-family:inherit;height:38px;' +
+    'padding:0 16px;font-size:13.5px;font-weight:800;display:inline-flex;align-items:center;gap:6px;' +
+    'background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;box-shadow:0 6px 14px -6px rgba(22,163,74,.55);' +
+    'transition:filter .15s;}' +
+    '.yqn-btn-whatsapp:hover{filter:brightness(1.06);}' +
     // --- لوحة الفلاتر: قسمين واضحين (مصدر السيارات / الأيام) مع عنوان وفاصل بينهما ---
     '.yqn-filters{display:flex;flex-wrap:wrap;align-items:center;gap:20px;}' +
     '.yqn-filter-group{display:flex;flex-direction:column;gap:7px;}' +
     '.yqn-filter-group--grow{flex:1;min-width:220px;}' +
     '.yqn-filter-label{font-size:11.5px;font-weight:800;color:#a19c92;text-transform:uppercase;letter-spacing:.03em;}' +
     '.yqn-filter-divider{align-self:stretch;width:1px;background:#e9e7df;}' +
-    '.yqn-source-filter{display:flex;align-items:center;gap:12px;border:0;padding:0;margin:0;flex-wrap:wrap;}' +
-    '.yqn-source-filter label{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;}' +
-    '.yqn-source-filter input[type="radio"]{width:15px;height:15px;accent-color:#79a916;}' +
+    // مصدر السيارات كشرائح داكنة مدمجة (segmented control) بدل radio عادي -
+    // الـinput مخفي (visually hidden مو display:none حتى يبقى قابل للوصول
+    // بلوحة المفاتيح)، ونستخدم :has() لتلوين الـlabel نفسه عند التحديد
+    '.yqn-source-filter{display:flex;align-items:center;gap:4px;border:0;padding:4px;margin:0;flex-wrap:wrap;' +
+    'background:#f1f0ea;border-radius:12px;}' +
+    '.yqn-source-filter label{display:inline-flex;align-items:center;justify-content:center;' +
+    'padding:7px 14px;border-radius:9px;font-size:13.5px;font-weight:700;cursor:pointer;color:#1c1c1a;' +
+    'transition:background .15s,color .15s;}' +
+    '.yqn-source-filter label:has(input:checked){background:#1c1c1a;color:#fff;}' +
+    '.yqn-source-filter input[type="radio"]{position:absolute;opacity:0;width:0;height:0;pointer-events:none;}' +
     '.yqn-day-chips{display:flex;flex-wrap:wrap;gap:7px;}' +
     '.yqn-chip{cursor:pointer;border:1.5px solid #e9e7df;background:#fff;color:#1c1c1a;font-family:inherit;' +
     'padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:700;transition:all .15s;}' +
@@ -12843,10 +12851,10 @@ ${rowsHtml}
     '.yqn-loading-overlay--visible{display:flex;}' +
     '.yqn-spinner-lg{width:32px;height:32px;border:3px solid #A3E635;border-left-color:transparent;' +
     'border-radius:50%;animation:yqn-spin .8s linear infinite;}' +
-    '.yqn-table{width:100%;border-collapse:collapse;font-size:15px;min-width:760px;}' +
+    '.yqn-table{width:100%;border-collapse:collapse;font-size:16.5px;min-width:760px;}' +
     '.yqn-table th,.yqn-table td{padding:12px 16px;text-align:center;border-bottom:1px solid #e9e7df;white-space:nowrap;}' +
     '.yqn-table thead th{position:sticky;top:0;background:#fafaf6;cursor:pointer;user-select:none;z-index:3;' +
-    'font-weight:800;font-size:12px;color:#a19c92;text-transform:uppercase;letter-spacing:.02em;}' +
+    'font-weight:800;font-size:13.5px;color:#a19c92;text-transform:uppercase;letter-spacing:.02em;}' +
     // تثبيت أول ٣ أعمدة (المجموعة/السيارات/الحجوزات) عند التمرير الأفقي حتى تبقى هوية الصف ظاهرة دائماً
     '.yqn-table th:nth-child(1),.yqn-table td:nth-child(1){position:sticky;inset-inline-start:0;width:120px;min-width:120px;}' +
     '.yqn-table th:nth-child(2),.yqn-table td:nth-child(2){position:sticky;inset-inline-start:120px;width:96px;min-width:96px;}' +
@@ -12859,11 +12867,16 @@ ${rowsHtml}
     '.yqn-table tbody tr{background-color:#fff;}' +
     '.yqn-table tbody tr:nth-child(even){background-color:#fafaf6;}' +
     '.yqn-table tbody tr:hover{background-color:#f1f0ea;}' +
-    '.yqn-group-cell{font-weight:800;font-size:16px;}' +
+    '.yqn-group-cell{font-weight:800;font-size:17.5px;}' +
     // --- صف الإجماليات كشريط داكن مستقل بصرياً بدل صف جدول عادي ---
     '.yqn-totals-row{font-weight:800;position:sticky;bottom:0;z-index:2;}' +
-    '.yqn-totals-row td{background-color:#1c1c1a !important;color:#fff;border-bottom:0;border-top:2px solid #1c1c1a;}' +
-    '.yqn-totals-row td:first-child{border-radius:0 0 0 12px;}' +
+    '.yqn-totals-row td{background-color:#1c1c1a !important;color:#fff;border-bottom:0;border-top:2px solid #1c1c1a;' +
+    'padding-block:14px;}' +
+    // نمدّد لون خلفية الصف الداكن 28px إضافية بـbox-shadow (بدون تغيير هندسة
+    // الخلية نفسها ولا كسر حسابات الأعمدة الثابتة sticky) حتى يلامس فعلياً
+    // حواف الكرت الحقيقية بدل ما يبان طرفه مقطوع وسط الحشو الجانبي للجدول
+    '.yqn-totals-row td:first-child{border-end-start-radius:16px;box-shadow:28px 0 0 0 #1c1c1a;}' +
+    '.yqn-totals-row td:last-child{border-end-end-radius:16px;box-shadow:-28px 0 0 0 #1c1c1a;}' +
     '.yqn-totals-row .yqn-bar-text{color:#fff !important;}' +
     '.yqn-totals-row .yqn-bar-wrapper{background:rgba(255,255,255,.18);}' +
     '.yqn-totals-row .yqn-diff-positive{color:#86efac;}' +
@@ -12871,14 +12884,14 @@ ${rowsHtml}
     '.yqn-totals-row .yqn-diff-zero{color:#fcd34d;}' +
     '.yqn-empty{padding:32px !important;opacity:.6;font-size:15px;}' +
     '.yqn-vehicles-cell{padding:4px 8px !important;}' +
-    '.yqn-vehicle-input{width:56px;padding:6px 4px;border:1.5px solid #e9e7df;border-radius:8px;text-align:center;' +
+    '.yqn-vehicle-input{width:62px;padding:6px 4px;border:1.5px solid #e9e7df;border-radius:8px;text-align:center;' +
     'font:inherit;font-weight:800;color:inherit;background:#fbfbf9;}' +
     '.yqn-vehicle-input:focus{outline:2px solid #79a916;border-color:#79a916;}' +
-    '.yqn-vehicles-total{font-weight:bold;font-size:16px;line-height:1.3;}' +
+    '.yqn-vehicles-total{font-weight:bold;font-size:17px;line-height:1.3;}' +
     '.yqn-yard-edit{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:3px;}' +
-    '.yqn-yard-edit .yqn-vehicle-input{width:40px;padding:3px 2px;font-size:13px;}' +
-    '.yqn-yard-label{font-size:11px;opacity:.55;white-space:nowrap;}' +
-    '.yqn-return-sub{font-size:11.5px;color:#16a34a;font-weight:bold;margin-top:2px;line-height:1.2;}' +
+    '.yqn-yard-edit .yqn-vehicle-input{width:42px;padding:3px 2px;font-size:14px;}' +
+    '.yqn-yard-label{font-size:12px;opacity:.55;white-space:nowrap;}' +
+    '.yqn-return-sub{font-size:12.5px;color:#16a34a;font-weight:bold;margin-top:2px;line-height:1.2;}' +
     // --- شريط الإشغال: خط رفيع + النسبة كنص ملوّن خارج الشريط (مو فوقه) ---
     '.yqn-occ-row{display:flex;align-items:center;gap:9px;min-width:130px;}' +
     '.yqn-bar-wrapper{position:relative;flex:1;height:8px;border-radius:6px;background:#efeee7;overflow:hidden;min-width:60px;}' +
@@ -12886,11 +12899,11 @@ ${rowsHtml}
     '.yqn-occ-good .yqn-bar-fill{background:#22c55e;}' +
     '.yqn-occ-warning .yqn-bar-fill{background:#eab308;}' +
     '.yqn-occ-critical .yqn-bar-fill{background:#ef4444;}' +
-    '.yqn-bar-text{font-size:13.5px;font-weight:800;white-space:nowrap;flex-shrink:0;}' +
+    '.yqn-bar-text{font-size:15px;font-weight:800;white-space:nowrap;flex-shrink:0;}' +
     '.yqn-bar-text.yqn-occ-good{color:#16a34a;}' +
     '.yqn-bar-text.yqn-occ-warning{color:#b45309;}' +
     '.yqn-bar-text.yqn-occ-critical{color:#dc2626;}' +
-    '.yqn-diff-cell{font-weight:bold;font-size:17px;}' +
+    '.yqn-diff-cell{font-weight:bold;font-size:18px;}' +
     '.yqn-diff-positive{color:#16a34a;}' +
     '.yqn-diff-negative{color:#dc2626;}' +
     '.yqn-diff-zero{color:#b45309;}' +
