@@ -130,6 +130,20 @@
     const RADIAL_CAT_STEP_DEG = 32;
     const RADIAL_BASE_DEG = 183;
 
+    // فقاعات التصنيفات تتولد مرة وحدة بس وتضل نفس عناصر الـDOM - أثر
+    // "الدخول" (تكبّر من نقطة الوسط + تلاشي) يشتغل بس لما القائمة كلها
+    // تفتح/تقفل فعلياً، مو كل ما تنقل بين تصنيف وتصنيف وإنت فاتح (لأن كذا
+    // ما فيه أي تغيير حقيقي بموضع الفقاعات، فـCSS transition ما يشتغل من
+    // نفسه إلا لو غيّرنا شي فعلاً)
+    const RADIAL_RUNTIME = { catEls: [], catsSig: null };
+
+    function buildCatsSignature(nodes) {
+        return nodes.map(n => n.type === "tool"
+            ? "tool:" + n.tool.id
+            : "cat:" + n.key + ":" + n.tools.map(t => t.id).join(",")
+        ).join("|");
+    }
+
     function radialPoint(deg, r) {
         const rad = deg * Math.PI / 180;
         return [Math.cos(rad) * r, Math.sin(rad) * r];
@@ -216,61 +230,81 @@
         fab.classList.toggle("yt-open", RADIAL_STATE.open);
         scrim.classList.toggle("yt-open", RADIAL_STATE.open);
 
-        catsLayer.innerHTML = "";
+        // الفقاعات تتولد مرة وحدة بس (وتضل نفس عناصر الـDOM) طالما التصنيفات
+        // نفسها ما تغيّرت - أي تنقل بين تصنيف وتصنيف بعدها (بدون فتح/قفل
+        // القائمة كلها) بس يحدّث كلاس yt-selected، بدون ما يعيد بناء
+        // الفقاعات ولا يشغّل أثر الدخول من جديد
+        const sig = buildCatsSignature(nodes);
+        if (sig !== RADIAL_RUNTIME.catsSig) {
+            catsLayer.innerHTML = "";
+            RADIAL_RUNTIME.catEls = [];
 
-        // كل فقاعة تتولد دايماً بحالتها المقفلة (مصغّرة عند المركز) أول شي،
-        // وبعدها بإطار تالي (requestAnimationFrame) نطبّق الموضع المفتوح لو
-        // القائمة مفتوحة فعلاً - كذا CSS transition يشتغل حقيقةً (عنصر
-        // يتولد مباشرة بحالته النهائية ما يتحرّك أبداً، لازم "قبل" و"بعد"
-        // بإطارين منفصلين حتى يلتقطهما المتصفح)
-        const openTargets = [];
+            nodes.forEach((node, i) => {
+                // نعكس ترتيب المواقع على القوس (بدون ما نغيّر ترتيب العقد
+                // نفسها ولا catIndex): أول عقدة (الأسطول) تاخذ أبعد زاوية
+                // (أعلى نقطة، أبعد عن الزر)، وآخر عقدة (أدوات أخرى) تاخذ
+                // أقرب زاوية للزر
+                const posIndex = nodes.length - 1 - i;
+                const deg = RADIAL_BASE_DEG + posIndex * RADIAL_CAT_STEP_DEG;
+                const [dx, dy] = radialPoint(deg, RADIAL_CAT_RADIUS);
 
-        nodes.forEach((node, i) => {
-            // نعكس ترتيب المواقع على القوس (بدون ما نغيّر ترتيب العقد نفسه
-            // ولا catIndex): أول عقدة (الأسطول) تاخذ أبعد زاوية (أعلى نقطة،
-            // أبعد عن الزر)، وآخر عقدة (أدوات أخرى) تاخذ أقرب زاوية للزر
-            const posIndex = nodes.length - 1 - i;
-            const deg = RADIAL_BASE_DEG + posIndex * RADIAL_CAT_STEP_DEG;
-            const [dx, dy] = radialPoint(deg, RADIAL_CAT_RADIUS);
+                const orb = document.createElement("div");
+                orb.className = "yt-cat-orb";
+                orb.style.transform = "translate(-50%,-50%) scale(.4)";
+                orb.style.opacity = "0";
+                orb.style.pointerEvents = "none";
+                orb.style.transitionDelay = (i * 50) + "ms";
+                orb.innerHTML =
+                    '<div class="yt-cat-orb-inner">' +
+                    '<span class="yt-cat-orb-glyph">' + node.glyph + '</span>' +
+                    '<span class="yt-cat-orb-label">' + node.label + '</span>' +
+                    '</div>';
 
-            const orb = document.createElement("div");
-            orb.className = "yt-cat-orb";
-            orb.style.transform = "translate(-50%,-50%) scale(.4)";
-            orb.style.opacity = "0";
-            orb.style.pointerEvents = "none";
-            orb.style.transitionDelay = (i * 50) + "ms";
-            openTargets.push({ el: orb, dx, dy });
+                orb.onclick = () => {
+                    if (node.type === "tool") {
+                        runToolFromRadial(node.tool);
+                        return;
+                    }
+                    RADIAL_STATE.catIndex = (RADIAL_STATE.catIndex === i) ? null : i;
+                    renderRadialMenu();
+                };
 
-            const selected = node.type === "category" && RADIAL_STATE.catIndex === i;
-            orb.innerHTML =
-                '<div class="yt-cat-orb-inner' + (selected ? " yt-selected" : "") + '">' +
-                '<span class="yt-cat-orb-glyph">' + node.glyph + '</span>' +
-                '<span class="yt-cat-orb-label">' + node.label + '</span>' +
-                '</div>';
+                catsLayer.appendChild(orb);
+                RADIAL_RUNTIME.catEls.push({ el: orb, node: node, dx: dx, dy: dy });
+            });
 
-            orb.onclick = () => {
-                if (node.type === "tool") {
-                    runToolFromRadial(node.tool);
-                    return;
-                }
-                RADIAL_STATE.catIndex = (RADIAL_STATE.catIndex === i) ? null : i;
-                renderRadialMenu();
-            };
+            RADIAL_RUNTIME.catsSig = sig;
+        }
 
-            catsLayer.appendChild(orb);
-        });
-
+        // حالة الفتح/القفل (تكبّر من نقطة الوسط + تلاشي) - تطبّق دايماً على
+        // العناصر الموجودة سواء تولدت هالتو أو من رندر سابق، فما تشتغل
+        // الحركة إلا لو القيمة فعلاً تغيّرت
         if (RADIAL_STATE.open) {
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
-                    openTargets.forEach(t => {
+                    RADIAL_RUNTIME.catEls.forEach(t => {
                         t.el.style.transform = "translate(-50%,-50%) translate(" + t.dx + "px," + t.dy + "px)";
                         t.el.style.opacity = "1";
                         t.el.style.pointerEvents = "auto";
                     });
                 });
             });
+        } else {
+            RADIAL_RUNTIME.catEls.forEach(t => {
+                t.el.style.transform = "translate(-50%,-50%) scale(.4)";
+                t.el.style.opacity = "0";
+                t.el.style.pointerEvents = "none";
+            });
         }
+
+        // كلاس التحديد (yt-selected) يتحدّث لحاله كل رندر بدون أي علاقة
+        // ببناء الفقاعات - كذا التنقل بين تصنيف وتصنيف ما يعيد أي حركة دخول
+        RADIAL_RUNTIME.catEls.forEach((t, i) => {
+            const inner = t.el.querySelector(".yt-cat-orb-inner");
+            if (!inner) return;
+            const selected = t.node.type === "category" && RADIAL_STATE.catIndex === i;
+            inner.classList.toggle("yt-selected", selected);
+        });
 
         // لوحة الأداة المنبثقة: عنصر واحد ثابت الموضع (بدل عمود فقاعات
         // يلاحق كل تصنيف) - تفتح دايماً بمكان أعلى القوس كله بهامش أمان،
@@ -746,11 +780,11 @@
             display:none;
             position:fixed;
             right:62px;
-            bottom:172px;
+            bottom:176px;
             background:#1d2610;
             color:#eef4e2;
-            font:600 11px Tajawal,Arial,sans-serif;
-            padding:5px 12px;
+            font:700 15px Tajawal,Arial,sans-serif;
+            padding:7px 15px;
             border-radius:999px;
             cursor:pointer;
             box-shadow:0 4px 12px rgba(0,0,0,.25);
@@ -844,7 +878,7 @@
             right:24px;
             bottom:380px;
             width:min(320px,calc(100vw - 48px));
-            max-height:min(440px,calc(100vh - 404px));
+            max-height:max(180px,min(440px,calc(100vh - 404px)));
             background:#fff;
             border-radius:22px;
             border:1px solid #e9e7df;
