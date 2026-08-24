@@ -610,6 +610,12 @@
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -775,12 +781,16 @@
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
             'table{border-collapse:collapse;width:100%;font-size:14px;}' +
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">📕 <strong>' + records.length + '</strong> عقد</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>شهر التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
@@ -803,6 +813,9 @@
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
         'table{border-collapse:collapse;width:100%;font-size:14px;}' +
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -819,7 +832,8 @@
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">📕 <strong>' + records.length + '</strong> عقد</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>شهر التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
         );
@@ -1046,7 +1060,10 @@
             (monthsLabel ? (
                 '<div class="yq-report-sub">الشهور المحددة: ' + monthsLabel + '</div>'
             ) : '') +
-            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد · عدد العقود المطابقة: ' + records.length + '</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">📕 <strong>' + records.length + '</strong> عقد</span>' +
+            '</div>' +
+            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
             '<table class="yq-report-table">' +

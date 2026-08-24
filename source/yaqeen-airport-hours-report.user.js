@@ -474,6 +474,12 @@
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -626,8 +632,10 @@
             'overflow:hidden;direction:rtl;display:flex;flex-direction:column;">' +
             '<div class="yq-report-header">' +
             '<div class="yq-report-title">🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</div>' +
-            '<div class="yq-report-sub">إجمالي الحجوزات: ' + totalBookings +
-            ' · إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">📋 <strong>' + totalBookings + '</strong> حجز</span>' +
+            '<span class="yq-stat-chip yq-stat-chip--ok">🚗 <strong>' + totalVehicles + '</strong> سيارة متاحة</span>' +
+            '</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
             '<table class="yq-report-table">' +
@@ -709,13 +717,21 @@
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;margin:8px 8px 8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
+            '.stat-chip--bookings{background:#fef3c7;color:#b45309;}' +
+            '.stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
             'table{border-collapse:collapse;width:100%;font-size:15px;}' +
             'th,td{border:1px solid #999;padding:8px 10px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</h1>' +
-            '<div class="meta">' + now + ' | إجمالي الحجوزات: ' + totalBookings +
-            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<div>' +
+            '<span class="stat-chip stat-chip--bookings">📋 <strong>' + totalBookings + '</strong> حجز</span>' +
+            '<span class="stat-chip stat-chip--ok">🚗 <strong>' + totalVehicles + '</strong> سيارة متاحة</span>' +
+            '</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th><th>سيارات الحوش (53)</th></tr>' +
             rowsHtml + '</table></body></html>';
 
@@ -740,6 +756,11 @@
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;margin:8px 8px 8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.stat-chip--bookings{background:#fef3c7;color:#b45309;}' +
+        '.stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         'table{border-collapse:collapse;width:100%;font-size:15px;}' +
         'th,td{border:1px solid #999;padding:8px 10px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -771,8 +792,11 @@
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</h1>' +
-            '<div class="meta">' + now + ' | إجمالي الحجوزات: ' + totalBookings +
-            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<div>' +
+            '<span class="stat-chip stat-chip--bookings">📋 <strong>' + totalBookings + '</strong> حجز</span>' +
+            '<span class="stat-chip stat-chip--ok">🚗 <strong>' + totalVehicles + '</strong> سيارة متاحة</span>' +
+            '</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th><th>سيارات الحوش (' + YARD_LOCATION_ID + ')</th></tr>' +
             rowsHtml + '</table>'
         );

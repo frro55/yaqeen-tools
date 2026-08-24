@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0017
+// @version      2026.0824.0028
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -3605,6 +3605,12 @@ ${rowsHtml}
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -3757,8 +3763,10 @@ ${rowsHtml}
             'overflow:hidden;direction:rtl;display:flex;flex-direction:column;">' +
             '<div class="yq-report-header">' +
             '<div class="yq-report-title">🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</div>' +
-            '<div class="yq-report-sub">إجمالي الحجوزات: ' + totalBookings +
-            ' · إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">📋 <strong>' + totalBookings + '</strong> حجز</span>' +
+            '<span class="yq-stat-chip yq-stat-chip--ok">🚗 <strong>' + totalVehicles + '</strong> سيارة متاحة</span>' +
+            '</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
             '<table class="yq-report-table">' +
@@ -3840,13 +3848,21 @@ ${rowsHtml}
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;margin:8px 8px 8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
+            '.stat-chip--bookings{background:#fef3c7;color:#b45309;}' +
+            '.stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
             'table{border-collapse:collapse;width:100%;font-size:15px;}' +
             'th,td{border:1px solid #999;padding:8px 10px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</h1>' +
-            '<div class="meta">' + now + ' | إجمالي الحجوزات: ' + totalBookings +
-            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<div>' +
+            '<span class="stat-chip stat-chip--bookings">📋 <strong>' + totalBookings + '</strong> حجز</span>' +
+            '<span class="stat-chip stat-chip--ok">🚗 <strong>' + totalVehicles + '</strong> سيارة متاحة</span>' +
+            '</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th><th>سيارات الحوش (53)</th></tr>' +
             rowsHtml + '</table></body></html>';
 
@@ -3871,6 +3887,11 @@ ${rowsHtml}
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;margin:8px 8px 8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.stat-chip--bookings{background:#fef3c7;color:#b45309;}' +
+        '.stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         'table{border-collapse:collapse;width:100%;font-size:15px;}' +
         'th,td{border:1px solid #999;padding:8px 10px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -3902,8 +3923,11 @@ ${rowsHtml}
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>🛫 حجوزات المطار خلال ' + hours + ' ساعة القادمة</h1>' +
-            '<div class="meta">' + now + ' | إجمالي الحجوزات: ' + totalBookings +
-            ' | إجمالي السيارات المتاحة: ' + totalVehicles + '</div>' +
+            '<div>' +
+            '<span class="stat-chip stat-chip--bookings">📋 <strong>' + totalBookings + '</strong> حجز</span>' +
+            '<span class="stat-chip stat-chip--ok">🚗 <strong>' + totalVehicles + '</strong> سيارة متاحة</span>' +
+            '</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>القروب</th><th>السيارات المتاحة</th><th>الحجوزات</th><th>الفرق</th><th>سيارات الحوش (' + YARD_LOCATION_ID + ')</th></tr>' +
             rowsHtml + '</table>'
         );
@@ -4843,6 +4867,12 @@ ${rowsHtml}
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -4985,12 +5015,16 @@ ${rowsHtml}
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
             'table{border-collapse:collapse;width:100%;font-size:14px;}' +
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">⚠️ <strong>' + records.length + '</strong> عقد متأخر</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
@@ -5014,6 +5048,9 @@ ${rowsHtml}
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
         'table{border-collapse:collapse;width:100%;font-size:14px;}' +
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -5030,7 +5067,8 @@ ${rowsHtml}
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">⚠️ <strong>' + records.length + '</strong> عقد متأخر</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
         );
@@ -5256,10 +5294,12 @@ ${rowsHtml}
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
             '<div class="yq-report-title">💰 العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">⚠️ <strong>' + records.length + '</strong> عقد متأخر</span>' +
+            '</div>' +
             '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' · عدد العقود المطابقة: ' + records.length +
             '</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
@@ -6131,6 +6171,12 @@ ${rowsHtml}
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -6301,12 +6347,16 @@ ${rowsHtml}
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
             'table{border-collapse:collapse;width:100%;font-size:14px;}' +
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
-            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">⚠️ <strong>' + records.length + '</strong> عقد متأخر</div>' +
+            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
@@ -6330,6 +6380,9 @@ ${rowsHtml}
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
         'table{border-collapse:collapse;width:100%;font-size:14px;}' +
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -6346,7 +6399,8 @@ ${rowsHtml}
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>💰 العقود المتأخرة في السداد (' + threshold + ' ريال فأكثر)</h1>' +
-            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">⚠️ <strong>' + records.length + '</strong> عقد متأخر</div>' +
+            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
         );
@@ -6575,10 +6629,12 @@ ${rowsHtml}
             '<div class="yq-report-header">' +
             '<div class="yq-report-title">💰 العقود المتأخرة بمبلغ ' + threshold + ' ريال فأكثر</div>' +
             '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">⚠️ <strong>' + records.length + '</strong> عقد متأخر</span>' +
+            '</div>' +
             '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' · عدد العقود المطابقة: ' + records.length +
             '</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
@@ -7039,6 +7095,12 @@ ${rowsHtml}
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -7149,12 +7211,16 @@ ${rowsHtml}
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
             'table{border-collapse:collapse;width:100%;font-size:14px;}' +
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>🏢 عقود الشركات غير الممددة</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">🏢 <strong>' + records.length + '</strong> عقد يحتاج تمديد</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>رقم العقد</th><th>اسم الشخص</th><th>اسم المدين</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
@@ -7177,6 +7243,9 @@ ${rowsHtml}
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
         'table{border-collapse:collapse;width:100%;font-size:14px;}' +
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -7193,7 +7262,8 @@ ${rowsHtml}
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>🏢 عقود الشركات غير الممددة</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">🏢 <strong>' + records.length + '</strong> عقد يحتاج تمديد</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>رقم العقد</th><th>اسم الشخص</th><th>اسم المدين</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>'
         );
@@ -7416,10 +7486,12 @@ ${rowsHtml}
             'background:#fff;border-radius:22px;overflow:hidden;direction:rtl;">' +
             '<div class="yq-report-header">' +
             '<div class="yq-report-title">🏢 عقود الشركات غير الممددة</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">🏢 <strong>' + records.length + '</strong> عقد يحتاج تمديد</span>' +
+            '</div>' +
             '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد شركة بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' · عدد العقود المحتاجة تمديد: ' + records.length +
             '</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
@@ -7920,6 +7992,12 @@ ${rowsHtml}
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -8073,12 +8151,16 @@ ${rowsHtml}
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
             'table{border-collapse:collapse;width:100%;font-size:14px;}' +
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>🏢 عقود الشركات غير الممددة</h1>' +
-            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">🏢 <strong>' + records.length + '</strong> عقد يحتاج تمديد</div>' +
+            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الفرع</th><th>اسم الشخص</th><th>اسم المدين</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
@@ -8101,6 +8183,9 @@ ${rowsHtml}
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
         'table{border-collapse:collapse;width:100%;font-size:14px;}' +
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -8117,7 +8202,8 @@ ${rowsHtml}
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>🏢 عقود الشركات غير الممددة</h1>' +
-            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">🏢 <strong>' + records.length + '</strong> عقد يحتاج تمديد</div>' +
+            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الفرع</th><th>اسم الشخص</th><th>اسم المدين</th>' +
             '<th>المدة الفعلية</th><th>المدة المخطط لها + التمديد</th><th>متأخر بـ</th></tr>' + rowsHtml + '</table>'
         );
@@ -8343,10 +8429,12 @@ ${rowsHtml}
             '<div class="yq-report-header">' +
             '<div class="yq-report-title">🏢 عقود الشركات غير الممددة</div>' +
             '<div class="yq-report-sub">الفروع: ' + branchesLabel + '</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">🏢 <strong>' + records.length + '</strong> عقد يحتاج تمديد</span>' +
+            '</div>' +
             '<div class="yq-report-sub">' +
             'تم فحص ' + checkedCount + ' من أصل ' + totalCandidates + ' عقد شركة بقائمة LATE_RETURN' +
             (checkedCount < totalCandidates ? ' (' + (totalCandidates - checkedCount) + ' تعذّر فتحها)' : '') +
-            ' · عدد العقود المحتاجة تمديد: ' + records.length +
             '</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
@@ -9002,6 +9090,12 @@ ${rowsHtml}
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -9167,12 +9261,16 @@ ${rowsHtml}
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
             'table{border-collapse:collapse;width:100%;font-size:14px;}' +
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">📕 <strong>' + records.length + '</strong> عقد</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>شهر التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
@@ -9195,6 +9293,9 @@ ${rowsHtml}
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
         'table{border-collapse:collapse;width:100%;font-size:14px;}' +
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -9211,7 +9312,8 @@ ${rowsHtml}
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
-            '<div class="meta">' + now + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">📕 <strong>' + records.length + '</strong> عقد</div>' +
+            '<div class="meta">' + now + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>شهر التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
         );
@@ -9438,7 +9540,10 @@ ${rowsHtml}
             (monthsLabel ? (
                 '<div class="yq-report-sub">الشهور المحددة: ' + monthsLabel + '</div>'
             ) : '') +
-            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد · عدد العقود المطابقة: ' + records.length + '</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">📕 <strong>' + records.length + '</strong> عقد</span>' +
+            '</div>' +
+            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
             '<table class="yq-report-table">' +
@@ -10090,6 +10195,12 @@ ${rowsHtml}
         'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;}' +
         '.yq-report-title{font-size:18px;font-weight:800;}' +
         '.yq-report-sub{font-size:13.5px;margin-top:5px;opacity:.85;}' +
+        '.yq-stat-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}' +
+        '.yq-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+        '.yq-stat-chip strong{font-size:14px;font-weight:800;}' +
+        '.yq-stat-chip--result{background:#fef3c7;color:#b45309;}' +
+        '.yq-stat-chip--ok{background:#dcfce7;color:#16a34a;}' +
         '.yq-report-actions{display:flex;gap:9px;padding:16px 28px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid #cec7b4;}' +
         '.yq-report-actions button{flex:1;min-width:120px;padding:11px;border:0;border-radius:11px;' +
         'font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#f1f0ea;color:#1c1c1a;}' +
@@ -10297,12 +10408,16 @@ ${rowsHtml}
             'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:24px;}' +
             'h1{font-size:20px;margin:0 0 4px;}' +
             '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+            '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+            'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+            '.stat-chip strong{font-size:14px;font-weight:800;}' +
             'table{border-collapse:collapse;width:100%;font-size:14px;}' +
             'th,td{border:1px solid #999;padding:6px 8px;text-align:center;}' +
             'th{background:#f0f0f0;}' +
             '</style></head><body>' +
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
-            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">📕 <strong>' + records.length + '</strong> عقد</div>' +
+            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>شهر التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>' +
             '</body></html>'
@@ -10325,6 +10440,9 @@ ${rowsHtml}
         'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
         'h1{font-size:20px;margin:0 0 4px;}' +
         '.meta{color:#555;font-size:14px;margin-bottom:16px;}' +
+        '.stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+        'font-size:13px;font-weight:700;background:#fef3c7;color:#b45309;margin:8px 0;}' +
+        '.stat-chip strong{font-size:14px;font-weight:800;}' +
         'table{border-collapse:collapse;width:100%;font-size:14px;}' +
         'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
         'th{background:#f0f0f0;}';
@@ -10341,7 +10459,8 @@ ${rowsHtml}
         return (
             '<style>' + IMAGE_EXPORT_CSS + '</style>' +
             '<h1>📕 عقود أغلقت كمديونية</h1>' +
-            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + ' | عدد العقود: ' + records.length + '</div>' +
+            '<div class="stat-chip">📕 <strong>' + records.length + '</strong> عقد</div>' +
+            '<div class="meta">' + now + ' | الفروع: ' + branchesLabel + '</div>' +
             '<table><tr><th>رقم العقد</th><th>الفرع</th><th>الاسم</th><th>الجوال</th><th>رقم الهوية</th>' +
             '<th>شهر التسليم</th><th>المتبقي</th></tr>' + rowsHtml + '</table>'
         );
@@ -10572,7 +10691,10 @@ ${rowsHtml}
             (monthsLabel ? (
                 '<div class="yq-report-sub">الشهور المحددة: ' + monthsLabel + '</div>'
             ) : '') +
-            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد · عدد العقود المطابقة: ' + records.length + '</div>' +
+            '<div class="yq-stat-row">' +
+            '<span class="yq-stat-chip yq-stat-chip--result">📕 <strong>' + records.length + '</strong> عقد</span>' +
+            '</div>' +
+            '<div class="yq-report-sub">تم فحص ' + visitedCount + ' عقد</div>' +
             '</div>' +
             '<div style="overflow:auto;flex:1;padding:0 10px;">' +
             '<table class="yq-report-table">' +
@@ -12323,6 +12445,12 @@ ${rowsHtml}
     '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
     'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
     'h1{font-size:20px;margin:0 0 4px;}' +
+    '.yqn-stat-row{display:flex;gap:8px;margin:8px 0;}' +
+    '.yqn-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+    'font-size:13px;font-weight:700;white-space:nowrap;}' +
+    '.yqn-stat-chip strong{font-size:14px;font-weight:800;}' +
+    '.yqn-stat-chip--bookings{background:#fef3c7;color:#b45309;}' +
+    '.yqn-stat-chip--returns{background:#dcfce7;color:#16a34a;}' +
     '.yqn-print-meta{color:#555;font-size:14px;margin-bottom:16px;}' +
     'table{border-collapse:collapse;width:100%;font-size:13.5px;}' +
     'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
@@ -12369,11 +12497,13 @@ ${rowsHtml}
     var daysLabel = getSelectedDaysOrdered().join('، ') || '—';
     return (
       '<h1>📊 تقرير الحجوزات القادمة</h1>' +
+      '<div class="yqn-stat-row">' +
+      '<span class="yqn-stat-chip yqn-stat-chip--bookings">📋 <strong>' + escapeHtml(String((state.bookings || []).length)) + '</strong> حجز</span>' +
+      '<span class="yqn-stat-chip yqn-stat-chip--returns">↩️ <strong>' + escapeHtml(String((state.returns || []).length)) + '</strong> مسترجعة</span>' +
+      '</div>' +
       '<div class="yqn-print-meta">' + escapeHtml(now) +
       ' | مصدر السيارات: ' + escapeHtml(sourceLabel) +
-      ' | الأيام: ' + escapeHtml(daysLabel) +
-      ' | إجمالي الحجوزات: ' + escapeHtml(String((state.bookings || []).length)) +
-      ' | إجمالي المسترجعة (نفس الفرع): ' + escapeHtml(String((state.returns || []).length)) + '</div>'
+      ' | الأيام: ' + escapeHtml(daysLabel) + '</div>'
     );
   }
 
@@ -12658,7 +12788,10 @@ ${rowsHtml}
       '<header class="yqn-header">' +
       '  <div class="yqn-header-titles">' +
       '    <h2>📊 تقرير الحجوزات القادمة</h2>' +
-      '    <div class="yqn-stat-badge">الحجوزات: <strong id="yqn-total-bookings">0</strong> | المسترجعة (نفس الفرع): <strong id="yqn-total-returns">0</strong></div>' +
+      '    <div class="yqn-stat-row">' +
+      '      <span class="yqn-stat-chip yqn-stat-chip--bookings">📋 <strong id="yqn-total-bookings">0</strong> حجز</span>' +
+      '      <span class="yqn-stat-chip yqn-stat-chip--returns">↩️ <strong id="yqn-total-returns">0</strong> مسترجعة</span>' +
+      '    </div>' +
       '  </div>' +
       '  <button type="button" class="yqn-close" aria-label="إغلاق">✕</button>' +
       '</header>' +
@@ -12798,8 +12931,12 @@ ${rowsHtml}
     'background:#fff;color:#1c1c1a;border-bottom:1px solid #e9e7df;}' +
     '.yqn-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:5px;}' +
     '.yqn-header h2{margin:0;font-size:18px;font-weight:800;}' +
-    '.yqn-stat-badge{font-size:13.5px;color:#767068;}' +
-    '.yqn-stat-badge strong{font-weight:800;color:#1c1c1a;}' +
+    '.yqn-stat-row{display:flex;gap:8px;margin-top:2px;flex-wrap:wrap;}' +
+    '.yqn-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+    'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+    '.yqn-stat-chip strong{font-size:14px;font-weight:800;}' +
+    '.yqn-stat-chip--bookings{background:#fef3c7;color:#b45309;}' +
+    '.yqn-stat-chip--returns{background:#dcfce7;color:#16a34a;}' +
     '.yqn-close{background:transparent;border:0;font-size:18px;cursor:pointer;color:#a19c92;line-height:1;padding:8px;border-radius:9px;flex-shrink:0;}' +
     '.yqn-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
     // --- شريط موحّد: أيقونات الإجراءات + الفلاتر بصف واحد مضغوط ---

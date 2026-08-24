@@ -1306,6 +1306,12 @@
     '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}' +
     'body{font-family:Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;}' +
     'h1{font-size:20px;margin:0 0 4px;}' +
+    '.yqn-stat-row{display:flex;gap:8px;margin:8px 0;}' +
+    '.yqn-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+    'font-size:13px;font-weight:700;white-space:nowrap;}' +
+    '.yqn-stat-chip strong{font-size:14px;font-weight:800;}' +
+    '.yqn-stat-chip--bookings{background:#fef3c7;color:#b45309;}' +
+    '.yqn-stat-chip--returns{background:#dcfce7;color:#16a34a;}' +
     '.yqn-print-meta{color:#555;font-size:14px;margin-bottom:16px;}' +
     'table{border-collapse:collapse;width:100%;font-size:13.5px;}' +
     'th,td{border:1px solid #999;padding:6px 8px;text-align:center;white-space:nowrap;}' +
@@ -1352,11 +1358,13 @@
     var daysLabel = getSelectedDaysOrdered().join('، ') || '—';
     return (
       '<h1>📊 تقرير الحجوزات القادمة</h1>' +
+      '<div class="yqn-stat-row">' +
+      '<span class="yqn-stat-chip yqn-stat-chip--bookings">📋 <strong>' + escapeHtml(String((state.bookings || []).length)) + '</strong> حجز</span>' +
+      '<span class="yqn-stat-chip yqn-stat-chip--returns">↩️ <strong>' + escapeHtml(String((state.returns || []).length)) + '</strong> مسترجعة</span>' +
+      '</div>' +
       '<div class="yqn-print-meta">' + escapeHtml(now) +
       ' | مصدر السيارات: ' + escapeHtml(sourceLabel) +
-      ' | الأيام: ' + escapeHtml(daysLabel) +
-      ' | إجمالي الحجوزات: ' + escapeHtml(String((state.bookings || []).length)) +
-      ' | إجمالي المسترجعة (نفس الفرع): ' + escapeHtml(String((state.returns || []).length)) + '</div>'
+      ' | الأيام: ' + escapeHtml(daysLabel) + '</div>'
     );
   }
 
@@ -1641,7 +1649,10 @@
       '<header class="yqn-header">' +
       '  <div class="yqn-header-titles">' +
       '    <h2>📊 تقرير الحجوزات القادمة</h2>' +
-      '    <div class="yqn-stat-badge">الحجوزات: <strong id="yqn-total-bookings">0</strong> | المسترجعة (نفس الفرع): <strong id="yqn-total-returns">0</strong></div>' +
+      '    <div class="yqn-stat-row">' +
+      '      <span class="yqn-stat-chip yqn-stat-chip--bookings">📋 <strong id="yqn-total-bookings">0</strong> حجز</span>' +
+      '      <span class="yqn-stat-chip yqn-stat-chip--returns">↩️ <strong id="yqn-total-returns">0</strong> مسترجعة</span>' +
+      '    </div>' +
       '  </div>' +
       '  <button type="button" class="yqn-close" aria-label="إغلاق">✕</button>' +
       '</header>' +
@@ -1781,8 +1792,12 @@
     'background:#fff;color:#1c1c1a;border-bottom:1px solid #e9e7df;}' +
     '.yqn-header-titles{display:flex;flex-direction:column;align-items:flex-start;gap:5px;}' +
     '.yqn-header h2{margin:0;font-size:18px;font-weight:800;}' +
-    '.yqn-stat-badge{font-size:13.5px;color:#767068;}' +
-    '.yqn-stat-badge strong{font-weight:800;color:#1c1c1a;}' +
+    '.yqn-stat-row{display:flex;gap:8px;margin-top:2px;flex-wrap:wrap;}' +
+    '.yqn-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;' +
+    'font-size:12.5px;font-weight:700;white-space:nowrap;}' +
+    '.yqn-stat-chip strong{font-size:14px;font-weight:800;}' +
+    '.yqn-stat-chip--bookings{background:#fef3c7;color:#b45309;}' +
+    '.yqn-stat-chip--returns{background:#dcfce7;color:#16a34a;}' +
     '.yqn-close{background:transparent;border:0;font-size:18px;cursor:pointer;color:#a19c92;line-height:1;padding:8px;border-radius:9px;flex-shrink:0;}' +
     '.yqn-close:hover{background:#f1f0ea;color:#1c1c1a;}' +
     // --- شريط موحّد: أيقونات الإجراءات + الفلاتر بصف واحد مضغوط ---
