@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0409
+// @version      2026.0824.0416
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -582,7 +582,10 @@
             console.log("[yaqeen-update-check] توقف: SCRIPT_VERSION = unknown");
             return;
         }
-        fetchText(UPDATE_SCRIPT_URL).then(text => {
+        // نضيف باراميتر عشوائي لكسر أي كاش (متصفح أو GM_xmlhttpRequest) - بدونه
+        // نفس الرابط المطلوب يرجّع نفس النسخة القديمة المخزّنة حتى لو
+        // السيرفر فعلياً عنده نسخة أحدث، لأنه ما فيه أي إشارة تُجبر طلب شبكة جديد
+        fetchText(UPDATE_SCRIPT_URL + "?_=" + Date.now()).then(text => {
             if (!text) {
                 console.log("[yaqeen-update-check] توقف: fetchText رجع فاضي (فشل الطلب)");
                 return;
@@ -849,7 +852,7 @@
         updateBadge.textContent = "🔔 تحديث جديد";
         updateBadge.style.display = "none";
         updateBadge.onclick = () => {
-            window.open(UPDATE_SCRIPT_URL, "_blank");
+            window.open(UPDATE_SCRIPT_URL + "?_=" + Date.now(), "_blank");
         };
         document.body.appendChild(updateBadge);
         // مزامنة دفاعية: لو checkForScriptUpdate خلص قبل ما توصل هذي النقطة
