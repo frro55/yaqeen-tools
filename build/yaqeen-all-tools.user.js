@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0430
+// @version      2026.0824.0439
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -15,13 +15,6 @@
 // @updateURL    https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
 // @downloadURL  https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
 // ==/UserScript==
-
-// ============================================================
-// ملف مُولَّد آلياً بدمج كل ملفات tampermonkey/source/*.user.js بمصدر واحد.
-// لا تعدّل هذا الملف مباشرة - عدّل الملف الأصلي المقابل بمجلد source وأعد
-// التوليد (bash tampermonkey/build-bundle.sh) وارفع الناتج على الـVPS.
-// ترتيب الدمج: Core أولاً (يبني YAQEEN_TOOLS)، ثم بقية الأدوات.
-// ============================================================
 
 // ============================================================
 // المصدر: tampermonkey/source/yaqeen-core.user.js

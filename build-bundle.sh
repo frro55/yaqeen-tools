@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# يولّد build/yaqeen-all-tools.user.js بدمج كل ملفات source/*.user.js
-# (Core أولاً، ثم بقية الأدوات) بسكربت واحد قابل للتثبيت بضغطة وحدة.
-# شغّله من جذر الريبو: bash build-bundle.sh
+# يولّد tampermonkey/build/yaqeen-all-tools.user.js بدمج كل ملفات
+# tampermonkey/source/*.user.js (Core أولاً، ثم بقية الأدوات) بسكربت واحد
+# قابل للتثبيت بضغطة وحدة.
+# شغّله من جذر الريبو: bash tampermonkey/build-bundle.sh
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
-SOURCE_DIR=source
-BUILD_DIR=build
+SOURCE_DIR=tampermonkey/source
+BUILD_DIR=tampermonkey/build
 BUNDLE="$BUILD_DIR/yaqeen-all-tools.user.js"
 
 mkdir -p "$BUILD_DIR"
@@ -35,13 +36,6 @@ cat > "$BUNDLE" << HDREOF
 // @updateURL    https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
 // @downloadURL  https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
 // ==/UserScript==
-
-// ============================================================
-// ملف مُولَّد آلياً بدمج كل ملفات source/*.user.js بمصدر واحد.
-// لا تعدّل هذا الملف مباشرة - عدّل الملف الأصلي المقابل بمجلد source وأعد
-// التوليد (bash build-bundle.sh) وارفع الناتج على الـVPS.
-// ترتيب الدمج: Core أولاً (يبني YAQEEN_TOOLS)، ثم بقية الأدوات.
-// ============================================================
 HDREOF
 
 # ملاحظة: ترتيب هذي القائمة يحدد ترتيب التنفيذ الفعلي عند التحميل (Core لازم
