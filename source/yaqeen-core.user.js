@@ -127,7 +127,6 @@
 
     const RADIAL_STATE = { open: false, catIndex: null };
     const RADIAL_CAT_RADIUS = 185;
-    const RADIAL_TOOL_ROW_GAP = 58;
     const RADIAL_CAT_STEP_DEG = 32;
     const RADIAL_BASE_DEG = 183;
 
@@ -202,12 +201,14 @@
         const fab = document.getElementById("yt-fab");
         const scrim = document.getElementById("yt-scrim");
         const catsLayer = document.getElementById("yt-cats");
-        const toolsLayer = document.getElementById("yt-tools-ring");
-        if (!fab || !scrim || !catsLayer || !toolsLayer) return;
+        const panel = document.getElementById("yt-tool-panel");
+        const panelHeader = document.getElementById("yt-tool-panel-header");
+        const panelList = document.getElementById("yt-tool-panel-list");
+        if (!fab || !scrim || !catsLayer || !panel || !panelHeader || !panelList) return;
 
         const nodes = buildRadialNodes();
 
-        // لو الصلاحيات تغيّرت وصار التصنيف المفتوح ما عاد موجود، نقفل حلقة الأدوات
+        // لو الصلاحيات تغيّرت وصار التصنيف المفتوح ما عاد موجود، نقفل اللوحة
         if (RADIAL_STATE.catIndex !== null && (!nodes[RADIAL_STATE.catIndex] || nodes[RADIAL_STATE.catIndex].type !== "category")) {
             RADIAL_STATE.catIndex = null;
         }
@@ -216,7 +217,13 @@
         scrim.classList.toggle("yt-open", RADIAL_STATE.open);
 
         catsLayer.innerHTML = "";
-        toolsLayer.innerHTML = "";
+
+        // كل فقاعة تتولد دايماً بحالتها المقفلة (مصغّرة عند المركز) أول شي،
+        // وبعدها بإطار تالي (requestAnimationFrame) نطبّق الموضع المفتوح لو
+        // القائمة مفتوحة فعلاً - كذا CSS transition يشتغل حقيقةً (عنصر
+        // يتولد مباشرة بحالته النهائية ما يتحرّك أبداً، لازم "قبل" و"بعد"
+        // بإطارين منفصلين حتى يلتقطهما المتصفح)
+        const openTargets = [];
 
         nodes.forEach((node, i) => {
             // نعكس ترتيب المواقع على القوس (بدون ما نغيّر ترتيب العقد نفسه
@@ -228,12 +235,11 @@
 
             const orb = document.createElement("div");
             orb.className = "yt-cat-orb";
-            orb.style.transform = RADIAL_STATE.open
-                ? "translate(-50%,-50%) translate(" + dx + "px," + dy + "px)"
-                : "translate(-50%,-50%) scale(.4)";
-            orb.style.opacity = RADIAL_STATE.open ? "1" : "0";
-            orb.style.pointerEvents = RADIAL_STATE.open ? "auto" : "none";
+            orb.style.transform = "translate(-50%,-50%) scale(.4)";
+            orb.style.opacity = "0";
+            orb.style.pointerEvents = "none";
             orb.style.transitionDelay = (i * 50) + "ms";
+            openTargets.push({ el: orb, dx, dy });
 
             const selected = node.type === "category" && RADIAL_STATE.catIndex === i;
             orb.innerHTML =
@@ -254,36 +260,54 @@
             catsLayer.appendChild(orb);
         });
 
-        if (RADIAL_STATE.catIndex !== null) {
-            // نقطة الانطلاق = موقع فقاعة التصنيف نفسها بالضبط (نفس زاويتها)،
-            // بس من هناك تطلع الأدوات بعمود عمودي صافي (فوق بعض بالضبط، x
-            // ثابت) بدل ما تكمل بنفس الخط المائل - كذا كل تصنيف يفتح أدواته
-            // من جهته الصحيحة، وبنفس الوقت العمود نفسه مستقيم عمودي مو مايل
-            const catNode = nodes[RADIAL_STATE.catIndex];
-            const list = catNode.tools;
-            const catPosIndex = nodes.length - 1 - RADIAL_STATE.catIndex;
-            const catDeg = RADIAL_BASE_DEG + catPosIndex * RADIAL_CAT_STEP_DEG;
-            // نزيح نقطة انطلاق العمود لليسار مرة وحدة بس (مو تدريجياً) حتى
-            // يقف العمود فوق يسار الفقاعة (مو فوقها مباشرة) ويبعد عن فقاعات
-            // التصنيفات الثانية، وبعدها يطلع للأعلى بخط عمودي صافي (x ثابت
-            // لكل الصفوف، مافيه أي ميلان)
-            const [catDxRaw, catDy] = radialPoint(catDeg, RADIAL_CAT_RADIUS);
-            const catDx = catDxRaw - 60;
-            const startDy = catDy - 70;
-
-            list.forEach((tool, i) => {
-                const dx = catDx;
-                const dy = startDy - i * RADIAL_TOOL_ROW_GAP;
-
-                const pill = document.createElement("div");
-                pill.className = "yt-tool-pill";
-                pill.style.transform = "translate(-50%,-50%) translate(" + dx + "px," + dy + "px)";
-                pill.style.transitionDelay = (i * 45) + "ms";
-                pill.innerHTML = '<span>' + tool.name + '</span><span class="yt-dot"></span>';
-                pill.onclick = () => runToolFromRadial(tool);
-
-                toolsLayer.appendChild(pill);
+        if (RADIAL_STATE.open) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    openTargets.forEach(t => {
+                        t.el.style.transform = "translate(-50%,-50%) translate(" + t.dx + "px," + t.dy + "px)";
+                        t.el.style.opacity = "1";
+                        t.el.style.pointerEvents = "auto";
+                    });
+                });
             });
+        }
+
+        // لوحة الأداة المنبثقة: عنصر واحد ثابت الموضع (بدل عمود فقاعات
+        // يلاحق كل تصنيف) - تفتح دايماً بمكان أعلى القوس كله بهامش أمان،
+        // فمستحيل تتقاطع مع أي فقاعة تصنيف بغض النظر عن التصنيف المختار
+        // أو حجم الشاشة (القوس نفسه ثابت الهندسة دايماً، ما يتغير)
+        if (RADIAL_STATE.catIndex !== null) {
+            const catNode = nodes[RADIAL_STATE.catIndex];
+
+            panelHeader.innerHTML =
+                '<div class="yt-panel-icon">' + catNode.glyph + '</div>' +
+                '<div class="yt-panel-title">' + catNode.label + '</div>';
+
+            panelList.innerHTML = "";
+            const rowTargets = [];
+            catNode.tools.forEach((tool, i) => {
+                const row = document.createElement("div");
+                row.className = "yt-tool-row";
+                row.style.opacity = "0";
+                row.style.transform = "translateX(14px)";
+                row.style.transitionDelay = (i * 26) + "ms";
+                row.innerHTML = '<span class="yt-dot"></span><span>' + tool.name + '</span>';
+                row.onclick = () => runToolFromRadial(tool);
+                panelList.appendChild(row);
+                rowTargets.push(row);
+            });
+
+            panel.classList.add("yt-open");
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    rowTargets.forEach(el => {
+                        el.style.opacity = "1";
+                        el.style.transform = "translateX(0)";
+                    });
+                });
+            });
+        } else {
+            panel.classList.remove("yt-open");
         }
     }
 
@@ -651,17 +675,30 @@
         document.body.appendChild(scrim);
 
 
-        // حلقة التصنيفات/الأدوات المستقلة، وحلقة أدوات التصنيف المفتوح -
-        // كلتاهما مرساة عند نفس نقطة مركز زر الليمونة (تُحسب مواقع الفقاعات
-        // كإزاحة عن هذي النقطة داخل renderRadialMenu)
+        // حلقة التصنيفات/الأدوات المستقلة - مرساة عند نفس نقطة مركز زر
+        // الليمونة (تُحسب مواقع الفقاعات كإزاحة عن هذي النقطة داخل
+        // renderRadialMenu)
 
         const catsLayer = document.createElement("div");
         catsLayer.id = "yt-cats";
         document.body.appendChild(catsLayer);
 
-        const toolsLayer = document.createElement("div");
-        toolsLayer.id = "yt-tools-ring";
-        document.body.appendChild(toolsLayer);
+        // لوحة أدوات التصنيف المفتوح - عنصر واحد ثابت الموضع (بدل عمود
+        // فقاعات يلاحق كل تصنيف)، يفتح دايماً أعلى قوس التصنيفات كله بهامش
+        // أمان، فمستحيل تتقاطع مع أي فقاعة تصنيف مهما كان التصنيف المختار
+
+        const toolPanel = document.createElement("div");
+        toolPanel.id = "yt-tool-panel";
+
+        const toolPanelHeader = document.createElement("div");
+        toolPanelHeader.id = "yt-tool-panel-header";
+        toolPanel.appendChild(toolPanelHeader);
+
+        const toolPanelList = document.createElement("div");
+        toolPanelList.id = "yt-tool-panel-list";
+        toolPanel.appendChild(toolPanelList);
+
+        document.body.appendChild(toolPanel);
 
 
         // شارة اختيار جلسة الواتساب النشطة - تظهر بس لو فيه أكثر من رقم
@@ -732,6 +769,7 @@
             position:fixed;
             inset:0;
             background:rgba(20,26,10,.30);
+            backdrop-filter:blur(2px);
             opacity:0;
             pointer-events:none;
             transition:opacity .3s;
@@ -743,7 +781,7 @@
             pointer-events:auto;
         }
 
-        #yt-cats, #yt-tools-ring{
+        #yt-cats{
             position:fixed;
             right:99px;
             bottom:129px;
@@ -757,7 +795,7 @@
             left:0;
             top:0;
             cursor:pointer;
-            transition:transform .4s cubic-bezier(.2,1.3,.4,1),opacity .28s;
+            transition:transform .42s cubic-bezier(.34,1.56,.64,1),opacity .28s;
         }
 
         .yt-cat-orb-inner{
@@ -773,9 +811,13 @@
             color:#1d2610;
             border:1.5px solid rgba(140,197,0,.5);
             box-shadow:0 5px 14px rgba(29,38,16,.10);
-            transition:background .2s,color .2s,box-shadow .2s,border-color .2s;
+            transition:background .2s,color .2s,box-shadow .2s,border-color .2s,transform .18s cubic-bezier(.34,1.56,.64,1);
             font-family:Tajawal,Arial,sans-serif;
             text-align:center;
+        }
+
+        .yt-cat-orb-inner:hover{
+            transform:scale(1.06);
         }
 
         .yt-cat-orb-inner.yt-selected{
@@ -797,40 +839,91 @@
             white-space:normal;
         }
 
-        .yt-tool-pill{
-            position:absolute;
-            left:0;
-            top:0;
-            cursor:pointer;
+        #yt-tool-panel{
+            position:fixed;
+            right:24px;
+            bottom:380px;
+            width:min(320px,calc(100vw - 48px));
+            max-height:min(440px,calc(100vh - 404px));
+            background:#fff;
+            border-radius:22px;
+            border:1px solid #e9e7df;
+            box-shadow:0 24px 48px -12px rgba(20,18,12,.35);
+            overflow:hidden;
+            display:flex;
+            flex-direction:column;
+            transform-origin:right bottom;
+            transform:scale(.9) translateY(14px);
+            opacity:0;
+            pointer-events:none;
+            transition:opacity .28s ease,transform .36s cubic-bezier(.34,1.56,.64,1);
+            z-index:99999998;
+        }
+
+        #yt-tool-panel.yt-open{
+            transform:scale(1) translateY(0);
+            opacity:1;
+            pointer-events:auto;
+        }
+
+        #yt-tool-panel-header{
+            padding:16px 20px;
             display:flex;
             align-items:center;
-            justify-content:flex-end;
             gap:10px;
-            background:#1d2610;
-            border-radius:999px;
-            padding:10px 18px 10px 15px;
-            box-shadow:0 6px 16px rgba(0,0,0,.28);
-            white-space:nowrap;
-            max-width:min(80vw,340px);
-            overflow:hidden;
-            text-overflow:ellipsis;
-            font:500 15px Tajawal,Arial,sans-serif;
-            color:#eef4e2;
-            transition:transform .38s cubic-bezier(.2,1.3,.4,1);
-        }
-
-        .yt-tool-pill span:first-child{
-            overflow:hidden;
-            text-overflow:ellipsis;
-            white-space:nowrap;
-        }
-
-        .yt-tool-pill .yt-dot{
-            width:8px;
-            height:8px;
-            border-radius:50%;
-            background:${THEME};
+            background:linear-gradient(100deg,${THEME},#b8ec52);
             flex-shrink:0;
+        }
+
+        #yt-tool-panel-header .yt-panel-icon{
+            width:34px;
+            height:34px;
+            border-radius:10px;
+            background:rgba(255,255,255,.55);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:17px;
+            flex-shrink:0;
+        }
+
+        #yt-tool-panel-header .yt-panel-title{
+            font:800 15px Tajawal,Arial,sans-serif;
+            color:#3c4a10;
+        }
+
+        #yt-tool-panel-list{
+            overflow-y:auto;
+            padding:8px;
+        }
+
+        .yt-tool-row{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            padding:11px 12px;
+            border-radius:12px;
+            cursor:pointer;
+            font:600 13.5px Tajawal,Arial,sans-serif;
+            color:#1c1c1a;
+            transition:background .12s ease,opacity .3s ease,transform .32s cubic-bezier(.34,1.56,.64,1);
+        }
+
+        .yt-tool-row:hover{
+            background:#f1f0ea;
+        }
+
+        .yt-tool-row .yt-dot{
+            width:7px;
+            height:7px;
+            border-radius:50%;
+            background:linear-gradient(160deg,${THEME},#79a916);
+            flex-shrink:0;
+            transition:transform .18s cubic-bezier(.34,1.56,.64,1);
+        }
+
+        .yt-tool-row:hover .yt-dot{
+            transform:scale(1.35);
         }
 
         `;
