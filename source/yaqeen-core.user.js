@@ -371,6 +371,17 @@
     const PERMISSIONS_CACHE_MS = 60 * 1000; // دقيقة وحدة - سحب صلاحية موظف يتطبق بسرعة معقولة
 
     // ============================================================
+    // فحص تحديثات: نفس رابط @updateURL بالضبط - نجيب نص الملف المنشور
+    // فعلياً على السيرفر ونقارن رقم @version اللي فيه مع نسخة هذا الموظف
+    // الحالية (SCRIPT_VERSION). رقم النسخة تاريخ UTC بصيغة YYYY.MMDD.HHMM
+    // (يتولد وقت البناء بـbuild-bundle.sh)، فمقارنة نصية بسيطة (>) كافية
+    // وصحيحة لمعرفة أيهما أحدث
+    // ============================================================
+    const UPDATE_SCRIPT_URL = "https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js";
+    const UPDATE_CHECK_INTERVAL_MS = 20 * 60 * 1000;
+    const UPDATE_STATE = { available: false };
+
+    // ============================================================
     // اختيار جلسة الواتساب النشطة (لو فيه أكثر من رقم مربوط بالبوت) - إعداد
     // عام واحد يطبّق على كل الأدوات اللي ترسل واتساب، مخزّن محلياً بنفس
     // الجهاز/المتصفح. القيمة الافتراضية "main" لو الموظف ما اختار شي بعد
@@ -541,6 +552,39 @@
         });
     }
 
+    /** GET نص خام عبر GM_xmlhttpRequest (يتفادى قيود CORS) مع fetch كحل احتياطي */
+    function fetchText(url) {
+        return new Promise(resolve => {
+            if (typeof GM_xmlhttpRequest !== "undefined") {
+                GM_xmlhttpRequest({
+                    method: "GET",
+                    url: url,
+                    onload: function (response) { resolve(response.responseText || null); },
+                    onerror: function () { resolve(null); },
+                });
+                return;
+            }
+            fetch(url)
+                .then(res => res.text())
+                .then(resolve)
+                .catch(() => resolve(null));
+        });
+    }
+
+    /** يفحص لو فيه نسخة أحدث منشورة على السيرفر عن النسخة المثبتة حالياً، ويحدّث شارة الإشعار */
+    function checkForScriptUpdate() {
+        if (SCRIPT_VERSION === "unknown") return;
+        fetchText(UPDATE_SCRIPT_URL).then(text => {
+            if (!text) return;
+            const match = /@version\s+(\S+)/.exec(text);
+            if (!match) return;
+            if (match[1] > SCRIPT_VERSION) {
+                UPDATE_STATE.available = true;
+                updateUpdateBadge();
+            }
+        });
+    }
+
     /** نتيجة مخزّنة بـsessionStorage صالحة لآخر دقيقة - نتفادى طلب API بكل تحميل صفحة */
     function readCachedPermissions() {
         try {
@@ -574,10 +618,35 @@
         const available = HOST_WINDOW.YAQEEN_TOOLS.availableSessions || [];
         if (available.length < 2) {
             badge.style.display = "none";
-            return;
+        } else {
+            badge.style.display = "block";
+            badge.textContent = "📶 " + HOST_WINDOW.YAQEEN_TOOLS.activeSessionId;
         }
-        badge.style.display = "block";
-        badge.textContent = "📶 " + HOST_WINDOW.YAQEEN_TOOLS.activeSessionId;
+        layoutFabBadges();
+    }
+
+    /** يحدّث شكل شارة "فيه تحديث جديد" فوق الليمونة - تظهر بس لو checkForScriptUpdate لقى نسخة أحدث */
+    function updateUpdateBadge() {
+        const badge = document.getElementById("yt-update-badge");
+        if (!badge) return;
+        badge.style.display = UPDATE_STATE.available ? "block" : "none";
+        layoutFabBadges();
+    }
+
+    /** يرتّب شارتي (الجلسة + التحديث) فوق بعض فوق زر الليمونة بدون ما تتلاخبط لو الاثنتين ظاهرتين مع بعض */
+    function layoutFabBadges() {
+        const sessionBadge = document.getElementById("yt-session-badge");
+        const updateBadge = document.getElementById("yt-update-badge");
+        if (!sessionBadge || !updateBadge) return;
+
+        let next = 176;
+        if (updateBadge.style.display !== "none") {
+            updateBadge.style.bottom = next + "px";
+            next += 46;
+        }
+        if (sessionBadge.style.display !== "none") {
+            sessionBadge.style.bottom = next + "px";
+        }
     }
 
     function applyAllowedTools(tools, sessionToken, sessionExpiresAt, waSessions) {
@@ -751,6 +820,23 @@
         updateSessionBadge();
 
 
+        // شارة "فيه تحديث جديد" فوق الليمونة - تظهر بس لو checkForScriptUpdate
+        // لقى نسخة أحدث منشورة على السيرفر عن النسخة المثبتة حالياً. الضغط
+        // عليها يفتح رابط تثبيت النسخة الجديدة (نفس @updateURL) بتبويب جديد
+        // - Tampermonkey يتعرف عليه تلقائياً ويعرض نافذته الأصلية لتأكيد
+        // التحديث. ما فيه طريقة يحدّث السكربت المثبت نفسه فوراً من داخل
+        // الصفحة بدون هذا التأكيد (Tampermonkey ما يوفر أي API لذلك)
+
+        const updateBadge = document.createElement("div");
+        updateBadge.id = "yt-update-badge";
+        updateBadge.textContent = "🔔 تحديث جديد";
+        updateBadge.style.display = "none";
+        updateBadge.onclick = () => {
+            window.open(UPDATE_SCRIPT_URL, "_blank");
+        };
+        document.body.appendChild(updateBadge);
+
+
         // التصميم
 
         const style = document.createElement("style");
@@ -789,7 +875,31 @@
             cursor:pointer;
             box-shadow:0 4px 12px rgba(0,0,0,.25);
             white-space:nowrap;
+            transition:bottom .2s ease;
             z-index:100000000;
+        }
+
+        #yt-update-badge{
+            display:none;
+            position:fixed;
+            right:62px;
+            bottom:176px;
+            background:#b45309;
+            color:#fff;
+            font:700 15px Tajawal,Arial,sans-serif;
+            padding:7px 15px;
+            border-radius:999px;
+            cursor:pointer;
+            box-shadow:0 4px 12px rgba(180,83,9,.45);
+            white-space:nowrap;
+            transition:bottom .2s ease;
+            animation:yt-update-pulse 1.8s ease-in-out infinite;
+            z-index:100000000;
+        }
+
+        @keyframes yt-update-pulse{
+            0%,100%{ box-shadow:0 4px 12px rgba(180,83,9,.45); }
+            50%{ box-shadow:0 4px 18px rgba(180,83,9,.85); }
         }
 
         #yt-fab img{
@@ -1008,6 +1118,11 @@
     // تحديث دوري كل 20 دقيقة - يجدد توكن الجلسة قبل انتهاءه (صالح 4 ساعات)
     // لو الموظف سايب التبويب مفتوح لمدة طويلة بدون إعادة تحميل الصفحة
     setInterval(loadUserPermissions, 20 * 60 * 1000);
+
+    // فحص دوري لوجود نسخة أداة أحدث منشورة - نفس فكرة تجديد التوكن فوق،
+    // مفيد لو الموظف سايب التبويب مفتوح أياماً بدون Refresh
+    checkForScriptUpdate();
+    setInterval(checkForScriptUpdate, UPDATE_CHECK_INTERVAL_MS);
 
 
     // اختصارات لوحة المفاتيح - نتجاهل الحدث لو المستخدم يكتب بحقل نص/textarea
