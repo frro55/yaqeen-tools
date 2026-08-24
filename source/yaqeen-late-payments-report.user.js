@@ -791,7 +791,7 @@
         'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
         'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
         '.yq-btn-labeled:hover{background:#e5e2d5;}' +
-        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send{background:#2563eb;color:#fff;}' +
         '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
         '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
         '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
@@ -1232,8 +1232,8 @@
             '<button id="late-payments-copy" class="yq-icon-btn" title="نسخ الجدول">📋</button>' +
             '<button id="late-payments-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
             '<button id="late-payments-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
-            '<button id="late-payments-send-all" class="yq-btn-labeled yq-btn-labeled--send">📤 إرسال للجميع</button>' +
-            '<button id="late-payments-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
+            '<button id="late-payments-send-all" class="yq-btn-labeled yq-btn-labeled--send">📤 إرسال رابط للعملاء</button>' +
+            '<button id="late-payments-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال التقرير للقروب</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);

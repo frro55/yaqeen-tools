@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0824.0039
+// @version      2026.0824.0042
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -4903,7 +4903,7 @@ ${rowsHtml}
         'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
         'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
         '.yq-btn-labeled:hover{background:#e5e2d5;}' +
-        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send{background:#2563eb;color:#fff;}' +
         '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
         '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
         '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
@@ -5344,8 +5344,8 @@ ${rowsHtml}
             '<button id="late-payments-copy" class="yq-icon-btn" title="نسخ الجدول">📋</button>' +
             '<button id="late-payments-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
             '<button id="late-payments-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
-            '<button id="late-payments-send-all" class="yq-btn-labeled yq-btn-labeled--send">📤 إرسال للجميع</button>' +
-            '<button id="late-payments-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
+            '<button id="late-payments-send-all" class="yq-btn-labeled yq-btn-labeled--send">📤 إرسال رابط للعملاء</button>' +
+            '<button id="late-payments-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال التقرير للقروب</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
@@ -6219,7 +6219,7 @@ ${rowsHtml}
         'font-weight:800;font-family:inherit;display:inline-flex;align-items:center;gap:6px;' +
         'background:#f1f0ea;color:#1c1c1a;transition:background .15s;}' +
         '.yq-btn-labeled:hover{background:#e5e2d5;}' +
-        '.yq-btn-labeled--send{background:#16a34a;color:#fff;}' +
+        '.yq-btn-labeled--send{background:#2563eb;color:#fff;}' +
         '.yq-btn-labeled--send:hover{filter:brightness(1.06);}' +
         '.yq-btn-labeled--whatsapp{background:linear-gradient(160deg,#25D366,#16a34a);color:#fff;}' +
         '.yq-btn-labeled--whatsapp:hover{filter:brightness(1.06);}' +
@@ -6692,8 +6692,8 @@ ${rowsHtml}
             '<button id="late-payments-print" class="yq-icon-btn" title="طباعة التقرير">🖨️</button>' +
             '<button id="late-payments-refresh" class="yq-icon-btn" title="تحديث">🔄</button>' +
             '<button id="late-payments-change-branch" class="yq-btn-labeled">🏢 تغيير الفروع</button>' +
-            '<button id="late-payments-send-all" class="yq-btn-labeled yq-btn-labeled--send">📤 إرسال للجميع</button>' +
-            '<button id="late-payments-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال</button>' +
+            '<button id="late-payments-send-all" class="yq-btn-labeled yq-btn-labeled--send">📤 إرسال رابط للعملاء</button>' +
+            '<button id="late-payments-whatsapp" class="yq-btn-labeled yq-btn-labeled--whatsapp">📱 إرسال التقرير للقروب</button>' +
             '</div></div></div>';
 
         document.body.insertAdjacentHTML('beforeend', html);
