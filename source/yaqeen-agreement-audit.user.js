@@ -1,0 +1,492 @@
+// ==UserScript==
+// @name         Yaqeen Tool - تدقيق الاتفاقيات
+// @namespace    https://yaqeen.lumirental.com/
+// @version      1.0
+// @description  يفحص كل اتفاقيات B2B بمدة معيّنة ويطلع بس اللي فتحها/قفلها موظف معيّن
+// @author       Firas
+// @match        https://yaqeen.lumirental.com/*
+// @grant        unsafeWindow
+// @run-at       document-end
+// @updateURL    https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
+// @downloadURL  https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
+// ==/UserScript==
+
+(function () {
+
+    'use strict';
+
+    var HOST_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+
+    function waitCore() {
+        if (!HOST_WINDOW.YAQEEN_TOOLS) {
+            setTimeout(waitCore, 500);
+            return;
+        }
+        HOST_WINDOW.YAQEEN_TOOLS.add({
+            id: "agreement-audit",
+            name: "🔍 تدقيق اتفاقياتي",
+            run() {
+                showAuditForm();
+            }
+        });
+    }
+
+    // ==========================================================
+    // نظام تصميم موحّد (YQ) - نفس المستخدم بباقي الأدوات
+    // ==========================================================
+
+    const YQ_CSS =
+        '.yq-overlay{position:fixed;inset:0;z-index:999999999;background:rgba(20,18,12,.42);' +
+        'display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-card{width:100%;background:#fff;border-radius:22px;text-align:center;' +
+        'direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.35);color:#1c1c1a;max-height:90vh;overflow-y:auto;box-sizing:border-box;}' +
+        '.yq-card.yq-pad{padding:28px 26px;}' +
+        '.yq-card h3{margin:0 0 6px;font-size:17px;font-weight:800;}' +
+        '.yq-card-header{border-radius:22px 22px 0 0;padding:20px 24px;' +
+        'background:linear-gradient(100deg,#A3E635,#b8ec52);color:#3c4a10;font-size:17px;font-weight:800;}' +
+        '.yq-card-body{padding:24px;}' +
+        '.yq-desc{margin:14px 0;text-align:right;font-size:14px;color:#767068;line-height:1.9;}' +
+        '.yq-field-wrap{text-align:right;margin-bottom:12px;}' +
+        '.yq-field-wrap label{display:block;font-size:13px;font-weight:700;color:#767068;margin-bottom:5px;}' +
+        '.yq-field{width:100%;padding:12px;border:1.5px solid #cec7b4;border-radius:12px;font-size:15px;' +
+        'box-sizing:border-box;font-family:inherit;background:#fbfbf9;color:#1c1c1a;}' +
+        '.yq-field.yq-field-err{border-color:#dc2626;}' +
+        '.yq-btn{width:100%;padding:13px;margin-top:10px;border:0;border-radius:13px;cursor:pointer;' +
+        'font-size:15px;font-weight:800;font-family:inherit;}' +
+        '.yq-btn-primary{background:linear-gradient(160deg,#A3E635,#79a916);color:#3c4a10;' +
+        'box-shadow:0 8px 16px -8px rgba(121,169,22,.55);}' +
+        '.yq-btn-secondary{background:#f1f0ea;color:#767068;}' +
+        '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
+        'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
+        '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
+        '.yq-toast-wrap{position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:999999999;' +
+        'display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);font-family:"Tajawal",Arial,Tahoma,sans-serif;}' +
+        '.yq-toast{background:#fff;border-radius:14px;box-shadow:0 16px 34px -12px rgba(0,0,0,.25);' +
+        'padding:14px 16px;display:flex;align-items:center;gap:11px;direction:rtl;' +
+        'border-inline-start:5px solid #16a34a;animation:yq-toast-in .25s ease;}' +
+        '.yq-toast.err{border-inline-start-color:#dc2626;}' +
+        '.yq-toast-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;' +
+        'justify-content:center;font-size:16px;flex-shrink:0;background:#eaf7e9;}' +
+        '.yq-toast.err .yq-toast-icon{background:#fdecec;}' +
+        '.yq-toast-text{flex:1;text-align:right;font-size:13.5px;font-weight:700;line-height:1.6;color:#1c1c1a;}' +
+        '.yq-toast-close{background:none;border:0;color:#a19c92;font-size:14px;cursor:pointer;padding:4px;flex-shrink:0;}' +
+        '@keyframes yq-toast-in{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}' +
+        '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
+        '.yq-btn-secondary:hover{background:#e5e2d5;}' +
+        '.yq-btn-primary:hover{filter:brightness(1.06);}' +
+        '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}' +
+        '.aud-progress-bar{height:8px;border-radius:999px;background:#eee9da;overflow:hidden;margin:14px 0;}' +
+        '.aud-progress-fill{height:100%;background:linear-gradient(90deg,#A3E635,#79a916);transition:width .2s ease;}' +
+        '.aud-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;' +
+        'border:1px solid #eee9da;border-radius:12px;margin-bottom:8px;text-align:right;font-size:13px;}' +
+        '.aud-row b{font-size:13.5px;}' +
+        '.aud-tag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;}' +
+        '.aud-tag.open{background:#dcfce7;color:#16a34a;}' +
+        '.aud-tag.close{background:#dbeafe;color:#2563eb;}' +
+        '.aud-empty{color:#a19c92;font-size:13.5px;padding:20px;}';
+
+    function injectYqStyles() {
+        if (document.getElementById('yq-shared-styles-agreement-audit')) return;
+        const style = document.createElement('style');
+        style.id = 'yq-shared-styles-agreement-audit';
+        style.textContent = YQ_CSS;
+        document.head.appendChild(style);
+    }
+
+    /** إشعار خفيف يختفي تلقائياً */
+    function showToast(message, type) {
+        injectYqStyles();
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.className = 'yq-toast-wrap';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'yq-toast' + (type === 'error' ? ' err' : '');
+        toast.innerHTML =
+            '<div class="yq-toast-icon">' + (type === 'error' ? '⚠️' : '✅') + '</div>' +
+            '<div class="yq-toast-text"></div>' +
+            '<button class="yq-toast-close">✕</button>';
+        toast.querySelector('.yq-toast-text').textContent = message;
+        wrap.appendChild(toast);
+        const remove = () => { toast.remove(); if (!wrap.children.length) wrap.remove(); };
+        toast.querySelector('.yq-toast-close').onclick = remove;
+        setTimeout(remove, type === 'error' ? 6000 : 4000);
+    }
+
+    // ==========================================================
+    // أدوات iframe المخفي (نفس المستخدمة بأداة الإيميل)
+    // ==========================================================
+
+    function openHiddenFrame(url) {
+        const iframe = document.createElement("iframe");
+        iframe.src = url;
+        iframe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1100px;height:750px;border:0;opacity:0;pointer-events:none;";
+        document.body.appendChild(iframe);
+        return iframe;
+    }
+
+    /** يستنى حتى checkFn(doc) ترجع قيمة غير فارغة (أو تنتهي المهلة) */
+    function waitForFrame(iframe, checkFn, timeoutMs) {
+        timeoutMs = timeoutMs || 15000;
+        return new Promise(resolve => {
+            const start = Date.now();
+            (function poll() {
+                if (!iframe.isConnected) { resolve(null); return; }
+                let doc;
+                try {
+                    doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+                } catch (err) { resolve(null); return; }
+                let result = null;
+                try { result = doc && checkFn(doc); } catch (err) { /* تجاهل */ }
+                if (result) { resolve(result); return; }
+                if (Date.now() - start > timeoutMs) { resolve(null); return; }
+                setTimeout(poll, 250);
+            })();
+        });
+    }
+
+    function normalizeArabic(text) {
+        return (text || '')
+            .replace(/[ً-ْ]/g, '')
+            .replace(/[إأآا]/g, 'ا')
+            .replace(/ى/g, 'ي')
+            .replace(/ة/g, 'ه')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function findColumnIndex(headerCells, labelVariants) {
+        const normalizedVariants = labelVariants.map(normalizeArabic);
+        for (let i = 0; i < headerCells.length; i++) {
+            const headerText = normalizeArabic(headerCells[i].textContent);
+            if (normalizedVariants.some(v => headerText.indexOf(v) !== -1)) return i;
+        }
+        return -1;
+    }
+
+    function findFirstTableRow(doc) {
+        const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
+        if (!table) return null;
+        return table.querySelector("tbody tr");
+    }
+
+    /** بعض قوائم يقين (Radix UI) ما تنفتح بـ.click() لحاله - تحتاج أحداث pointer حقيقية قبلها */
+    function dispatchFullClick(el, win) {
+        try {
+            el.dispatchEvent(new win.PointerEvent("pointerdown", { bubbles: true }));
+            el.dispatchEvent(new win.PointerEvent("pointerup", { bubbles: true }));
+        } catch (err) { /* تجاهل */ }
+        el.click();
+    }
+
+    // ==========================================================
+    // قراءة فواتير B2B (مصدر أرقام الاتفاقيات بالمدة المطلوبة)
+    // ==========================================================
+
+    /** يبني رابط صفحة فواتير B2B لرقم صفحة معيّن (0 = الأولى، بدون باراميتر pageNumber) */
+    function buildInvoicesUrl(branchId, fromDate, toDate, pageNumber) {
+        let url = `https://yaqeen.lumirental.com/rental/branches/${branchId}/financials/invoices/b2b-invoices` +
+            `?branchIds=${branchId}&issueDate=${fromDate},${toDate}&pageSize=500`;
+        if (pageNumber > 0) url += `&pageNumber=${pageNumber}`;
+        return url;
+    }
+
+    /** يسحب كل أرقام اتفاقيات B2B الفريدة بالمدة، ويجمع مبلغ كل فواتيرها (اتفاقية ممكن يكون لها أكثر من فاتورة - رسوم تمديد مثلاً) */
+    async function fetchAllAgreementNumbers(branchId, fromDate, toDate, onProgress) {
+        const frame = openHiddenFrame("about:blank");
+        const byAgreement = new Map(); // agreementNo -> مجموع مبالغ فواتيره
+        let truncated = false;
+        try {
+            let pageNumber = 0;
+            while (true) {
+                onProgress && onProgress(`جارٍ جلب صفحة الفواتير رقم ${pageNumber + 1}...`);
+                frame.src = buildInvoicesUrl(branchId, fromDate, toDate, pageNumber);
+                const doc = await waitForFrame(frame, d => (
+                    d.querySelectorAll("table tbody tr").length > 0 || d.body.innerText.includes("لا يوجد")
+                ) ? d : null, 20000);
+                if (!doc) break;
+
+                const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
+                if (!table) break;
+
+                const headerCells = Array.from(table.querySelectorAll("thead tr th, thead tr td"));
+                const agreementIdx = findColumnIndex(headerCells, ["رقم الاتفاقية"]);
+                const amountIdx = findColumnIndex(headerCells, ["المبلغ"]);
+                if (agreementIdx === -1) break;
+
+                const rows = Array.from(table.querySelectorAll("tbody tr"));
+                if (!rows.length) break;
+
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll("td");
+                    const agreementNo = (cells[agreementIdx]?.textContent || "").trim();
+                    if (!agreementNo) return;
+                    const amountText = amountIdx !== -1 ? (cells[amountIdx]?.textContent || "").trim() : "";
+                    const amountNum = parseFloat(amountText.replace(/[^\d.]/g, "")) || 0;
+                    byAgreement.set(agreementNo, (byAgreement.get(agreementNo) || 0) + amountNum);
+                });
+
+                if (rows.length < 500) break; // آخر صفحة (أقل من الحد الأقصى)
+                pageNumber++;
+                if (pageNumber > 20) { truncated = true; break; } // حد أمان يمنع حلقة لا نهائية
+            }
+        } finally {
+            frame.remove();
+        }
+        const list = Array.from(byAgreement, ([agreementNo, amountSum]) => ({
+            agreementNo,
+            amount: amountSum ? amountSum.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "",
+        }));
+        return { list, truncated };
+    }
+
+    // ==========================================================
+    // فحص اتفاقية وحدة: يفتح "..." ← "تنزيل الاتفاقية"، يلقط نافذة
+    // الطباعة قبل ما تفتح فعلياً، ويقرأ منها Opened By / Closed By
+    // ==========================================================
+
+    /** يعترض window.open بالإطار عشان يمسك مرجع نافذة الطباعة ويمنعها تفتح فعلياً */
+    function captureNextPopup(win) {
+        return new Promise(resolve => {
+            const originalOpen = win.open;
+            win.open = function (...args) {
+                const popup = originalOpen.apply(win, args);
+                win.open = originalOpen;
+                if (popup) {
+                    try { popup.print = function () { /* منع نافذة الطباعة الفعلية */ }; } catch (err) { /* تجاهل */ }
+                }
+                resolve(popup);
+                return popup;
+            };
+            // مهلة سخية: قائمة "..." وحدها ممكن تاخذ لين 3 ثواني قبل حتى نضغط زر التنزيل
+            setTimeout(() => {
+                if (win.open !== originalOpen) { win.open = originalOpen; resolve(null); }
+            }, 15000);
+        });
+    }
+
+    /** يستنى حتى popup.document.body يحتوي "Opened By" (أو تنتهي المهلة) */
+    function waitForPopupContent(popup, timeoutMs) {
+        timeoutMs = timeoutMs || 8000;
+        return new Promise(resolve => {
+            const start = Date.now();
+            (function poll() {
+                if (!popup || popup.closed) { resolve(null); return; }
+                let text = "";
+                try { text = popup.document.body.innerText || ""; } catch (err) { resolve(null); return; }
+                if (text.includes("Opened By")) { resolve(text); return; }
+                if (Date.now() - start > timeoutMs) { resolve(text || null); return; }
+                setTimeout(poll, 200);
+            })();
+        });
+    }
+
+    // بقية تسميات الحقول المجاورة بنفس نموذج الاتفاقية - نوقف الاستخراج عند
+    // أقربها حتى ما تتسرب قيمة حقل ثاني (مثلاً "Closed By") لداخل نتيجة الحقل الحالي
+    const AGREEMENT_FIELD_LABELS = ["Opened By", "Closed By", "Checked By on Exit", "Checked By on Entry", "Renter Sign"];
+
+    /** يستخرج القيمة اللي بعد تسمية معيّنة (Opened By / Closed By) من نص الاتفاقية الكامل */
+    function extractFieldAfterLabel(fullText, label) {
+        const idx = fullText.indexOf(label);
+        if (idx === -1) return "";
+        const searchStart = idx + label.length;
+        let boundary = searchStart + 120;
+        AGREEMENT_FIELD_LABELS.forEach(other => {
+            if (other === label) return;
+            const otherIdx = fullText.indexOf(other, searchStart);
+            if (otherIdx !== -1 && otherIdx < boundary) boundary = otherIdx;
+        });
+        const after = fullText.slice(searchStart, boundary);
+        const match = /(\d{4,10}\s+[A-Za-z][A-Za-z .'-]{2,40})/.exec(after);
+        return match ? match[1].trim() : "";
+    }
+
+    /** يفحص اتفاقية وحدة: يرجّع {agreementNo, openedBy, closedBy} أو null لو تعذّر الفحص */
+    async function checkOneAgreement(branchId, agreementNo) {
+        const frame = openHiddenFrame(
+            `https://yaqeen.lumirental.com/rental/branches/${branchId}/bookings?agreementNo=${encodeURIComponent(agreementNo)}`
+        );
+        try {
+            const doc1 = await waitForFrame(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
+            if (!doc1) return null;
+
+            const row = findFirstTableRow(doc1);
+            if (!row) return null;
+
+            const win = frame.contentWindow;
+            const menuTrigger = row.querySelector('[aria-haspopup="menu"]') || row.querySelector("button");
+            if (!menuTrigger) return null;
+
+            const popupPromise = captureNextPopup(win);
+            dispatchFullClick(menuTrigger, win);
+
+            // القائمة قد تاخذ وقت شوي تنفتح (أنيميشن)
+            let downloadBtn = null;
+            const menuStart = Date.now();
+            while (!downloadBtn && Date.now() - menuStart < 3000) {
+                const matches = Array.from(win.document.querySelectorAll('[role="menuitem"], button'))
+                    .filter(b => b.textContent.includes("تنزيل الاتفاقية"));
+                downloadBtn = matches.length ? matches[matches.length - 1] : null;
+                if (!downloadBtn) await new Promise(r => setTimeout(r, 200));
+            }
+            if (!downloadBtn) return null;
+            dispatchFullClick(downloadBtn, win);
+
+            const popup = await popupPromise;
+            if (!popup) return null;
+
+            const fullText = await waitForPopupContent(popup);
+            try { popup.close(); } catch (err) { /* تجاهل */ }
+            if (!fullText) return null;
+
+            return {
+                agreementNo,
+                openedBy: extractFieldAfterLabel(fullText, "Opened By"),
+                closedBy: extractFieldAfterLabel(fullText, "Closed By"),
+            };
+        } finally {
+            frame.remove();
+        }
+    }
+
+    // ==========================================================
+    // واجهة الأداة
+    // ==========================================================
+
+    function showAuditForm() {
+        document.getElementById("aud-box")?.remove();
+        injectYqStyles();
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const html = `
+<div id="aud-box" class="yq-overlay">
+<div class="yq-card yq-pad" style="max-width:380px;">
+<h3>🔍 تدقيق اتفاقياتي</h3>
+<div class="yq-desc">يفحص كل اتفاقيات B2B بالمدة المحددة ويطلع لك بس اللي فتحتها أو قفلتها أنت.</div>
+<div class="yq-field-wrap"><label>الفرع</label><input type="text" class="yq-field" id="aud-branch" value="29"></div>
+<div class="yq-field-wrap"><label>من تاريخ</label><input type="date" class="yq-field" id="aud-from" value="${yyyy}-01-01"></div>
+<div class="yq-field-wrap"><label>إلى تاريخ</label><input type="date" class="yq-field" id="aud-to" value="${yyyy}-03-31"></div>
+<div class="yq-field-wrap"><label>ابحث عن (اسمك أو رقم موظفك)</label><input type="text" class="yq-field" id="aud-name" placeholder="مثال: Ahmed Almalki أو 13106197"></div>
+<button class="yq-btn yq-btn-primary" id="aud-start">ابدأ الفحص</button>
+<button class="yq-btn yq-btn-secondary" id="aud-cancel-form">إلغاء</button>
+</div>
+</div>`;
+        document.body.insertAdjacentHTML("beforeend", html);
+
+        document.getElementById("aud-cancel-form").onclick = () => document.getElementById("aud-box")?.remove();
+        document.getElementById("aud-start").onclick = () => {
+            const branch = document.getElementById("aud-branch").value.trim();
+            const from = document.getElementById("aud-from").value;
+            const to = document.getElementById("aud-to").value;
+            const name = document.getElementById("aud-name").value.trim();
+            if (!branch || !from || !to || !name) {
+                showToast("عبّي كل الحقول أول", "error");
+                return;
+            }
+            document.getElementById("aud-box")?.remove();
+            runAudit(branch, from, to, name);
+        };
+    }
+
+    function showProgress(text, done, total) {
+        document.getElementById("aud-box")?.remove();
+        injectYqStyles();
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        const html = `
+<div id="aud-box" class="yq-overlay">
+<div class="yq-card yq-pad" style="max-width:340px;">
+<div class="yq-spinner"></div>
+<div style="font-size:14.5px;font-weight:700;">${text}</div>
+<div class="aud-progress-bar"><div class="aud-progress-fill" style="width:${pct}%"></div></div>
+<div style="font-size:12.5px;color:#a19c92;">${done} / ${total}</div>
+<button class="yq-btn yq-btn-secondary" id="aud-stop">إيقاف</button>
+</div>
+</div>`;
+        document.body.insertAdjacentHTML("beforeend", html);
+        document.getElementById("aud-stop").onclick = () => { AUDIT_STATE.cancelled = true; };
+    }
+
+    function showResults(nameQuery, matches, totalChecked) {
+        document.getElementById("aud-box")?.remove();
+        injectYqStyles();
+        const rowsHtml = matches.length
+            ? matches.map(m => `
+                <div class="aud-row">
+                    <div>
+                        <b>${m.agreementNo}</b> — ${m.amount ? m.amount + " ر.س" : ""}
+                        <div style="color:#a19c92;font-size:11.5px;">
+                            ${m.openedByMatch ? "فتح: " + m.openedBy : ""}
+                            ${m.closedByMatch ? " قفل: " + m.closedBy : ""}
+                        </div>
+                    </div>
+                    <div>
+                        ${m.openedByMatch ? '<span class="aud-tag open">فتح</span>' : ""}
+                        ${m.closedByMatch ? '<span class="aud-tag close">قفل</span>' : ""}
+                    </div>
+                </div>`).join("")
+            : `<div class="aud-empty">ما لقيت أي اتفاقية عليها "${nameQuery}"</div>`;
+
+        const html = `
+<div id="aud-box" class="yq-overlay">
+<div class="yq-card" style="max-width:460px;">
+<div class="yq-card-header">نتيجة التدقيق</div>
+<div class="yq-card-body">
+<div class="yq-desc" style="margin-top:0;">فُحصت ${totalChecked} اتفاقية، ولُقي ${matches.length} عليها "${nameQuery}"</div>
+${rowsHtml}
+<button class="yq-btn yq-btn-secondary" id="aud-close">إغلاق</button>
+</div>
+</div>
+</div>`;
+        document.body.insertAdjacentHTML("beforeend", html);
+        document.getElementById("aud-close").onclick = () => document.getElementById("aud-box")?.remove();
+    }
+
+    const AUDIT_STATE = { cancelled: false };
+
+    async function runAudit(branchId, fromDate, toDate, nameQuery) {
+        AUDIT_STATE.cancelled = false;
+        showProgress("جارٍ جلب قائمة اتفاقيات B2B...", 0, 0);
+
+        const { list: agreements, truncated } = await fetchAllAgreementNumbers(branchId, fromDate, toDate, text => {
+            if (!AUDIT_STATE.cancelled) showProgress(text, 0, 0);
+        });
+
+        if (truncated) {
+            showToast("تحذير: عدد الاتفاقيات كبير جداً، النتيجة قد تكون ناقصة (وصلنا لحد أقصى 10,500 صف) - قسّم المدة لفترات أصغر لنتيجة كاملة", "error");
+        }
+
+        if (!agreements.length) {
+            document.getElementById("aud-box")?.remove();
+            showToast("ما لقيت أي اتفاقية B2B بهذي المدة", "error");
+            return;
+        }
+
+        const normQuery = normalizeArabic(nameQuery).toLowerCase();
+        const matches = [];
+        let checked = 0;
+
+        for (const item of agreements) {
+            if (AUDIT_STATE.cancelled) break;
+            showProgress(`جارٍ فحص الاتفاقية ${item.agreementNo}...`, checked, agreements.length);
+
+            const result = await checkOneAgreement(branchId, item.agreementNo);
+            checked++;
+
+            if (result) {
+                const openedByMatch = result.openedBy && normalizeArabic(result.openedBy).toLowerCase().includes(normQuery);
+                const closedByMatch = result.closedBy && normalizeArabic(result.closedBy).toLowerCase().includes(normQuery);
+                if (openedByMatch || closedByMatch) {
+                    matches.push({ ...item, ...result, openedByMatch, closedByMatch });
+                }
+            }
+        }
+
+        showResults(nameQuery, matches, checked);
+    }
+
+    waitCore();
+
+})();

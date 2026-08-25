@@ -68,6 +68,7 @@
         "email-tools",
         "customer-whatsapp-messages",
         "ai-chat",
+        "agreement-audit",
     ];
 
     // تجميع الأدوات بمجموعات قابلة للطي بالقائمة - شكلي بحت، ما يأثر على الصلاحيات
@@ -87,6 +88,7 @@
         "email-tools": "other",
         "customer-whatsapp-messages": "other",
         "ai-chat": "other",
+        "agreement-audit": "other",
     };
     const GROUP_META = {
         fleet: { glyph: "🚗", label: "الأسطول" },
