@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0825.0405
+// @version      2026.0825.0410
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1307,9 +1307,11 @@
                     byAgreement.set(agreementNo, (byAgreement.get(agreementNo) || 0) + amountNum);
                 });
 
-                if (rows.length < 500) break; // آخر صفحة (أقل من الحد الأقصى)
+                // نكمل للصفحة التالية دايماً (السيرفر ممكن يحدد حد أقصى للصف بالصفحة أقل من
+                // pageSize المطلوب - شفناها فعلياً ترجع 100 صف رغم طلب 500)، ونتوقف بس
+                // لما صفحة ترجع فاضية فعلاً (rows.length === 0 بأعلى الحلقة)
                 pageNumber++;
-                if (pageNumber > 20) { truncated = true; break; } // حد أمان يمنع حلقة لا نهائية
+                if (pageNumber > 50) { truncated = true; break; } // حد أمان يمنع حلقة لا نهائية
             }
         } finally {
             frame.remove();
