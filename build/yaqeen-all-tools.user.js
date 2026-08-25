@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0825.0416
+// @version      2026.0825.0418
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1250,6 +1250,35 @@
     // قراءة فواتير B2B (مصدر أرقام الاتفاقيات بالمدة المطلوبة)
     // ==========================================================
 
+    /** يستنى جدول الفواتير حتى عدد صفوفه يثبت (ما يتغيّر) لـ3 فحوصات متتالية - صفحة الفواتير
+     * تحمّل صفوفها تدريجياً (streaming)، فأول ظهور لصف وحد مو دليل إن التحميل خلص */
+    function waitForStableRowCount(iframe, timeoutMs) {
+        timeoutMs = timeoutMs || 25000;
+        return new Promise(resolve => {
+            const start = Date.now();
+            let lastCount = -1;
+            let stableStreak = 0;
+            (function poll() {
+                if (!iframe.isConnected) { resolve(null); return; }
+                let doc;
+                try {
+                    doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+                } catch (err) { resolve(null); return; }
+                if (doc && doc.body.innerText.includes("لا يوجد")) { resolve(doc); return; }
+                const count = doc ? doc.querySelectorAll("table tbody tr").length : 0;
+                if (count > 0 && count === lastCount) {
+                    stableStreak++;
+                    if (stableStreak >= 3) { resolve(doc); return; }
+                } else {
+                    stableStreak = 0;
+                }
+                lastCount = count;
+                if (Date.now() - start > timeoutMs) { resolve(doc || null); return; }
+                setTimeout(poll, 400);
+            })();
+        });
+    }
+
     /** يبني رابط صفحة فواتير B2B لرقم صفحة معيّن (0 = الأولى، بدون باراميتر pageNumber) */
     function buildInvoicesUrl(branchId, fromDate, toDate, pageNumber) {
         let url = `https://yaqeen.lumirental.com/rental/branches/${branchId}/financials/invoices/b2b-invoices` +
@@ -1263,6 +1292,8 @@
         const frame = openHiddenFrame("about:blank");
         const byAgreement = new Map(); // agreementNo -> مجموع مبالغ فواتيره
         let truncated = false;
+        let totalRowsSeen = 0;
+        let knownTotal = null; // "عرض 0-500 من 1,030" - نوقف بثقة لما نوصله بدل ما نخمّن
         try {
             let pageNumber = 0;
             while (true) {
@@ -1270,11 +1301,9 @@
                 const pageUrl = buildInvoicesUrl(branchId, fromDate, toDate, pageNumber);
                 console.log("[agreement-audit] تحميل:", pageUrl);
                 frame.src = pageUrl;
-                const doc = await waitForFrame(frame, d => (
-                    d.querySelectorAll("table tbody tr").length > 0 || d.body.innerText.includes("لا يوجد")
-                ) ? d : null, 20000);
+                const doc = await waitForStableRowCount(frame, 25000);
                 if (!doc) {
-                    console.log("[agreement-audit] توقف: الصفحة ما استجابت خلال 20 ثانية (لا جدول ولا رسالة \"لا يوجد\")");
+                    console.log("[agreement-audit] توقف: الصفحة ما استجابت خلال 25 ثانية");
                     break;
                 }
 
@@ -1298,6 +1327,13 @@
                 console.log("[agreement-audit] عدد الصفوف بهذي الصفحة:", rows.length);
                 if (!rows.length) break;
 
+                // نقرأ "عرض 0-500 من 1,030" (إن وُجدت) عشان نعرف نتوقف بثقة لما نغطي كل الصفوف،
+                // بدل ما نعتمد بس على صفحة فاضية (ممكن تاخذ وقت طويل تتأكد إنها فاضية فعلاً)
+                const totalMatch = /من\s+([\d,]+)/.exec(doc.body.innerText);
+                if (totalMatch) knownTotal = parseInt(totalMatch[1].replace(/,/g, ""), 10);
+                totalRowsSeen += rows.length;
+                console.log("[agreement-audit] إجمالي الصفوف المقروءة لين الآن:", totalRowsSeen, knownTotal ? `من أصل ${knownTotal}` : "");
+
                 rows.forEach(row => {
                     const cells = row.querySelectorAll("td");
                     const agreementNo = (cells[agreementIdx]?.textContent || "").trim();
@@ -1306,6 +1342,11 @@
                     const amountNum = parseFloat(amountText.replace(/[^\d.]/g, "")) || 0;
                     byAgreement.set(agreementNo, (byAgreement.get(agreementNo) || 0) + amountNum);
                 });
+
+                if (knownTotal !== null && totalRowsSeen >= knownTotal) {
+                    console.log("[agreement-audit] وصلنا كل الصفوف المعروفة، خلصنا");
+                    break;
+                }
 
                 // نكمل للصفحة التالية دايماً (السيرفر ممكن يحدد حد أقصى للصف بالصفحة أقل من
                 // pageSize المطلوب - شفناها فعلياً ترجع 100 صف رغم طلب 500)، ونتوقف بس
