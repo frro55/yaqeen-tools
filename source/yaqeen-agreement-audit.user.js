@@ -203,35 +203,21 @@
             let pageNumber = 0;
             while (true) {
                 onProgress && onProgress(`جارٍ جلب صفحة الفواتير رقم ${pageNumber + 1}...`);
-                const pageUrl = buildInvoicesUrl(branchId, fromDate, toDate, pageNumber);
-                console.log("[agreement-audit] تحميل:", pageUrl);
-                frame.src = pageUrl;
+                frame.src = buildInvoicesUrl(branchId, fromDate, toDate, pageNumber);
                 const doc = await waitForFrame(frame, d => (
                     d.querySelectorAll("table tbody tr").length > 0 || d.body.innerText.includes("لا يوجد")
                 ) ? d : null, 20000);
-                if (!doc) {
-                    console.log("[agreement-audit] توقف: الصفحة ما استجابت خلال 20 ثانية (لا جدول ولا رسالة \"لا يوجد\")");
-                    break;
-                }
+                if (!doc) break;
 
-                const allTables = doc.querySelectorAll("table").length;
                 const table = Array.from(doc.querySelectorAll("table")).find(t => t.querySelectorAll("tbody tr").length > 0);
-                if (!table) {
-                    console.log("[agreement-audit] توقف: فيه", allTables, "جدول بالصفحة بس ولا وحد فيه صفوف");
-                    break;
-                }
+                if (!table) break;
 
                 const headerCells = Array.from(table.querySelectorAll("thead tr th, thead tr td"));
-                console.log("[agreement-audit] عناوين أعمدة الجدول:", headerCells.map(c => c.textContent.trim()));
                 const agreementIdx = findColumnIndex(headerCells, ["رقم الاتفاقية"]);
                 const amountIdx = findColumnIndex(headerCells, ["المبلغ"]);
-                if (agreementIdx === -1) {
-                    console.log("[agreement-audit] توقف: ما لقيت عمود \"رقم الاتفاقية\" بالعناوين أعلاه");
-                    break;
-                }
+                if (agreementIdx === -1) break;
 
                 const rows = Array.from(table.querySelectorAll("tbody tr"));
-                console.log("[agreement-audit] عدد الصفوف بهذي الصفحة:", rows.length);
                 if (!rows.length) break;
 
                 rows.forEach(row => {
