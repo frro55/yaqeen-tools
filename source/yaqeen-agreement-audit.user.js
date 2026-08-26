@@ -475,6 +475,16 @@
         return val ? parseFloat(val.replace(/,/g, "")) : 0;
     }
 
+    const HEADER_FIELD_LABELS = ["Date:", "Agreement Number:", "TGA License Number:", "Branch Name:"];
+
+    /** يستخرج تاريخ إصدار الاتفاقية نفسها من "Date: DD/MM/YYYY" (أول الوثيقة)، ويرجّعه بصيغة YYYY-MM-DD */
+    function extractAgreementDate(fullText) {
+        const val = extractNearLabel(fullText, "Date:", HEADER_FIELD_LABELS, /(\d{2}\/\d{2}\/\d{4})/, 40);
+        if (!val) return null;
+        const parts = val.split("/"); // DD/MM/YYYY
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+
     /** يفحص اتفاقية وحدة: يرجّع {agreementNo, openedBy, closedBy, days, cdw} أو null لو تعذّر الفحص */
     async function checkOneAgreement(branchId, agreementNo) {
         const frame = openHiddenFrame(
@@ -519,6 +529,7 @@
                 closedBy: extractFieldAfterLabel(fullText, "Closed By"),
                 days: extractPeriodOfRentDays(fullText),
                 cdw: extractCdwAmount(fullText),
+                agreementDate: extractAgreementDate(fullText),
             };
         } finally {
             frame.remove();
@@ -700,6 +711,7 @@ ${rowsHtml}
                         days: result.days || 0,
                         cdw: result.cdw || 0,
                         amount: item.amount ? parseFloat(String(item.amount).replace(/,/g, "")) : null,
+                        agreement_date: result.agreementDate || null,
                     });
                 }
             }
