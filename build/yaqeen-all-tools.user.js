@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0825.0418
+// @version      2026.0826.0329
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1279,16 +1279,16 @@
         });
     }
 
-    /** يبني رابط صفحة فواتير B2B لرقم صفحة معيّن (0 = الأولى، بدون باراميتر pageNumber) */
-    function buildInvoicesUrl(branchId, fromDate, toDate, pageNumber) {
-        let url = `https://yaqeen.lumirental.com/rental/branches/${branchId}/financials/invoices/b2b-invoices` +
+    /** يبني رابط صفحة فواتير B2B/B2C لرقم صفحة معيّن (0 = الأولى، بدون باراميتر pageNumber) */
+    function buildInvoicesUrl(branchId, docType, fromDate, toDate, pageNumber) {
+        let url = `https://yaqeen.lumirental.com/rental/branches/${branchId}/financials/invoices/${docType}-invoices` +
             `?branchIds=${branchId}&issueDate=${fromDate},${toDate}&pageSize=500`;
         if (pageNumber > 0) url += `&pageNumber=${pageNumber}`;
         return url;
     }
 
-    /** يسحب كل أرقام اتفاقيات B2B الفريدة بالمدة، ويجمع مبلغ كل فواتيرها (اتفاقية ممكن يكون لها أكثر من فاتورة - رسوم تمديد مثلاً) */
-    async function fetchAllAgreementNumbers(branchId, fromDate, toDate, onProgress) {
+    /** يسحب كل أرقام اتفاقيات B2B/B2C الفريدة بالمدة، ويجمع مبلغ كل فواتيرها (اتفاقية ممكن يكون لها أكثر من فاتورة - رسوم تمديد مثلاً) */
+    async function fetchAllAgreementNumbers(branchId, docType, fromDate, toDate, onProgress) {
         const frame = openHiddenFrame("about:blank");
         const byAgreement = new Map(); // agreementNo -> مجموع مبالغ فواتيره
         let truncated = false;
@@ -1298,7 +1298,7 @@
             let pageNumber = 0;
             while (true) {
                 onProgress && onProgress(`جارٍ جلب صفحة الفواتير رقم ${pageNumber + 1}...`);
-                const pageUrl = buildInvoicesUrl(branchId, fromDate, toDate, pageNumber);
+                const pageUrl = buildInvoicesUrl(branchId, docType, fromDate, toDate, pageNumber);
                 console.log("[agreement-audit] تحميل:", pageUrl);
                 frame.src = pageUrl;
                 const doc = await waitForStableRowCount(frame, 25000);
@@ -1352,7 +1352,7 @@
                 // pageSize المطلوب - شفناها فعلياً ترجع 100 صف رغم طلب 500)، ونتوقف بس
                 // لما صفحة ترجع فاضية فعلاً (rows.length === 0 بأعلى الحلقة)
                 pageNumber++;
-                if (pageNumber > 50) { truncated = true; break; } // حد أمان يمنع حلقة لا نهائية
+                if (pageNumber > 300) { truncated = true; break; } // حد أمان يمنع حلقة لا نهائية (B2C ممكن تكون آلاف الفواتير)
             }
         } finally {
             frame.remove();
@@ -1425,7 +1425,40 @@
         return match ? match[1].trim() : "";
     }
 
-    /** يفحص اتفاقية وحدة: يرجّع {agreementNo, openedBy, closedBy} أو null لو تعذّر الفحص */
+    // نفس فكرة AGREEMENT_FIELD_LABELS: نوقف الاستخراج عند أقرب حقل مجاور
+    // حتى ما نتسرب لقيمة حقل ثاني (مثلاً "Deductible Amount" بدل "CDW")
+    const RENTAL_INFO_FIELD_LABELS = ["Check out Date", "Check Out Branch", "Check In Date", "Check In Branch", "Rent Per Day", "Period of Rent", "Drop Off Charges"];
+    const INSURANCE_FIELD_LABELS = ["CDW", "Deductible Amount", "Insurance Type", "Policy No", "Expiry Date"];
+
+    /** يستخرج القيمة اللي بعد تسمية معيّنة، بحد أقصى boundaryLabels الأقرب (نفس منطق extractFieldAfterLabel) */
+    function extractNearLabel(fullText, label, boundaryLabels, valueRegex, maxChars) {
+        const idx = fullText.indexOf(label);
+        if (idx === -1) return null;
+        const searchStart = idx + label.length;
+        let boundary = searchStart + maxChars;
+        boundaryLabels.forEach(other => {
+            if (other === label) return;
+            const otherIdx = fullText.indexOf(other, searchStart);
+            if (otherIdx !== -1 && otherIdx < boundary) boundary = otherIdx;
+        });
+        const after = fullText.slice(searchStart, boundary);
+        const match = valueRegex.exec(after);
+        return match ? match[1] : null;
+    }
+
+    /** يستخرج عدد أيام التأجير من "Period of Rent: ... N Day(s)" */
+    function extractPeriodOfRentDays(fullText) {
+        const val = extractNearLabel(fullText, "Period of Rent", RENTAL_INFO_FIELD_LABELS, /(\d+)\s*Days?/i, 80);
+        return val ? parseInt(val, 10) : 0;
+    }
+
+    /** يستخرج مبلغ تأمين CDW من "CDW: ... N.NN" */
+    function extractCdwAmount(fullText) {
+        const val = extractNearLabel(fullText, "CDW", INSURANCE_FIELD_LABELS, /(\d[\d,]*\.\d{2})/, 150);
+        return val ? parseFloat(val.replace(/,/g, "")) : 0;
+    }
+
+    /** يفحص اتفاقية وحدة: يرجّع {agreementNo, openedBy, closedBy, days, cdw} أو null لو تعذّر الفحص */
     async function checkOneAgreement(branchId, agreementNo) {
         const frame = openHiddenFrame(
             `https://yaqeen.lumirental.com/rental/branches/${branchId}/bookings?agreementNo=${encodeURIComponent(agreementNo)}`
@@ -1467,6 +1500,8 @@
                 agreementNo,
                 openedBy: extractFieldAfterLabel(fullText, "Opened By"),
                 closedBy: extractFieldAfterLabel(fullText, "Closed By"),
+                days: extractPeriodOfRentDays(fullText),
+                cdw: extractCdwAmount(fullText),
             };
         } finally {
             frame.remove();
@@ -1486,7 +1521,18 @@
 <div id="aud-box" class="yq-overlay">
 <div class="yq-card yq-pad" style="max-width:380px;">
 <h3>🔍 تدقيق اتفاقياتي</h3>
-<div class="yq-desc">يفحص كل اتفاقيات B2B بالمدة المحددة ويطلع لك بس اللي فتحتها أو قفلتها أنت.</div>
+<div class="yq-desc">يفحص كل اتفاقيات الفرع بالمدة المحددة ويطلع لك بس اللي فتحتها أو قفلتها أنت.</div>
+<div class="yq-field-wrap">
+<label>نوع الاتفاقيات</label>
+<div style="display:flex;gap:8px;">
+<label style="flex:1;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;border:1.5px solid #cec7b4;border-radius:12px;padding:10px;cursor:pointer;">
+<input type="radio" name="aud-doctype" value="b2b" checked> شركات (B2B)
+</label>
+<label style="flex:1;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;border:1.5px solid #cec7b4;border-radius:12px;padding:10px;cursor:pointer;">
+<input type="radio" name="aud-doctype" value="b2c"> أفراد (B2C)
+</label>
+</div>
+</div>
 <div class="yq-field-wrap"><label>الفرع</label><input type="text" class="yq-field" id="aud-branch" value="29"></div>
 <div class="yq-field-wrap"><label>من تاريخ</label><input type="date" class="yq-field" id="aud-from" value="${yyyy}-01-01"></div>
 <div class="yq-field-wrap"><label>إلى تاريخ</label><input type="date" class="yq-field" id="aud-to" value="${yyyy}-03-31"></div>
@@ -1499,6 +1545,7 @@
 
         document.getElementById("aud-cancel-form").onclick = () => document.getElementById("aud-box")?.remove();
         document.getElementById("aud-start").onclick = () => {
+            const docType = document.querySelector('input[name="aud-doctype"]:checked').value;
             const branch = document.getElementById("aud-branch").value.trim();
             const from = document.getElementById("aud-from").value;
             const to = document.getElementById("aud-to").value;
@@ -1508,7 +1555,7 @@
                 return;
             }
             document.getElementById("aud-box")?.remove();
-            runAudit(branch, from, to, name);
+            runAudit(branch, docType, from, to, name);
         };
     }
 
@@ -1533,11 +1580,15 @@
     function showResults(nameQuery, matches, totalChecked) {
         document.getElementById("aud-box")?.remove();
         injectYqStyles();
+        const totalDays = matches.reduce((sum, m) => sum + (m.days || 0), 0);
+        const totalCdw = matches.reduce((sum, m) => sum + (m.cdw || 0), 0);
+
         const rowsHtml = matches.length
             ? matches.map(m => `
                 <div class="aud-row">
                     <div>
                         <b>${m.agreementNo}</b> — ${m.amount ? m.amount + " ر.س" : ""}
+                        · ${m.days} يوم · تأمين ${m.cdw.toFixed(2)} ر.س
                         <div style="color:#a19c92;font-size:11.5px;">
                             ${m.openedByMatch ? "فتح: " + m.openedBy : ""}
                             ${m.closedByMatch ? " قفل: " + m.closedBy : ""}
@@ -1550,12 +1601,19 @@
                 </div>`).join("")
             : `<div class="aud-empty">ما لقيت أي اتفاقية عليها "${nameQuery}"</div>`;
 
+        const summaryHtml = matches.length
+            ? `<div class="yq-desc" style="margin-top:0;">
+                فُحصت ${totalChecked} اتفاقية، ولُقي ${matches.length} عليها "${nameQuery}"<br>
+                إجمالي الأيام: <b>${totalDays}</b> · إجمالي تأمين CDW: <b>${totalCdw.toFixed(2)}</b> ر.س (5% منه = ${(totalCdw * 0.05).toFixed(2)} ر.س)
+               </div>`
+            : `<div class="yq-desc" style="margin-top:0;">فُحصت ${totalChecked} اتفاقية، ولُقي ${matches.length} عليها "${nameQuery}"</div>`;
+
         const html = `
 <div id="aud-box" class="yq-overlay">
 <div class="yq-card" style="max-width:460px;">
 <div class="yq-card-header">نتيجة التدقيق</div>
 <div class="yq-card-body">
-<div class="yq-desc" style="margin-top:0;">فُحصت ${totalChecked} اتفاقية، ولُقي ${matches.length} عليها "${nameQuery}"</div>
+${summaryHtml}
 ${rowsHtml}
 <button class="yq-btn yq-btn-secondary" id="aud-close">إغلاق</button>
 </div>
@@ -1567,21 +1625,22 @@ ${rowsHtml}
 
     const AUDIT_STATE = { cancelled: false };
 
-    async function runAudit(branchId, fromDate, toDate, nameQuery) {
+    async function runAudit(branchId, docType, fromDate, toDate, nameQuery) {
         AUDIT_STATE.cancelled = false;
-        showProgress("جارٍ جلب قائمة اتفاقيات B2B...", 0, 0);
+        const docLabel = docType === "b2c" ? "أفراد (B2C)" : "شركات (B2B)";
+        showProgress(`جارٍ جلب قائمة اتفاقيات ${docLabel}...`, 0, 0);
 
-        const { list: agreements, truncated } = await fetchAllAgreementNumbers(branchId, fromDate, toDate, text => {
+        const { list: agreements, truncated } = await fetchAllAgreementNumbers(branchId, docType, fromDate, toDate, text => {
             if (!AUDIT_STATE.cancelled) showProgress(text, 0, 0);
         });
 
         if (truncated) {
-            showToast("تحذير: عدد الاتفاقيات كبير جداً، النتيجة قد تكون ناقصة (وصلنا لحد أقصى 10,500 صف) - قسّم المدة لفترات أصغر لنتيجة كاملة", "error");
+            showToast("تحذير: عدد الفواتير كبير جداً، النتيجة قد تكون ناقصة - قسّم المدة لفترات أصغر لنتيجة كاملة", "error");
         }
 
         if (!agreements.length) {
             document.getElementById("aud-box")?.remove();
-            showToast("ما لقيت أي اتفاقية B2B بهذي المدة", "error");
+            showToast(`ما لقيت أي اتفاقية ${docLabel} بهذي المدة`, "error");
             return;
         }
 
