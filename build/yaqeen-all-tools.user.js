@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0826.0343
+// @version      2026.0826.0405
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -11,6 +11,7 @@
 // @connect      cdn.lumirental.com
 // @connect      mpos.geidea.net
 // @connect      ycguqfilerlkrukiykiy.supabase.co
+// @connect      oxlobztibhzeqtqiiffa.supabase.co
 // @run-at       document-end
 // @updateURL    https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
 // @downloadURL  https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
@@ -1247,6 +1248,80 @@
     }
 
     // ==========================================================
+    // قاعدة بيانات التخزين المؤقت (Supabase مشروع "tools") - تخزّن نتيجة
+    // كل اتفاقية اتفحصت مرة (بدون فلترة لموظف معيّن)، فأي تشغيلة بعدها
+    // تستخدم المحفوظ بدل ما تفتح نفس الاتفاقية بيقين من جديد
+    // ==========================================================
+
+    const SUPABASE_URL = "https://oxlobztibhzeqtqiiffa.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94bG9ienRpYmh6ZXF0cWlpZmZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzIwMjMsImV4cCI6MjEwMTQ0ODAyM30.kS9zdu8sxteAtGuws4hHBpu-wKo8L_WvNpjru3ixFFU";
+
+    /** طلب عام لـSupabase REST (PostgREST) عبر GM_xmlhttpRequest (يتفادى قيود CORS) مع fetch كحل احتياطي */
+    function supabaseRequest(method, path, body, extraHeaders) {
+        const headers = Object.assign({
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+            "Content-Type": "application/json",
+        }, extraHeaders || {});
+        const url = SUPABASE_URL + path;
+        return new Promise(resolve => {
+            if (typeof GM_xmlhttpRequest !== "undefined") {
+                GM_xmlhttpRequest({
+                    method: method,
+                    url: url,
+                    headers: headers,
+                    data: body ? JSON.stringify(body) : undefined,
+                    onload: function (response) {
+                        if (response.status >= 400) {
+                            console.log("[agreement-audit] فشل طلب Supabase:", method, path, response.status, response.responseText);
+                            resolve(null);
+                            return;
+                        }
+                        try { resolve(response.responseText ? JSON.parse(response.responseText) : true); } catch (err) { resolve(null); }
+                    },
+                    onerror: function () {
+                        console.log("[agreement-audit] فشل طلب Supabase (شبكة):", method, path);
+                        resolve(null);
+                    },
+                });
+                return;
+            }
+            fetch(url, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined })
+                .then(res => {
+                    if (!res.ok) {
+                        console.log("[agreement-audit] فشل طلب Supabase:", method, path, res.status);
+                        return null;
+                    }
+                    return res.json().catch(() => true);
+                })
+                .then(resolve)
+                .catch(() => resolve(null));
+        });
+    }
+
+    /** يجيب كل الاتفاقيات المحفوظة مسبقاً من أرقام معيّنة (يقسّمها لدفعات حتى ما يطول الرابط) */
+    async function fetchCachedAgreements(agreementNos) {
+        const cached = new Map();
+        const BATCH_SIZE = 150;
+        for (let i = 0; i < agreementNos.length; i += BATCH_SIZE) {
+            const batch = agreementNos.slice(i, i + BATCH_SIZE);
+            const filter = encodeURIComponent("in.(" + batch.join(",") + ")");
+            const rows = await supabaseRequest("GET", `/rest/v1/agreement_audit_cache?agreement_no=${filter}&select=*`);
+            if (Array.isArray(rows)) {
+                rows.forEach(r => cached.set(r.agreement_no, r));
+            }
+        }
+        return cached;
+    }
+
+    /** يحفظ نتيجة اتفاقية وحدة بالقاعدة (upsert - يحدّث لو موجودة، يضيف لو جديدة) */
+    function saveAgreementToCache(record) {
+        return supabaseRequest("POST", "/rest/v1/agreement_audit_cache", record, {
+            "Prefer": "resolution=merge-duplicates",
+        });
+    }
+
+    // ==========================================================
     // قراءة فواتير B2B (مصدر أرقام الاتفاقيات بالمدة المطلوبة)
     // ==========================================================
 
@@ -1649,15 +1724,48 @@ ${rowsHtml}
             return;
         }
 
+        showProgress("جارٍ التحقق من المحفوظ مسبقاً بقاعدة البيانات...", 0, agreements.length);
+        const cached = await fetchCachedAgreements(agreements.map(a => a.agreementNo));
+        console.log("[agreement-audit] لقينا", cached.size, "اتفاقية محفوظة مسبقاً من أصل", agreements.length);
+
         const normQuery = normalizeArabic(nameQuery).toLowerCase();
         const matches = [];
         let checked = 0;
+        let fromCache = 0;
 
         for (const item of agreements) {
             if (AUDIT_STATE.cancelled) break;
-            showProgress(`جارٍ فحص الاتفاقية ${item.agreementNo}...`, checked, agreements.length);
 
-            const result = await checkOneAgreement(branchId, item.agreementNo);
+            let result;
+            const cachedRow = cached.get(item.agreementNo);
+            if (cachedRow) {
+                showProgress(`(محفوظة) ${item.agreementNo}...`, checked, agreements.length);
+                result = {
+                    openedBy: cachedRow.opened_by || "",
+                    closedBy: cachedRow.closed_by || "",
+                    days: cachedRow.days || 0,
+                    cdw: Number(cachedRow.cdw) || 0,
+                };
+                fromCache++;
+            } else {
+                showProgress(`جارٍ فحص الاتفاقية ${item.agreementNo}...`, checked, agreements.length);
+                result = await checkOneAgreement(branchId, item.agreementNo);
+                // نحفظ بس الاتفاقيات المقفلة فعلياً (closedBy موجود) - اتفاقية لسا مفتوحة
+                // لو حفظناها بـclosedBy فاضي بتضل كذا للأبد حتى لو انقفلت لاحقاً، لأن
+                // القاعدة ما تُعاد قراءتها من يقين إلا لو ما كانت موجودة أصلاً بالكاش
+                if (result && result.closedBy) {
+                    saveAgreementToCache({
+                        agreement_no: item.agreementNo,
+                        doc_type: docType,
+                        branch_id: String(branchId),
+                        opened_by: result.openedBy || null,
+                        closed_by: result.closedBy || null,
+                        days: result.days || 0,
+                        cdw: result.cdw || 0,
+                        amount: item.amount ? parseFloat(String(item.amount).replace(/,/g, "")) : null,
+                    });
+                }
+            }
             checked++;
 
             if (result) {
@@ -1669,6 +1777,7 @@ ${rowsHtml}
             }
         }
 
+        console.log("[agreement-audit] خلص:", checked, "فُحصت،", fromCache, "منها من الكاش");
         showResults(nameQuery, matches, checked);
     }
 

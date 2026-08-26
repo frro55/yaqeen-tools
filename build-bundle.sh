@@ -32,6 +32,7 @@ cat > "$BUNDLE" << HDREOF
 // @connect      cdn.lumirental.com
 // @connect      mpos.geidea.net
 // @connect      ycguqfilerlkrukiykiy.supabase.co
+// @connect      oxlobztibhzeqtqiiffa.supabase.co
 // @run-at       document-end
 // @updateURL    https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
 // @downloadURL  https://api.yaqeen-vip.space/tools/yaqeen-all-tools.user.js
