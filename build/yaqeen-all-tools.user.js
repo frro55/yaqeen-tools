@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0826.1247
+// @version      2026.0826.1300
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1748,8 +1748,12 @@ ${rowsHtml}
             if (AUDIT_STATE.cancelled) break;
 
             let result;
+            // نتجاهل سجل الكاش لو ناقص عمود مهم (زي agreement_date اللي انضاف
+            // بعد ما اتحفظت اتفاقيات قبل هذا التحديث) - نعتبره "مو محفوظ فعلياً"
+            // فيرجع يتفحص من يقين ويحدّث نفس السجل بكل البيانات كاملة
             const cachedRow = cached.get(item.agreementNo);
-            if (cachedRow) {
+            const cachedRowComplete = cachedRow && cachedRow.agreement_date;
+            if (cachedRowComplete) {
                 showProgress(`(محفوظة) ${item.agreementNo}...`, checked, agreements.length);
                 result = {
                     openedBy: cachedRow.opened_by || "",
