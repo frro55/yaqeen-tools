@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0826.0329
+// @version      2026.0826.0343
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1266,7 +1266,12 @@
                 } catch (err) { resolve(null); return; }
                 if (doc && doc.body.innerText.includes("لا يوجد")) { resolve(doc); return; }
                 const count = doc ? doc.querySelectorAll("table tbody tr").length : 0;
-                if (count > 0 && count === lastCount) {
+                // العناوين ممكن توصل بنية فاضية أول شي (React لسا يملّي النص) - ننتظر
+                // أول <th>/<td> برأس الجدول يصير فيه نص فعلي قبل ما نعتبر الصفحة جاهزة
+                const headersReady = doc
+                    ? Array.from(doc.querySelectorAll("table thead tr th, table thead tr td")).some(c => c.textContent.trim())
+                    : false;
+                if (count > 0 && headersReady && count === lastCount) {
                     stableStreak++;
                     if (stableStreak >= 3) { resolve(doc); return; }
                 } else {
