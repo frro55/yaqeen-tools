@@ -537,6 +537,15 @@
         const badge = document.getElementById("yt-session-badge");
         if (!badge) return;
         const available = HOST_WINDOW.YAQEEN_TOOLS.availableSessions || [];
+
+        // تشخيص مؤقت مرئي بالشاشة (بدون Console) - يبين البيانات الخام اللي السكربت شايفها فعلياً
+        document.getElementById("yt-debug-sessions")?.remove();
+        const dbg = document.createElement("div");
+        dbg.id = "yt-debug-sessions";
+        dbg.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:999999999;background:#1c1c1a;color:#eef4e2;font:600 11px monospace;padding:8px 10px;border-radius:8px;direction:ltr;text-align:left;white-space:pre-wrap;";
+        dbg.textContent = "[debug] availableSessions=" + JSON.stringify(available) + " active=" + HOST_WINDOW.YAQEEN_TOOLS.activeSessionId;
+        document.body.appendChild(dbg);
+
         if (available.length < 2) {
             badge.style.display = "none";
         } else {
