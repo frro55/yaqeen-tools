@@ -527,12 +527,19 @@
             try { popup.close(); } catch (err) { /* تجاهل */ }
             if (!fullText) return { agreementNo, error: "no-text: نافذة الطباعة فتحت لكن ما احتوت نص الاتفاقية" };
 
-            const closedBy = extractFieldAfterLabel(fullText, "Closed By");
+            let closedBy = extractFieldAfterLabel(fullText, "Closed By");
             if (!closedBy) {
-                return {
-                    agreementNo,
-                    error: `empty-closedby: النص وصل لكن الاستخراج ما لقى قيمة بعد "Closed By" (يحتوي التسمية؟ ${fullText.includes("Closed By")})`,
-                };
+                // التسمية "Closed By" موجودة بالنص لكن بدون قيمة بعدها = اتفاقية
+                // انقفلت فعلياً لكن عن طريق كاربرو (النظام القديم قبل يقين) اللي
+                // ما يطبع اسم موظف - نعتبرها مقفلة ونحفظها بدل ما نتجاهلها للأبد
+                if (fullText.includes("Closed By")) {
+                    closedBy = "كاربرو (نظام قديم)";
+                } else {
+                    return {
+                        agreementNo,
+                        error: `empty-closedby: النص وصل لكن الاستخراج ما لقى قيمة بعد "Closed By" (يحتوي التسمية؟ false)`,
+                    };
+                }
             }
 
             return {
