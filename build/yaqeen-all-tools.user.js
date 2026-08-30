@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0830.0233
+// @version      2026.0830.0306
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1489,20 +1489,28 @@
     // أقربها حتى ما تتسرب قيمة حقل ثاني (مثلاً "Closed By") لداخل نتيجة الحقل الحالي
     const AGREEMENT_FIELD_LABELS = ["Opened By", "Closed By", "Checked By on Exit", "Checked By on Entry", "Renter Sign"];
 
-    /** يستخرج القيمة اللي بعد تسمية معيّنة (Opened By / Closed By) من نص الاتفاقية الكامل */
+    /**
+     * يستخرج القيمة اللي بعد تسمية معيّنة (Opened By / Closed By) من نص الاتفاقية
+     * الكامل. شكل كل حقل بالمستند: "<Label>\t<ترجمة عربية>:" بسطر، والقيمة
+     * الفعلية بالسطر اللي بعده - وممكن تكون "رقم موظف + اسم" أو اسم عربي أو حتى
+     * علامة نظام زي "carpro-script-sync" (اتفاقيات مستوردة من كاربرو تلقائياً)،
+     * فما نقيّد الشكل بريجكس محدد - بس ناخذ أول سطر مو نفسه سطر ترجمة التسمية
+     */
     function extractFieldAfterLabel(fullText, label) {
         const idx = fullText.indexOf(label);
         if (idx === -1) return "";
         const searchStart = idx + label.length;
-        let boundary = searchStart + 120;
+        let boundary = searchStart + 200;
         AGREEMENT_FIELD_LABELS.forEach(other => {
             if (other === label) return;
             const otherIdx = fullText.indexOf(other, searchStart);
             if (otherIdx !== -1 && otherIdx < boundary) boundary = otherIdx;
         });
         const after = fullText.slice(searchStart, boundary);
-        const match = /(\d{4,10}\s+[A-Za-z][A-Za-z .'-]{2,40})/.exec(after);
-        return match ? match[1].trim() : "";
+        const lines = after.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        // سطر الترجمة العربية للتسمية ("فتح بواسطة:" / "أغلق بواسطة:") ينتهي بـ":" - نتجاوزه
+        const valueLine = lines.find(l => !l.endsWith(":"));
+        return valueLine || "";
     }
 
     // نفس فكرة AGREEMENT_FIELD_LABELS: نوقف الاستخراج عند أقرب حقل مجاور
@@ -1769,10 +1777,11 @@ ${rowsHtml}
 
             let result;
             // نتجاهل سجل الكاش لو ناقص عمود مهم (زي agreement_date اللي انضاف
-            // بعد ما اتحفظت اتفاقيات قبل هذا التحديث) - نعتبره "مو محفوظ فعلياً"
-            // فيرجع يتفحص من يقين ويحدّث نفس السجل بكل البيانات كاملة
+            // بعد ما اتحفظت اتفاقيات قبل هذا التحديث، أو opened_by اللي كان
+            // استخراجه يفشل قبل إصلاح extractFieldAfterLabel) - نعتبره "مو محفوظ
+            // فعلياً" فيرجع يتفحص من يقين ويحدّث نفس السجل بكل البيانات كاملة
             const cachedRow = cached.get(item.agreementNo);
-            const cachedRowComplete = cachedRow && cachedRow.agreement_date;
+            const cachedRowComplete = cachedRow && cachedRow.agreement_date && cachedRow.opened_by;
             if (cachedRowComplete) {
                 showProgress(`(محفوظة) ${item.agreementNo}...`, checked, agreements.length);
                 result = {
