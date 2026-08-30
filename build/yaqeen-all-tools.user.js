@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0827.0829
+// @version      2026.0830.0144
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1548,21 +1548,25 @@
         return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
 
-    /** يفحص اتفاقية وحدة: يرجّع {agreementNo, openedBy, closedBy, days, cdw} أو null لو تعذّر الفحص */
+    /**
+     * يفحص اتفاقية وحدة: يرجّع {agreementNo, openedBy, closedBy, days, cdw} عند
+     * النجاح، أو {agreementNo, error} يوضّح بالضبط وين توقف الفحص عند الفشل
+     * (تشخيص لمشكلة اتفاقيات ما توصل تنحفظ رغم إنها مقفلة فعلياً بيقين)
+     */
     async function checkOneAgreement(branchId, agreementNo) {
         const frame = openHiddenFrame(
             `https://yaqeen.lumirental.com/rental/branches/${branchId}/bookings?agreementNo=${encodeURIComponent(agreementNo)}`
         );
         try {
             const doc1 = await waitForFrame(frame, d => (d.querySelectorAll("table tbody tr").length > 0 ? d : null));
-            if (!doc1) return null;
+            if (!doc1) return { agreementNo, error: "no-rows: ما ظهر أي صف بجدول نتيجة البحث برقم الاتفاقية" };
 
             const row = findFirstTableRow(doc1);
-            if (!row) return null;
+            if (!row) return { agreementNo, error: "no-row-el: ما لقينا عنصر الصف رغم مرور فحص الجدول" };
 
             const win = frame.contentWindow;
             const menuTrigger = row.querySelector('[aria-haspopup="menu"]') || row.querySelector("button");
-            if (!menuTrigger) return null;
+            if (!menuTrigger) return { agreementNo, error: "no-menu-trigger: ما لقينا زر القائمة (...) بالصف" };
 
             const popupPromise = captureNextPopup(win);
             dispatchFullClick(menuTrigger, win);
@@ -1576,20 +1580,28 @@
                 downloadBtn = matches.length ? matches[matches.length - 1] : null;
                 if (!downloadBtn) await new Promise(r => setTimeout(r, 200));
             }
-            if (!downloadBtn) return null;
+            if (!downloadBtn) return { agreementNo, error: "no-download-btn: ما ظهر زر 'تنزيل الاتفاقية' بالقائمة" };
             dispatchFullClick(downloadBtn, win);
 
             const popup = await popupPromise;
-            if (!popup) return null;
+            if (!popup) return { agreementNo, error: "no-popup: نافذة الطباعة ما فتحت (احتمال حظر popup)" };
 
             const fullText = await waitForPopupContent(popup);
             try { popup.close(); } catch (err) { /* تجاهل */ }
-            if (!fullText) return null;
+            if (!fullText) return { agreementNo, error: "no-text: نافذة الطباعة فتحت لكن ما احتوت نص الاتفاقية" };
+
+            const closedBy = extractFieldAfterLabel(fullText, "Closed By");
+            if (!closedBy) {
+                return {
+                    agreementNo,
+                    error: `empty-closedby: النص وصل لكن الاستخراج ما لقى قيمة بعد "Closed By" (يحتوي التسمية؟ ${fullText.includes("Closed By")})`,
+                };
+            }
 
             return {
                 agreementNo,
                 openedBy: extractFieldAfterLabel(fullText, "Opened By"),
-                closedBy: extractFieldAfterLabel(fullText, "Closed By"),
+                closedBy,
                 days: extractPeriodOfRentDays(fullText),
                 cdw: extractCdwAmount(fullText),
                 agreementDate: extractAgreementDate(fullText),
@@ -1741,6 +1753,7 @@ ${rowsHtml}
 
         const normQuery = normalizeArabic(nameQuery).toLowerCase();
         const matches = [];
+        const failures = [];
         let checked = 0;
         let fromCache = 0;
 
@@ -1764,7 +1777,15 @@ ${rowsHtml}
                 fromCache++;
             } else {
                 showProgress(`جارٍ فحص الاتفاقية ${item.agreementNo}...`, checked, agreements.length);
-                result = await checkOneAgreement(branchId, item.agreementNo);
+                try {
+                    result = await checkOneAgreement(branchId, item.agreementNo);
+                } catch (err) {
+                    result = { agreementNo: item.agreementNo, error: "exception: " + (err && err.message ? err.message : String(err)) };
+                }
+                if (result && result.error) {
+                    failures.push({ agreementNo: item.agreementNo, error: result.error });
+                    console.warn("[agreement-audit-fail]", item.agreementNo, result.error);
+                }
                 // نحفظ بس الاتفاقيات المقفلة فعلياً (closedBy موجود) - اتفاقية لسا مفتوحة
                 // لو حفظناها بـclosedBy فاضي بتضل كذا للأبد حتى لو انقفلت لاحقاً، لأن
                 // القاعدة ما تُعاد قراءتها من يقين إلا لو ما كانت موجودة أصلاً بالكاش
@@ -1793,7 +1814,17 @@ ${rowsHtml}
             }
         }
 
-        console.log("[agreement-audit] خلص:", checked, "فُحصت،", fromCache, "منها من الكاش");
+        console.log("[agreement-audit] خلص:", checked, "فُحصت،", fromCache, "منها من الكاش،", failures.length, "فشلت");
+        if (failures.length) {
+            const byType = {};
+            failures.forEach(f => {
+                const type = f.error.split(":")[0];
+                byType[type] = (byType[type] || 0) + 1;
+            });
+            console.warn("[agreement-audit] ملخص أسباب الفشل:", byType);
+            console.table(failures);
+            showToast(`تنبيه: ${failures.length} اتفاقية فشل فحصها ولا انحفظت - افتح الكونسول (F12) لتفاصيل الأسباب`, "error");
+        }
         showResults(nameQuery, matches, checked);
     }
 
