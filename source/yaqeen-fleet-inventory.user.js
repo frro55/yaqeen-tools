@@ -416,6 +416,7 @@
     // إن الأداة تبدّل لغة الصفحة الأصلية لجلب الجدول (وممكن ما ترجع عربي بالوقت
     // اللي تفتح فيه صفحات التفاصيل)، نطابق التسميتين مع بعض بدل الاعتماد على لغة وحدة
     const CHASSIS_FIELD_LABELS = ["رقم الشاسيه", "Chassis No."];
+    const PLATE_FIELD_LABELS = ["رقم اللوحة", "Plate No."];
 
     /** يدور بين كل عناصر p.text-slate-500 (تسميات صفحة التفاصيل) عن أي وحدة من
      * تسميات labelVariants، ويرجّع نص العنصر اللي بعدها مباشرة (القيمة) */
@@ -453,13 +454,24 @@
         });
     }
 
-    /** يفتح صفحة تفاصيل سيارة وحدة ويرجّع رقم الشاسيه (فاضي لو ما لقاه) */
+    /** يفتح صفحة تفاصيل سيارة وحدة ويرجّع رقم الشاسيه (فاضي لو ما لقاه). نتحقق
+     * إن "رقم اللوحة" المكتوب فعلاً بالصفحة اللي فتحناها يطابق اللوحة المطلوبة
+     * قبل ما نقبل رقم الشاسيه - احتياط ضروري بما إننا نفتح عدة إطارات بالتوازي
+     * (fetchAllChassisNumbers)، فلازم نضمن كل نتيجة ترجع لسيارتها الصح بالضبط */
     function fetchChassis(plate) {
         return new Promise(resolve => {
             const frame = openHiddenFrame(`/rental/vehicles/${encodeURIComponent(plate)}/details`);
             waitForVehicleDetails(frame)
                 .then(doc => {
-                    const chassis = doc ? extractDetailField(doc, CHASSIS_FIELD_LABELS) : "";
+                    let chassis = "";
+                    if (doc) {
+                        const pagePlate = extractDetailField(doc, PLATE_FIELD_LABELS);
+                        if (normalizeArabic(pagePlate) === normalizeArabic(plate)) {
+                            chassis = extractDetailField(doc, CHASSIS_FIELD_LABELS);
+                        } else {
+                            console.warn("[fleet-inventory] لوحة الصفحة المفتوحة ما تطابق المطلوبة - تجاهلنا النتيجة:", plate, "!=", pagePlate);
+                        }
+                    }
                     try { frame.remove(); } catch (err) { /* تجاهل */ }
                     resolve(chassis);
                 })
@@ -470,17 +482,41 @@
         });
     }
 
-    /** يجلب رقم الشاسيه لكل صف بالتتابع (صفحة تفاصيل وحدة بكل مرة) ويحدّث رسالة
-     * التحميل بالتقدّم - أبطأ من جلب القائمة نفسها لأنها صفحة إضافية لكل سيارة */
+    // نفتح 4 صفحات تفاصيل بالتوازي (بدل وحدة بوحدة) لتسريع الجرد - كل طلب مربوط
+    // بصف محدد مسبقاً (rows[idx])، فما فيه تشارك بحالة بين الإطارات المتزامنة،
+    // وتحقق تطابق اللوحة بـfetchChassis يضمن ما ينكتب رقم شاسيه بصف غلط حتى لو
+    // إطار تأخر أو تعثّر
+    const CHASSIS_FETCH_CONCURRENCY = 4;
+
+    /** يجلب رقم الشاسيه لكل صف (بالتوازي بحد أقصى CHASSIS_FETCH_CONCURRENCY
+     * إطارات بنفس الوقت) ويحدّث رسالة التحميل بالتقدّم كل ما تخلص وحدة */
     function fetchAllChassisNumbers(rows) {
-        return rows.reduce((chain, row, idx) => {
-            return chain.then(() => {
-                showLoading(`جارٍ جلب رقم الشاسيه (${idx + 1} من ${rows.length})...`);
-                return fetchChassis(row.plate).then(chassis => {
+        return new Promise(resolve => {
+            const total = rows.length;
+            if (total === 0) { resolve(rows); return; }
+
+            let nextIndex = 0;
+            let completed = 0;
+            showLoading(`جارٍ جلب رقم الشاسيه (0 من ${total})...`);
+
+            function startNext() {
+                if (nextIndex >= total) return;
+                const row = rows[nextIndex++];
+                fetchChassis(row.plate).then(chassis => {
                     row.chassis = chassis;
+                    completed++;
+                    showLoading(`جارٍ جلب رقم الشاسيه (${completed} من ${total})...`);
+                    if (completed >= total) {
+                        resolve(rows);
+                    } else {
+                        startNext();
+                    }
                 });
-            });
-        }, Promise.resolve()).then(() => rows);
+            }
+
+            const workers = Math.min(CHASSIS_FETCH_CONCURRENCY, total);
+            for (let i = 0; i < workers; i++) startNext();
+        });
     }
 
     // ==========================================================
