@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0831.2241
+// @version      2026.0831.2245
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -2328,9 +2328,31 @@ ${rowsHtml}
     // وتحقق تطابق اللوحة بـfetchChassis يضمن ما ينكتب رقم شاسيه بصف غلط حتى لو
     // إطار تأخر أو تعثّر
     const CHASSIS_FETCH_CONCURRENCY = 4;
+    // ما نقبل صف بدون رقم شاسيه بسهولة - لو رجع فاضي (تحميل بطيء، تعثّر إطار،
+    // عدم تطابق لوحة...) نعيد المحاولة على نفس السيارة بدل ما نتخطاها للأبد
+    const CHASSIS_FETCH_MAX_ATTEMPTS = 6;
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /** يجلب رقم الشاسيه لسيارة وحدة، وإذا رجع فاضي يعيد المحاولة (بفاصل بسيط)
+     * لحد CHASSIS_FETCH_MAX_ATTEMPTS مرة قبل ما يسلّم إنه فعلاً ما قدر */
+    function fetchChassisWithRetry(plate, attemptsLeft) {
+        attemptsLeft = attemptsLeft == null ? CHASSIS_FETCH_MAX_ATTEMPTS : attemptsLeft;
+        return fetchChassis(plate).then(chassis => {
+            if (chassis) return chassis;
+            if (attemptsLeft <= 1) {
+                console.warn("[fleet-inventory] فشل جلب رقم الشاسيه بعد", CHASSIS_FETCH_MAX_ATTEMPTS, "محاولات - بيضل فاضي بالجدول:", plate);
+                return "";
+            }
+            return delay(500).then(() => fetchChassisWithRetry(plate, attemptsLeft - 1));
+        });
+    }
 
     /** يجلب رقم الشاسيه لكل صف (بالتوازي بحد أقصى CHASSIS_FETCH_CONCURRENCY
-     * إطارات بنفس الوقت) ويحدّث رسالة التحميل بالتقدّم كل ما تخلص وحدة */
+     * إطارات بنفس الوقت، مع إعادة محاولة تلقائية لأي صف يرجع فاضي) ويحدّث رسالة
+     * التحميل بالتقدّم كل ما تخلص وحدة */
     function fetchAllChassisNumbers(rows) {
         return new Promise(resolve => {
             const total = rows.length;
@@ -2343,7 +2365,7 @@ ${rowsHtml}
             function startNext() {
                 if (nextIndex >= total) return;
                 const row = rows[nextIndex++];
-                fetchChassis(row.plate).then(chassis => {
+                fetchChassisWithRetry(row.plate).then(chassis => {
                     row.chassis = chassis;
                     completed++;
                     showLoading(`جارٍ جلب رقم الشاسيه (${completed} من ${total})...`);
@@ -2415,7 +2437,7 @@ table{width:100%;border-collapse:collapse;}
 th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
 .check{width:20px;height:14px;}
 .box{font-size:13px;font-weight:bold;}
-.chassis{font-family:"Courier New",monospace;font-size:9.5px;}
+.chassis{font-family:"Courier New",monospace;font-size:12.5px;font-weight:bold;}
 </style>
 </head>
 <body>
