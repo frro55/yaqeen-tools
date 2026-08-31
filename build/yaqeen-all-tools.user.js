@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0830.0306
+// @version      2026.0831.2239
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1997,6 +1997,10 @@ ${rowsHtml}
                     showMessage("لم يتم العثور على جدول الجرد");
                     return;
                 }
+                return fetchAllChassisNumbers(rows);
+            })
+            .then(rows => {
+                if (!rows) return;
                 document.getElementById("fleet-box")?.remove();
                 printFleet(rows);
             })
@@ -2246,6 +2250,76 @@ ${rowsHtml}
     }
 
     // ==========================================================
+    // جلب رقم الشاسيه لكل سيارة من صفحة تفاصيلها (غير موجود بجدول القائمة)
+    // ==========================================================
+
+    /** يدور بين كل عناصر p.text-slate-500 (تسميات صفحة التفاصيل) عن التسمية
+     * المطلوبة، ويرجّع نص العنصر اللي بعدها مباشرة (القيمة) */
+    function extractDetailField(doc, labelText) {
+        const normalizedLabel = normalizeArabic(labelText);
+        const labels = Array.prototype.slice.call(doc.querySelectorAll("p.text-slate-500"));
+        const target = labels.find(p => normalizeArabic(p.textContent) === normalizedLabel);
+        if (!target) return "";
+        const valueEl = target.nextElementSibling;
+        return valueEl ? valueEl.textContent.trim() : "";
+    }
+
+    function waitForVehicleDetails(iframe, timeoutMs) {
+        timeoutMs = timeoutMs || 15000;
+        return new Promise(resolve => {
+            const start = Date.now();
+            (function poll() {
+                if (!iframe.isConnected) { resolve(null); return; }
+                let doc;
+                try {
+                    doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+                } catch (err) { resolve(null); return; }
+                if (!doc || doc.readyState !== "complete") {
+                    if (Date.now() - start > timeoutMs) { resolve(doc || null); return; }
+                    setTimeout(poll, 300);
+                    return;
+                }
+                const ready = doc.querySelector("p.text-slate-500");
+                if (ready || Date.now() - start > timeoutMs) {
+                    resolve(doc);
+                    return;
+                }
+                setTimeout(poll, 300);
+            })();
+        });
+    }
+
+    /** يفتح صفحة تفاصيل سيارة وحدة ويرجّع رقم الشاسيه (فاضي لو ما لقاه) */
+    function fetchChassis(plate) {
+        return new Promise(resolve => {
+            const frame = openHiddenFrame(`/rental/vehicles/${encodeURIComponent(plate)}/details`);
+            waitForVehicleDetails(frame)
+                .then(doc => {
+                    const chassis = doc ? extractDetailField(doc, "رقم الشاسيه") : "";
+                    try { frame.remove(); } catch (err) { /* تجاهل */ }
+                    resolve(chassis);
+                })
+                .catch(() => {
+                    try { frame.remove(); } catch (err) { /* تجاهل */ }
+                    resolve("");
+                });
+        });
+    }
+
+    /** يجلب رقم الشاسيه لكل صف بالتتابع (صفحة تفاصيل وحدة بكل مرة) ويحدّث رسالة
+     * التحميل بالتقدّم - أبطأ من جلب القائمة نفسها لأنها صفحة إضافية لكل سيارة */
+    function fetchAllChassisNumbers(rows) {
+        return rows.reduce((chain, row, idx) => {
+            return chain.then(() => {
+                showLoading(`جارٍ جلب رقم الشاسيه (${idx + 1} من ${rows.length})...`);
+                return fetchChassis(row.plate).then(chassis => {
+                    row.chassis = chassis;
+                });
+            });
+        }, Promise.resolve()).then(() => rows);
+    }
+
+    // ==========================================================
     // واجهة رسائل بسيطة (تحميل / خطأ)
     // ==========================================================
 
@@ -2294,12 +2368,13 @@ ${rowsHtml}
 <head>
 <title>Fleet Inventory</title>
 <style>
-body{font-family:Arial;padding:30px;}
-h2{text-align:center;}
+body{font-family:Arial;padding:12px;font-size:10.5px;}
+h2{text-align:center;font-size:15px;margin:0 0 8px;}
 table{width:100%;border-collapse:collapse;}
-th,td{border:1px solid #999;padding:8px;text-align:center;}
-.check{width:35px;height:25px;}
-.box{font-size:22px;font-weight:bold;}
+th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
+.check{width:20px;height:14px;}
+.box{font-size:13px;font-weight:bold;}
+.chassis{font-family:"Courier New",monospace;font-size:9.5px;}
 </style>
 </head>
 <body>
@@ -2311,6 +2386,7 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
 <th>✓</th>
 <th>Group</th>
 <th>Vehicle</th>
+<th>Chassis</th>
 <th>Year</th>
 <th>KM</th>
 </tr>
@@ -2324,6 +2400,7 @@ th,td{border:1px solid #999;padding:8px;text-align:center;}
 <td class="check"><div class="box">☐</div></td>
 <td>${x.group}</td>
 <td>${x.vehicle}</td>
+<td class="chassis">${x.chassis || ""}</td>
 <td>${x.year}</td>
 <td>${x.km}</td>
 </tr>
