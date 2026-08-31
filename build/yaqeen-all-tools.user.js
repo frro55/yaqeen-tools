@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0831.2245
+// @version      2026.0831.2248
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -1956,9 +1956,9 @@ ${rowsHtml}
         box.querySelector("#cancel").onclick = () => box.remove();
 
         // لازم فتح النافذة متزامن جوّا onclick بدون await قبله، وإلا المتصفح يحظرها
-        box.querySelector("#airport").onclick = () => start(29);
-        box.querySelector("#yard").onclick = () => start(53);
-        box.querySelector("#all").onclick = () => start("29,53");
+        box.querySelector("#airport").onclick = () => start(29, "Airport");
+        box.querySelector("#yard").onclick = () => start(53, "Yard");
+        box.querySelector("#all").onclick = () => start("29,53", "All");
 
     }
 
@@ -1966,7 +1966,7 @@ ${rowsHtml}
     // التنفيذ: نافذة منبثقة بدل مغادرة الصفحة الحالية
     // ==========================================================
 
-    function start(branch) {
+    function start(branch, branchLabel) {
 
         lastBranch = branch;
         document.getElementById("fleet-box")?.remove();
@@ -2002,7 +2002,7 @@ ${rowsHtml}
             .then(rows => {
                 if (!rows) return;
                 document.getElementById("fleet-box")?.remove();
-                printFleet(rows);
+                printFleet(rows, branchLabel);
             })
             .catch(err => {
                 try { frame.remove(); } catch (err2) { /* تجاهل */ }
@@ -2419,17 +2419,19 @@ ${rowsHtml}
     // طباعة كشف الجرد
     // ==========================================================
 
-    function printFleet(rows) {
+    function printFleet(rows, branchLabel) {
 
         rows.sort((a, b) =>
             a.group.localeCompare(b.group) ||
             a.plate.localeCompare(b.plate, undefined, { numeric: true })
         );
 
+        const title = branchLabel ? `Fleet Inventory - ${branchLabel}` : "Fleet Inventory";
+
         let html = `
 <html dir="ltr">
 <head>
-<title>Fleet Inventory</title>
+<title>${title}</title>
 <style>
 body{font-family:Arial;padding:12px;font-size:10.5px;}
 h2{text-align:center;font-size:15px;margin:0 0 8px;}
@@ -2441,7 +2443,7 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
 </style>
 </head>
 <body>
-<h2>Fleet Inventory</h2>
+<h2>${title}</h2>
 <table>
 <tr>
 <th>#</th>
