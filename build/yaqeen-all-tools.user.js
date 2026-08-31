@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0831.2239
+// @version      2026.0831.2240
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -2253,12 +2253,17 @@ ${rowsHtml}
     // جلب رقم الشاسيه لكل سيارة من صفحة تفاصيلها (غير موجود بجدول القائمة)
     // ==========================================================
 
-    /** يدور بين كل عناصر p.text-slate-500 (تسميات صفحة التفاصيل) عن التسمية
-     * المطلوبة، ويرجّع نص العنصر اللي بعدها مباشرة (القيمة) */
-    function extractDetailField(doc, labelText) {
-        const normalizedLabel = normalizeArabic(labelText);
+    // رقم الشاسيه بالنسخة العربية "رقم الشاسيه"، وبالإنجليزية "Chassis No." - وبما
+    // إن الأداة تبدّل لغة الصفحة الأصلية لجلب الجدول (وممكن ما ترجع عربي بالوقت
+    // اللي تفتح فيه صفحات التفاصيل)، نطابق التسميتين مع بعض بدل الاعتماد على لغة وحدة
+    const CHASSIS_FIELD_LABELS = ["رقم الشاسيه", "Chassis No."];
+
+    /** يدور بين كل عناصر p.text-slate-500 (تسميات صفحة التفاصيل) عن أي وحدة من
+     * تسميات labelVariants، ويرجّع نص العنصر اللي بعدها مباشرة (القيمة) */
+    function extractDetailField(doc, labelVariants) {
+        const variants = (Array.isArray(labelVariants) ? labelVariants : [labelVariants]).map(normalizeArabic);
         const labels = Array.prototype.slice.call(doc.querySelectorAll("p.text-slate-500"));
-        const target = labels.find(p => normalizeArabic(p.textContent) === normalizedLabel);
+        const target = labels.find(p => variants.indexOf(normalizeArabic(p.textContent)) !== -1);
         if (!target) return "";
         const valueEl = target.nextElementSibling;
         return valueEl ? valueEl.textContent.trim() : "";
@@ -2295,7 +2300,7 @@ ${rowsHtml}
             const frame = openHiddenFrame(`/rental/vehicles/${encodeURIComponent(plate)}/details`);
             waitForVehicleDetails(frame)
                 .then(doc => {
-                    const chassis = doc ? extractDetailField(doc, "رقم الشاسيه") : "";
+                    const chassis = doc ? extractDetailField(doc, CHASSIS_FIELD_LABELS) : "";
                     try { frame.remove(); } catch (err) { /* تجاهل */ }
                     resolve(chassis);
                 })
