@@ -46,6 +46,7 @@ FILES=(
   yaqeen-core.user.js
   yaqeen-agreement-audit.user.js
   yaqeen-fleet-inventory.user.js
+  yaqeen-fleet-search.user.js
   yaqeen-available-vehicles.user.js
   yaqeen-email-tools.user.js
   yaqeen-airport-hours-report.user.js

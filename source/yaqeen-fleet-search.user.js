@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Yaqeen Tool - جرد الاسطول
+// @name         Yaqeen Tool - بحث الأسطول
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2.0
-// @description  جرد الأسطول - بدون مغادرة الصفحة الحالية
+// @version      1.0
+// @description  بحث متقدم بالأسطول: أي فروع + أي حالة سيارة، مع رقم الشاسيه - بدون مغادرة الصفحة الحالية
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
 // @grant        none
@@ -16,7 +16,42 @@
     'use strict';
 
     var GROUP_COLUMN_HINT = ['المجموعة', 'Group'];
-    var lastBranch = null;
+
+    // فروع جدة أول شي (الأكثر استخداماً)، بعدها باقي الفروع المسجّلة - نفس
+    // القائمة المستخدمة بأدوات الفروع الثانية (late-payments-branches-report
+    // وغيرها) بالإضافة لفرع 53 (ساحة جدة) اللي مو موجود بتلك القائمة
+    const BRANCHES = [
+        { id: 29, name: 'مطار جدة' },
+        { id: 11, name: 'طريق المدينة' },
+        { id: 12, name: 'شارع التحلية' },
+        { id: 53, name: 'ساحة جدة' },
+        { id: 30, name: 'مطار الطائف' },
+        { id: 10, name: 'ينبع - الهيئة الملكية' },
+        { id: 25, name: 'مطار الأمير عبدالمحسن - ينبع' },
+        { id: 36, name: 'المدينة المنورة' },
+        { id: 59, name: 'مطار الأمير محمد بن عبدالعزيز الدولي - المدينة' },
+        { id: 70, name: 'مدينة العلا' },
+        { id: 217, name: 'الطائف' },
+        { id: 218, name: 'طريق الأمير سلطان' },
+    ];
+
+    const STATUSES = [
+        { id: 1, name: 'جاهزة' },
+        { id: 2, name: 'مؤجرة' },
+        { id: 13, name: 'تحتاج تجهيز' },
+        { id: 14, name: 'التحويلة مفتوحة' },
+        { id: 6, name: 'خارج الخدمة' },
+    ];
+
+    function branchName(id) {
+        const b = BRANCHES.find(x => x.id === id);
+        return b ? b.name : ('فرع #' + id);
+    }
+
+    function statusName(id) {
+        const s = STATUSES.find(x => x.id === id);
+        return s ? s.name : ('حالة #' + id);
+    }
 
     function waitCore() {
 
@@ -28,10 +63,10 @@
         }
 
         HOST_WINDOW.YAQEEN_TOOLS.add({
-            id: "fleet-inventory",
-            name: "🚗 جرد الأسطول",
+            id: "fleet-search",
+            name: "🔍 بحث الأسطول بالحالة",
             run() {
-                chooseBranch();
+                showSearchForm();
             }
         });
 
@@ -48,7 +83,7 @@
     }
 
     // ==========================================================
-    // اختيار الفرع
+    // اختيار الفروع والحالة
     // ==========================================================
 
     const YQ_CSS =
@@ -65,75 +100,134 @@
         '.yq-spinner{width:30px;height:30px;border:3px solid #A3E635;border-left-color:transparent;' +
         'border-radius:50%;margin:0 auto 14px;animation:yq-spin .8s linear infinite;}' +
         '@keyframes yq-spin{to{transform:rotate(360deg);}}' +
-        '.yq-menu-btn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:13px;cursor:pointer;' +
-        'font-size:15px;font-weight:800;font-family:inherit;background:#f1f0ea;color:#1c1c1a;}' +
         '.yq-btn:not(.yq-btn-primary):not(.yq-btn-secondary):hover{background:#f5f3ec;border-color:#a19c92;}' +
         '.yq-btn-secondary:hover{background:#e5e2d5;}' +
         '.yq-btn-primary:hover{filter:brightness(1.06);}' +
-        '.yq-menu-btn:hover{background:#e5e2d5;}' +
         '.yq-toast-close:hover{color:#1c1c1a;}' +
-        '.yq-report-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
-        '.yq-report-actions button.yq-primary:hover{filter:brightness(1.06);}' +
-        '.vip-form-actions button:not(.yq-primary):hover{background:#e5e2d5;}' +
-        '.vip-form-actions button.yq-primary:hover{filter:brightness(1.06);}' +
-        '.shift-pick-btn:not(.current):hover{background:#e5e2d5;}' +
-        '.shift-add-emp-btn:hover{background:#e5e2d5;}' +
-        '.shift-emp-remove:hover{background:#fbdada;}' +
-        '.yq-field:focus{outline:2px solid #a8cf5a;border-color:#79a916;}';
+        '.yq-desc{margin:14px 0;text-align:right;font-size:14px;color:#767068;line-height:1.9;}' +
+        '.yq-branch-list{text-align:right;max-height:170px;overflow:auto;border:1.5px solid #cec7b4;' +
+        'border-radius:12px;padding:8px 12px;}' +
+        '.yq-branch-list label{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:15px;cursor:pointer;}' +
+        '.yq-branch-list input{accent-color:#79a916;width:16px;height:16px;}' +
+        '.yq-link-row{margin:14px 0 8px;text-align:right;display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#767068;font-weight:700;}' +
+        '.yq-link-row a{color:#79a916;text-decoration:none;font-size:13.5px;}';
+
     function injectYqStyles() {
-        if (document.getElementById('yq-shared-styles-fleet-inventory')) return;
+        if (document.getElementById('yq-shared-styles-fleet-search')) return;
         var style = document.createElement('style');
-        style.id = 'yq-shared-styles-fleet-inventory';
+        style.id = 'yq-shared-styles-fleet-search';
         style.textContent = YQ_CSS;
         document.head.appendChild(style);
     }
 
-    function chooseBranch() {
-
-        document.getElementById("fleet-box")?.remove();
+    function overlayShell(innerHtml, width) {
         injectYqStyles();
+        return (
+            '<div id="fleet-search-box" class="yq-overlay">' +
+            '<div class="yq-card" style="max-width:' + width + 'px;">' + innerHtml + '</div></div>'
+        );
+    }
 
-        let box = document.createElement("div");
-        box.id = "fleet-box";
-        box.className = "yq-overlay";
+    function showToast(message, type) {
+        let wrap = document.getElementById('yq-toast-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'yq-toast-wrap';
+            wrap.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999999999;display:flex;flex-direction:column;gap:8px;align-items:center;';
+            document.body.appendChild(wrap);
+        }
+        const toast = document.createElement('div');
+        toast.style.cssText = 'background:' + (type === 'error' ? '#dc2626' : '#1c1c1a') + ';color:#fff;padding:12px 18px;' +
+            'border-radius:12px;font-family:"Tajawal",Arial,sans-serif;font-size:14px;font-weight:700;box-shadow:0 10px 24px -8px rgba(0,0,0,.4);';
+        toast.textContent = message;
+        wrap.appendChild(toast);
+        setTimeout(() => { toast.remove(); if (!wrap.children.length) wrap.remove(); }, type === 'error' ? 5000 : 3500);
+    }
 
-        box.innerHTML = `
-        <div class="yq-card" style="max-width:300px;">
+    /** يبني شاشة اختيار الفروع + الحالة (كلها Checkboxes) - الفروع كلها محدَّدة
+     * افتراضياً (زي أدوات الفروع الثانية)، والحالة ما فيها تحديد افتراضي
+     * (يعني بدون فلترة حالة لو ما اخترتي شي = كل الحالات) */
+    function showSearchForm() {
+        document.getElementById('fleet-search-box')?.remove();
 
-        <h3>🚗 جرد الأسطول</h3>
+        const branchCheckboxesHtml = BRANCHES.map(b => (
+            '<label><input type="checkbox" class="fs-branch-cb" value="' + b.id + '" checked> ' + b.name + '</label>'
+        )).join('');
 
-        <button id="airport" class="yq-menu-btn">✈️ المطار</button>
-        <button id="yard" class="yq-menu-btn">🏢 الساحة</button>
-        <button id="all" class="yq-menu-btn">📍 الكل</button>
+        const statusCheckboxesHtml = STATUSES.map(s => (
+            '<label><input type="checkbox" class="fs-status-cb" value="' + s.id + '"> ' + s.name + '</label>'
+        )).join('');
 
-        <button id="cancel" class="yq-btn yq-btn-secondary">إلغاء</button>
-        </div>
-        `;
+        document.body.insertAdjacentHTML('beforeend', overlayShell(
+            '<h3>🔍 بحث الأسطول</h3>' +
+            '<div class="yq-link-row">' +
+            '<span>الفروع</span>' +
+            '<span><a href="#" id="fs-branches-all">تحديد الكل</a> · ' +
+            '<a href="#" id="fs-branches-none">إلغاء الكل</a></span>' +
+            '</div>' +
+            '<div id="fs-branches-list" class="yq-branch-list">' + branchCheckboxesHtml + '</div>' +
+            '<div class="yq-link-row">' +
+            '<span>الحالة</span>' +
+            '<span><a href="#" id="fs-status-all">تحديد الكل</a> · ' +
+            '<a href="#" id="fs-status-none">إلغاء الكل</a></span>' +
+            '</div>' +
+            '<div id="fs-status-list" class="yq-branch-list">' + statusCheckboxesHtml + '</div>' +
+            '<div class="yq-desc">اتركي الحالة بدون تحديد للبحث عن كل الحالات.</div>' +
+            '<button id="fs-submit" class="yq-btn yq-btn-primary">بحث</button>' +
+            '<button id="fs-cancel" class="yq-btn yq-btn-secondary">إلغاء</button>',
+            380
+        ));
 
-        document.body.appendChild(box);
+        document.getElementById('fs-branches-all').onclick = e => {
+            e.preventDefault();
+            document.querySelectorAll('.fs-branch-cb').forEach(cb => { cb.checked = true; });
+        };
+        document.getElementById('fs-branches-none').onclick = e => {
+            e.preventDefault();
+            document.querySelectorAll('.fs-branch-cb').forEach(cb => { cb.checked = false; });
+        };
+        document.getElementById('fs-status-all').onclick = e => {
+            e.preventDefault();
+            document.querySelectorAll('.fs-status-cb').forEach(cb => { cb.checked = true; });
+        };
+        document.getElementById('fs-status-none').onclick = e => {
+            e.preventDefault();
+            document.querySelectorAll('.fs-status-cb').forEach(cb => { cb.checked = false; });
+        };
 
-        box.querySelector("#cancel").onclick = () => box.remove();
+        document.getElementById('fs-cancel').onclick = () => {
+            document.getElementById('fleet-search-box')?.remove();
+        };
 
         // لازم فتح النافذة متزامن جوّا onclick بدون await قبله، وإلا المتصفح يحظرها
-        box.querySelector("#airport").onclick = () => start(29, "Airport");
-        box.querySelector("#yard").onclick = () => start(53, "Yard");
-        box.querySelector("#all").onclick = () => start("29,53", "All");
-
+        document.getElementById('fs-submit').onclick = () => {
+            const branchIds = Array.from(document.querySelectorAll('.fs-branch-cb:checked')).map(cb => parseInt(cb.value, 10));
+            if (branchIds.length === 0) {
+                showToast('اختر فرع واحد على الأقل', 'error');
+                return;
+            }
+            const statusIds = Array.from(document.querySelectorAll('.fs-status-cb:checked')).map(cb => parseInt(cb.value, 10));
+            start(branchIds, statusIds);
+        };
     }
 
     // ==========================================================
     // التنفيذ: نافذة منبثقة بدل مغادرة الصفحة الحالية
     // ==========================================================
 
-    function start(branch, branchLabel) {
+    function start(branchIds, statusIds) {
 
-        lastBranch = branch;
-        document.getElementById("fleet-box")?.remove();
+        document.getElementById('fleet-search-box')?.remove();
 
-        const url = `/rental/vehicles/ready?currentLocationIds=${branch}&pageSize=500`;
+        const statusParam = statusIds.length ? `&statusIds=${statusIds.join(',')}` : '';
+        const url = `/rental/vehicles/all?currentLocationIds=${branchIds.join(',')}${statusParam}&pageSize=500`;
         const frame = openHiddenFrame(url);
 
-        showLoading("جارٍ تحميل بيانات الأسطول...");
+        const branchLabel = branchIds.map(branchName).join('، ');
+        const statusLabel = statusIds.length ? statusIds.map(statusName).join(' + ') : 'كل الحالات';
+        const printLabel = `${branchLabel} — ${statusLabel}`;
+
+        showLoading("جارٍ تحميل بيانات البحث...");
 
         waitForFirstFrame(frame)
             .then(() => {
@@ -153,19 +247,19 @@
             .then(rows => {
                 try { frame.remove(); } catch (err) { /* تجاهل */ }
                 if (!rows.length) {
-                    showMessage("لم يتم العثور على جدول الجرد");
+                    showMessage("ما فيه سيارات تطابق الفروع/الحالة المختارة");
                     return;
                 }
                 return fetchAllChassisNumbers(rows);
             })
             .then(rows => {
                 if (!rows) return;
-                document.getElementById("fleet-box")?.remove();
-                printFleet(rows, branchLabel);
+                document.getElementById('fleet-search-box')?.remove();
+                printFleet(rows, printLabel);
             })
             .catch(err => {
                 try { frame.remove(); } catch (err2) { /* تجاهل */ }
-                showMessage("تعذّر جلب بيانات الجرد: " + err.message);
+                showMessage("تعذّر جلب بيانات البحث: " + err.message);
             });
 
     }
@@ -547,7 +641,7 @@
                         if (normalizeArabic(pagePlate) === normalizeArabic(plate)) {
                             chassis = extractDetailField(doc, CHASSIS_FIELD_LABELS);
                         } else {
-                            console.warn("[fleet-inventory] لوحة الصفحة المفتوحة ما تطابق المطلوبة - تجاهلنا النتيجة:", plate, "!=", pagePlate);
+                            console.warn("[fleet-search] لوحة الصفحة المفتوحة ما تطابق المطلوبة - تجاهلنا النتيجة:", plate, "!=", pagePlate);
                         }
                     }
                     try { frame.remove(); } catch (err) { /* تجاهل */ }
@@ -560,7 +654,7 @@
         });
     }
 
-    // نفتح 4 صفحات تفاصيل بالتوازي (بدل وحدة بوحدة) لتسريع الجرد - كل طلب مربوط
+    // نفتح 8 صفحات تفاصيل بالتوازي (بدل وحدة بوحدة) لتسريع البحث - كل طلب مربوط
     // بصف محدد مسبقاً (rows[idx])، فما فيه تشارك بحالة بين الإطارات المتزامنة،
     // وتحقق تطابق اللوحة بـfetchChassis يضمن ما ينكتب رقم شاسيه بصف غلط حتى لو
     // إطار تأخر أو تعثّر
@@ -580,7 +674,7 @@
         return fetchChassis(plate).then(chassis => {
             if (chassis) return chassis;
             if (attemptsLeft <= 1) {
-                console.warn("[fleet-inventory] فشل جلب رقم الشاسيه بعد", CHASSIS_FETCH_MAX_ATTEMPTS, "محاولات - بيضل فاضي بالجدول:", plate);
+                console.warn("[fleet-search] فشل جلب رقم الشاسيه بعد", CHASSIS_FETCH_MAX_ATTEMPTS, "محاولات - بيضل فاضي بالجدول:", plate);
                 return "";
             }
             return delay(500).then(() => fetchChassisWithRetry(plate, attemptsLeft - 1));
@@ -624,10 +718,10 @@
     // ==========================================================
 
     function showLoading(text) {
-        document.getElementById("fleet-box")?.remove();
+        document.getElementById("fleet-search-box")?.remove();
         injectYqStyles();
         const html = `
-<div id="fleet-box" class="yq-overlay">
+<div id="fleet-search-box" class="yq-overlay">
 <div class="yq-card" style="max-width:300px;padding:30px;">
 <div class="yq-spinner"></div>
 <div style="font-size:14.5px;font-weight:700;">${text}</div>
@@ -637,33 +731,33 @@
     }
 
     function showMessage(text) {
-        document.getElementById("fleet-box")?.remove();
+        document.getElementById("fleet-search-box")?.remove();
         injectYqStyles();
         const html = `
-<div id="fleet-box" class="yq-overlay">
+<div id="fleet-search-box" class="yq-overlay">
 <div class="yq-card" style="max-width:300px;">
 <div style="margin-bottom:15px;font-size:14.5px;font-weight:700;">${text}</div>
-<button id="close-fleet-message" class="yq-btn yq-btn-primary">إغلاق</button>
+<button id="close-fleet-search-message" class="yq-btn yq-btn-primary">إغلاق</button>
 </div>
 </div>`;
         document.body.insertAdjacentHTML("beforeend", html);
-        document.getElementById("close-fleet-message").onclick = () => {
-            document.getElementById("fleet-box")?.remove();
+        document.getElementById("close-fleet-search-message").onclick = () => {
+            document.getElementById("fleet-search-box")?.remove();
         };
     }
 
     // ==========================================================
-    // طباعة كشف الجرد
+    // طباعة نتائج البحث
     // ==========================================================
 
-    function printFleet(rows, branchLabel) {
+    function printFleet(rows, label) {
 
         rows.sort((a, b) =>
             a.group.localeCompare(b.group) ||
             a.plate.localeCompare(b.plate, undefined, { numeric: true })
         );
 
-        const title = branchLabel ? `Fleet Inventory - ${branchLabel}` : "Fleet Inventory";
+        const title = label ? `Fleet Search - ${label}` : "Fleet Search";
 
         let html = `
 <html dir="ltr">
