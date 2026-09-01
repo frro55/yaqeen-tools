@@ -432,7 +432,10 @@
                         resolve(allRows);
                         return;
                     }
-                    waitForPageLoad(iframe).then(pageDoc => {
+                    // نستخدم نفس آلية انتظار التحميل الأولى (تنتظر ظهور صفوف الجدول فعلياً
+                    // حتى 20 ثانية) بدل مهلة ثابتة قصيرة - صفحة React تحتاج وقت أطول
+                    // من مهلة ثابتة بعد إعادة تحميل كاملة للـiframe حتى يرسم الجدول
+                    waitForFirstFrame(iframe).then(pageDoc => {
                         if (!pageDoc || !iframe.isConnected) {
                             resolve(allRows);
                             return;
@@ -445,44 +448,12 @@
                         }
                         checkPage++;
                         checkNext();
-                    });
+                    }).catch(() => resolve(allRows));
                 }
                 checkNext();
             }
 
             step();
-        });
-    }
-
-    /** ينتظر اكتمال تحميل مستند الـiframe بعد تغيير رابطه (يُستخدم بالتحقق عبر
-     * pageNumber)، ويعطي مهلة إضافية ثابتة بعد اكتمال التحميل حتى يرسم الجدول
-     * (فارغًا كان أو لا) - بعكس waitForFirstFrame اللي ينتظر ظهور صفوف بالجدول */
-    function waitForPageLoad(iframe, timeoutMs) {
-        timeoutMs = timeoutMs || 15000;
-        return new Promise(resolve => {
-            const start = Date.now();
-            (function check() {
-                if (!iframe.isConnected) {
-                    resolve(null);
-                    return;
-                }
-                let doc;
-                try {
-                    doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-                } catch (err) {
-                    resolve(null);
-                    return;
-                }
-                if (!doc || doc.readyState !== "complete") {
-                    if (Date.now() - start > timeoutMs) {
-                        resolve(doc || null);
-                        return;
-                    }
-                    setTimeout(check, 250);
-                    return;
-                }
-                setTimeout(() => resolve(doc), 900);
-            })();
         });
     }
 

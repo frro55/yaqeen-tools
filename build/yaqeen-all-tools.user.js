@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0901.0427
+// @version      2026.0901.0447
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -2275,7 +2275,10 @@ ${rowsHtml}
                         resolve(allRows);
                         return;
                     }
-                    waitForPageLoad(iframe).then(pageDoc => {
+                    // نستخدم نفس آلية انتظار التحميل الأولى (تنتظر ظهور صفوف الجدول فعلياً
+                    // حتى 20 ثانية) بدل مهلة ثابتة قصيرة - صفحة React تحتاج وقت أطول
+                    // من مهلة ثابتة بعد إعادة تحميل كاملة للـiframe حتى يرسم الجدول
+                    waitForFirstFrame(iframe).then(pageDoc => {
                         if (!pageDoc || !iframe.isConnected) {
                             resolve(allRows);
                             return;
@@ -2288,44 +2291,12 @@ ${rowsHtml}
                         }
                         checkPage++;
                         checkNext();
-                    });
+                    }).catch(() => resolve(allRows));
                 }
                 checkNext();
             }
 
             step();
-        });
-    }
-
-    /** ينتظر اكتمال تحميل مستند الـiframe بعد تغيير رابطه (يُستخدم بالتحقق عبر
-     * pageNumber)، ويعطي مهلة إضافية ثابتة بعد اكتمال التحميل حتى يرسم الجدول
-     * (فارغًا كان أو لا) - بعكس waitForFirstFrame اللي ينتظر ظهور صفوف بالجدول */
-    function waitForPageLoad(iframe, timeoutMs) {
-        timeoutMs = timeoutMs || 15000;
-        return new Promise(resolve => {
-            const start = Date.now();
-            (function check() {
-                if (!iframe.isConnected) {
-                    resolve(null);
-                    return;
-                }
-                let doc;
-                try {
-                    doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-                } catch (err) {
-                    resolve(null);
-                    return;
-                }
-                if (!doc || doc.readyState !== "complete") {
-                    if (Date.now() - start > timeoutMs) {
-                        resolve(doc || null);
-                        return;
-                    }
-                    setTimeout(check, 250);
-                    return;
-                }
-                setTimeout(() => resolve(doc), 900);
-            })();
         });
     }
 
@@ -2785,12 +2756,18 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
         document.getElementById('fleet-search-box')?.remove();
 
         const statusParam = statusIds.length ? `&statusIds=${statusIds.join(',')}` : '';
-        const url = `/rental/vehicles/all?currentLocationIds=${branchIds.join(',')}${statusParam}&pageSize=500`;
-        const frame = openHiddenFrame(url);
-
-        const branchLabel = branchIds.map(branchName).join('، ');
         const statusLabel = statusIds.length ? statusIds.map(statusName).join(' + ') : 'كل الحالات';
+        const branchLabel = branchIds.map(branchName).join('، ');
         const printLabel = `${branchLabel} — ${statusLabel}`;
+
+        // نبحث عن كل فرع مختار على حدة (بدل رابط واحد بكل الفروع مجتمعة) عشان
+        // نقدر نطبع كل فرع بقسم مستقل بالتقرير، وعشان نتأكد من صفحات كل فرع
+        // بشكل مستقل
+        function urlForBranch(branchId) {
+            return `/rental/vehicles/all?currentLocationIds=${branchId}${statusParam}&pageSize=500`;
+        }
+
+        const frame = openHiddenFrame(urlForBranch(branchIds[0]));
 
         showLoading("جارٍ تحميل بيانات البحث...");
 
@@ -2800,33 +2777,66 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
                 return changeLanguage(frame, "English");
             })
             .then(() => waitForFirstFrame(frame))
-            .then(doc => {
-                showLoading("جارٍ جمع كل صفحات الجدول...");
-                return collectAllPages(frame, doc, url);
-            })
-            .then(rows => {
+            .then(firstDoc => collectBranchesSequentially(frame, branchIds, urlForBranch, firstDoc))
+            .then(sections => {
                 showLoading("جارٍ إرجاع لغة الصفحة إلى العربية...");
                 // نرجّع اللغة عربي قبل الإغلاق حتى ما تظل عالقة إنجليزي بالتبويب الأصلي
-                return changeLanguage(frame, "العربية").then(() => rows);
+                return changeLanguage(frame, "العربية").then(() => sections);
             })
-            .then(rows => {
+            .then(sections => {
                 try { frame.remove(); } catch (err) { /* تجاهل */ }
-                if (!rows.length) {
+                const totalRows = sections.reduce((sum, s) => sum + s.rows.length, 0);
+                if (!totalRows) {
                     showMessage("ما فيه سيارات تطابق الفروع/الحالة المختارة");
                     return;
                 }
-                return fetchAllChassisNumbers(rows);
+                const allRows = sections.reduce((acc, s) => acc.concat(s.rows), []);
+                return fetchAllChassisNumbers(allRows).then(() => sections);
             })
-            .then(rows => {
-                if (!rows) return;
+            .then(sections => {
+                if (!sections) return;
                 document.getElementById('fleet-search-box')?.remove();
-                printFleet(rows, printLabel);
+                printFleet(sections, printLabel);
             })
             .catch(err => {
                 try { frame.remove(); } catch (err2) { /* تجاهل */ }
                 showMessage("تعذّر جلب بيانات البحث: " + err.message);
             });
 
+    }
+
+    /** يجمع صفوف كل فرع من الفروع المختارة على حدة بالتتابع (نفس الـiframe
+     * يُعاد استخدامه بالتنقّل بين روابط الفروع)، ويرجّع قائمة أقسام
+     * [{branchLabel, rows}] بترتيب اختيار الفروع - أول فرع بالقائمة أصلاً
+     * محمّل بالـiframe من قبل (نفس رابطه)، فما يُعاد تحميله من جديد */
+    function collectBranchesSequentially(frame, branchIds, urlForBranch, firstDoc) {
+        const sections = [];
+
+        function step(index) {
+            if (index >= branchIds.length) {
+                return Promise.resolve(sections);
+            }
+            const branchId = branchIds[index];
+            const branchUrl = urlForBranch(branchId);
+
+            showLoading(`جارٍ جمع بيانات فرع ${branchName(branchId)} (${index + 1}/${branchIds.length})...`);
+
+            const loadStep = index === 0
+                ? Promise.resolve(firstDoc)
+                : (function () {
+                    try { frame.src = branchUrl; } catch (err) { /* تجاهل */ }
+                    return waitForFirstFrame(frame);
+                })();
+
+            return loadStep
+                .then(doc => collectAllPages(frame, doc, branchUrl))
+                .then(rows => {
+                    sections.push({ branchLabel: branchName(branchId), rows });
+                    return step(index + 1);
+                });
+        }
+
+        return step(0);
     }
 
     // ==========================================================
@@ -3091,7 +3101,10 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
                         resolve(allRows);
                         return;
                     }
-                    waitForPageLoad(iframe).then(pageDoc => {
+                    // نستخدم نفس آلية انتظار التحميل الأولى (تنتظر ظهور صفوف الجدول فعلياً
+                    // حتى 20 ثانية) بدل مهلة ثابتة قصيرة - صفحة React تحتاج وقت أطول
+                    // من مهلة ثابتة بعد إعادة تحميل كاملة للـiframe حتى يرسم الجدول
+                    waitForFirstFrame(iframe).then(pageDoc => {
                         if (!pageDoc || !iframe.isConnected) {
                             resolve(allRows);
                             return;
@@ -3104,44 +3117,12 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
                         }
                         checkPage++;
                         checkNext();
-                    });
+                    }).catch(() => resolve(allRows));
                 }
                 checkNext();
             }
 
             step();
-        });
-    }
-
-    /** ينتظر اكتمال تحميل مستند الـiframe بعد تغيير رابطه (يُستخدم بالتحقق عبر
-     * pageNumber)، ويعطي مهلة إضافية ثابتة بعد اكتمال التحميل حتى يرسم الجدول
-     * (فارغًا كان أو لا) - بعكس waitForFirstFrame اللي ينتظر ظهور صفوف بالجدول */
-    function waitForPageLoad(iframe, timeoutMs) {
-        timeoutMs = timeoutMs || 15000;
-        return new Promise(resolve => {
-            const start = Date.now();
-            (function check() {
-                if (!iframe.isConnected) {
-                    resolve(null);
-                    return;
-                }
-                let doc;
-                try {
-                    doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-                } catch (err) {
-                    resolve(null);
-                    return;
-                }
-                if (!doc || doc.readyState !== "complete") {
-                    if (Date.now() - start > timeoutMs) {
-                        resolve(doc || null);
-                        return;
-                    }
-                    setTimeout(check, 250);
-                    return;
-                }
-                setTimeout(() => resolve(doc), 900);
-            })();
         });
     }
 
@@ -3315,14 +3296,19 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
     // طباعة نتائج البحث
     // ==========================================================
 
-    function printFleet(rows, label) {
+    /** sections: [{branchLabel, rows}] - قسم مستقل بجدوله الخاص لكل فرع مختار،
+     * كل قسم بعنوان باسم الفرع، وفاصل صفحة قبل كل فرع (ما عدا الأول) */
+    function printFleet(sections, label) {
 
-        rows.sort((a, b) =>
-            a.group.localeCompare(b.group) ||
-            a.plate.localeCompare(b.plate, undefined, { numeric: true })
-        );
+        sections.forEach(s => {
+            s.rows.sort((a, b) =>
+                a.group.localeCompare(b.group) ||
+                a.plate.localeCompare(b.plate, undefined, { numeric: true })
+            );
+        });
 
         const title = label ? `Fleet Search - ${label}` : "Fleet Search";
+        const totalCount = sections.reduce((sum, s) => sum + s.rows.length, 0);
 
         let html = `
 <html dir="ltr">
@@ -3331,6 +3317,10 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
 <style>
 body{font-family:Arial;padding:12px;font-size:10.5px;}
 h2{text-align:center;font-size:15px;margin:0 0 8px;}
+.branch-header{margin:14px 0 4px;padding:4px 8px;background:#eee;border:1px solid #999;
+font-size:12.5px;font-weight:bold;text-align:center;}
+.branch-section{page-break-inside:avoid;}
+.branch-section + .branch-section{page-break-before:always;}
 table{width:100%;border-collapse:collapse;}
 th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
 .check{width:20px;height:14px;}
@@ -3339,7 +3329,12 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
 </style>
 </head>
 <body>
-<h2>${title}</h2>
+<h2>${title} (${totalCount})</h2>
+`;
+
+        sections.forEach(s => {
+            html += `<div class="branch-section">
+<div class="branch-header">${s.branchLabel} (${s.rows.length})</div>
 <table>
 <tr>
 <th>#</th>
@@ -3352,9 +3347,8 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
 <th>KM</th>
 </tr>
 `;
-
-        rows.forEach((x, i) => {
-            html += `
+            s.rows.forEach((x, i) => {
+                html += `
 <tr>
 <td>${i + 1}</td>
 <td>${x.plate}</td>
@@ -3366,10 +3360,11 @@ th,td{border:1px solid #999;padding:2px 4px;text-align:center;}
 <td>${x.km}</td>
 </tr>
 `;
+            });
+            html += `</table>\n</div>\n`;
         });
 
         html += `
-</table>
 </body>
 </html>
 `;
