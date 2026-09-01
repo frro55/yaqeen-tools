@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Yaqeen Tools - الكل بملف واحد
 // @namespace    https://yaqeen.lumirental.com/
-// @version      2026.0901.0424
+// @version      2026.0901.0427
 // @description  حزمة موحّدة تجمع كل أدوات يقين (Core + كل الأدوات) بملف تثبيت واحد
 // @author       Firas
 // @match        https://yaqeen.lumirental.com/*
@@ -62,6 +62,7 @@
     // ترتيب ظهور الأدوات بالقائمة - ثابت دايماً بغض النظر عن ترتيب تحميل Tampermonkey
     const TOOL_ORDER = [
         "fleet-inventory",
+        "fleet-search",
         "available-vehicles",
         "late-payments",
         "late-payments-branches",
@@ -82,6 +83,7 @@
     // تجميع الأدوات بمجموعات قابلة للطي بالقائمة - شكلي بحت، ما يأثر على الصلاحيات
     const TOOL_GROUPS = {
         "fleet-inventory": "fleet",
+        "fleet-search": "fleet",
         "available-vehicles": "fleet",
         "late-payments": "debt",
         "late-payments-branches": "debt",

@@ -54,6 +54,7 @@
     // ترتيب ظهور الأدوات بالقائمة - ثابت دايماً بغض النظر عن ترتيب تحميل Tampermonkey
     const TOOL_ORDER = [
         "fleet-inventory",
+        "fleet-search",
         "available-vehicles",
         "late-payments",
         "late-payments-branches",
@@ -74,6 +75,7 @@
     // تجميع الأدوات بمجموعات قابلة للطي بالقائمة - شكلي بحت، ما يأثر على الصلاحيات
     const TOOL_GROUPS = {
         "fleet-inventory": "fleet",
+        "fleet-search": "fleet",
         "available-vehicles": "fleet",
         "late-payments": "debt",
         "late-payments-branches": "debt",
